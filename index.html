@@ -238,6 +238,8 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .seg button[aria-pressed="true"][data-v="ok"]{background:var(--ok);color:#fff}
 .seg button[aria-pressed="true"][data-v="falta"]{background:var(--crit);color:#fff}
 .seg button[aria-pressed="true"][data-v="danado"]{background:var(--warn);color:#fff}
+.seg button[aria-pressed="true"][data-niv="bajo"]{background:var(--warn);color:#fff}
+.seg button[aria-pressed="true"][data-est="cubierto"]{background:var(--gold);color:#1a1405}
 .pz{display:flex;gap:8px;align-items:center}
 .pz input[type=text]{flex:1}
 .pz input.qty{width:70px;flex:none}
@@ -354,6 +356,8 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-palos" hidden></section>
     <section class="view" id="v-bolsas" hidden></section>
     <section class="view" id="v-historial" hidden></section>
+    <section class="view" id="v-turnocap" hidden></section>
+    <section class="view" id="v-supervision" hidden></section>
   </main>
 </div>
 
@@ -378,7 +382,7 @@ const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
 const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
   marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["equipo","Equipo","ger"]]},
-  capitanes:{nombre:"Capitanes", tabs:[["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["equipo","Equipo","ger"]]},
+  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
 
@@ -554,8 +558,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","supervision"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, supervision:cargarSupervision})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -786,7 +790,7 @@ async function flushOtro(){ // cambios pendientes de otro turno o día: se enví
 }
 async function guardarAhora(){ clearTimeout(programarFlush._t); if (S.me && (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length)) await flush(); }
 function setOnline(on){ S.online = on; $("#netbar").hidden = on; updateSaveStatus(); }
-window.addEventListener("online", () => { setOnline(true); flush(); cargarIncidencias(); });
+window.addEventListener("online", () => { setOnline(true); if (S.mods && S.mods.includes("marshals")) { flush(); cargarIncidencias(); } if (S.ct && S.ct.loaded) flushCap(); });
 window.addEventListener("offline", () => setOnline(false));
 function updateSaveStatus(){
   const el = $("#saveStatus"); if (!el) return;
@@ -1602,6 +1606,275 @@ function crearCasillas(){
     if (error) { $("#cErr").textContent = errMsg(error); return; }
     closeSheet(); toast(`Casillas ${a} a ${b} listas`); cargarCapitanes();
   };
+}
+
+/* ===================== Capitán: Mi turno ===================== */
+const PUESTOS = [["starter","Starter","S"],["range","Driving Range","R"],["carritos","Carritos","L"],["frente","Frente","F"],["divots","Divots","D"],["comodin","Comodín","C"]];
+const EST_PUESTO = {presente:"Presente", ausente:"Ausente", cubierto:"Cubierto"};
+const INSUMOS = [["tarjetas","Tarjetas de score"],["tees","Tees"],["lapices","Lápices"],["toallas","Toallas"],["bolas","Bolas de práctica"],["agua","Agua"]];
+const NIVEL = {suficiente:"Suficiente", bajo:"Bajo", agotado:"Agotado"};
+const CARRITOS = {libre:"Libre", "90":"Regla de 90°", cart_path:"Cart path only", sin_carritos:"Sin carritos"};
+const BANDERA = {frente:"Frente", centro:"Centro", atras:"Atrás", mixta:"Mixta"};
+S.ct = {areas:[], items:[], turno: turnoPorHora(), fecha: hoyISO(), rep:null, resp:{}, val:null, prev:null, pend:{resp:{}, rep:{}}, saving:false, last:null, openAreas:null, loaded:false};
+const ctKey = () => `smgc_ctpend_${S.me.id}`;
+
+async function cargarTurnoCap(){
+  const ct = S.ct; ct.fecha = hoyISO();
+  if (!ct.areas.length) {
+    const [a, it] = await Promise.all([sb.from("cap_areas").select("*").order("orden"), sb.from("cap_items").select("*").eq("activo", true).order("orden")]);
+    if (a.error || it.error) { toast(errMsg(a.error || it.error)); return; }
+    ct.areas = a.data.map(x => ({...x, items: it.data.filter(i => i.area === x.codigo)})); ct.items = ct.areas.flatMap(x => x.items);
+  }
+  const [rep, prev] = await Promise.all([
+    sb.from("cap_reportes").select("*").eq("fecha", ct.fecha).eq("turno", ct.turno).eq("capitan_id", S.me.id).maybeSingle(),
+    sb.from("cap_reportes").select("id,capitan_id,fecha,turno,pendientes,condiciones,inventario,firmado_en").eq("estado", "firmado").order("firmado_en", {ascending:false}).limit(3),
+  ]);
+  ct.rep = rep.data || null; ct.resp = {}; ct.val = null;
+  if (ct.rep) {
+    const [r, v] = await Promise.all([sb.from("cap_respuestas").select("*").eq("reporte_id", ct.rep.id), sb.from("cap_validaciones").select("*").eq("reporte_id", ct.rep.id).maybeSingle()]);
+    (r.data || []).forEach(x => ct.resp[x.item_id] = x); ct.val = v.data || null;
+  }
+  const loc = lsGet(ctKey());
+  if (loc && loc.fecha === ct.fecha && loc.turno === ct.turno) { ct.pend = loc; Object.assign(ct.resp, loc.resp); if (ct.rep) Object.assign(ct.rep, loc.rep); }
+  else if (!loc || (!Object.keys(loc.resp || {}).length && !Object.keys(loc.rep || {}).length)) ct.pend = {resp:{}, rep:{}};
+  ct.prev = (prev.data || []).find(x => !ct.rep || x.id !== ct.rep.id) || null;
+  ct.loaded = true;
+  if (Object.keys(ct.pend.resp).length || Object.keys(ct.pend.rep).length) flushCap();
+}
+const draftCap = () => S.ct.rep || Object.assign({condiciones:{}, equipo:{}, inventario:{}, observaciones:"", pendientes:"", estado:"borrador"}, S.ct.pend.fecha === S.ct.fecha && S.ct.pend.turno === S.ct.turno ? S.ct.pend.rep : {});
+function statsCap(){ let si=0,no=0,na=0,naSinJ=0; for (const it of S.ct.items) { const r = S.ct.resp[it.id]; if (!r) continue; if (r.valor==="si") si++; else if (r.valor==="no") no++; else { na++; if (!(r.nota||"").trim()) naSinJ++; } }
+  const answered = si+no+na; return {si,no,na,naSinJ,answered,total:S.ct.items.length,cumpl: answered ? Math.round(100*(si+na-naSinJ)/answered) : 0}; }
+function faltaCap(){
+  const d = draftCap(), st = statsCap(), m = [], c = d.condiciones || {};
+  if (["velocidad_greens","bandera","regla_carritos","apertura"].some(k => !String(c[k] || "").trim())) m.push("completar las condiciones de la cancha");
+  const sinEq = PUESTOS.filter(([k]) => !((d.equipo || {})[k] || {}).estado).length; if (sinEq) m.push(`indicar ${plural(sinEq, "puesto", "puestos")} del equipo`);
+  const sinIn = INSUMOS.filter(([k]) => !((d.inventario || {})[k] || {}).nivel).length; if (sinIn) m.push(`indicar el nivel de ${plural(sinIn, "insumo")}`);
+  if (st.answered < st.total) m.push(`responder ${plural(st.total - st.answered, "actividad", "actividades")}`);
+  if (st.naSinJ) m.push(`justificar ${st.naSinJ} N/A`);
+  return m;
+}
+function renderTurnoCap(){
+  const v = $("#v-turnocap"), ct = S.ct;
+  if (!ct.loaded) { v.innerHTML = `<div class="loading">Cargando su turno…</div>`; cargarTurnoCap().then(() => { if (S.view === "turnocap") renderTurnoCap(); }); return; }
+  const ex = v.querySelectorAll("#ctAreas details"); if (ex.length) ct.openAreas = [...ex].filter(x => x.open).map(x => x.dataset.a);
+  const d = draftCap(), ro = d.estado === "firmado", st = statsCap(), c = d.condiciones || {}, p = ct.prev, dis = ro ? "disabled" : "";
+  const bajos = p ? INSUMOS.filter(([k]) => ["bajo","agotado"].includes(((p.inventario || {})[k] || {}).nivel)) : [];
+  v.innerHTML = `
+  <div class="head"><div><div class="eyebrow">${esc(TURNOS[ct.turno])} · Capitán de equipos</div><h1>${esc(fechaLarga(ct.fecha))}</h1>
+    <p class="sub">${ro ? (ct.val ? "Turno firmado y validado por el Gerente de Operaciones." : "Turno firmado. Pendiente de validación del Gerente de Operaciones.") : "Responda cada actividad con Sí, No o N/A. Las respuestas N/A necesitan justificación."}</p></div>
+    <div class="statusbar">${ro ? `<span class="pill ${ct.val ? "p-ok" : "p-gold"}">${ct.val ? "Validado" : "Firmado"}</span>` : `<span class="pill p-draft">Borrador</span><span class="saved" id="ctSave"></span>`}</div></div>
+  ${p ? `<div class="handoff"><div class="eyebrow">Entrega del turno anterior</div><div><b>${esc(nm(p.capitan_id))}</b> · ${esc(fechaCorta(p.fecha))} · ${esc(TURNO_CORTO[p.turno])} · firmado ${hora(p.firmado_en)}</div>
+    <div>${p.pendientes ? esc(p.pendientes) : "<span class='hint'>Sin pendientes anotados.</span>"}</div>
+    ${bajos.length ? `<div class="hint" style="color:var(--warn);font-weight:600">Insumos bajos: ${esc(bajos.map(([k, l]) => l + " (" + NIVEL[p.inventario[k].nivel].toLowerCase() + ")").join(", "))}</div>` : ""}</div>` : ""}
+  <div class="grid2 turno-grid">
+    <div class="stack g-asig" style="gap:16px">
+      <div class="panel"><h2>Condiciones de la cancha <span class="hint" style="font-weight:500">· superintendentes, 5:30 a. m.</span></h2>
+        <div class="fields">
+          <label class="f">Turno<select id="ctTurno">${Object.entries(TURNO_CORTO).map(([k, l]) => `<option value="${k}" ${k===ct.turno?"selected":""}>${l} · ${k==="apertura"?"5–13 h":"11–19 h"}</option>`).join("")}</select></label>
+          <label class="f">Velocidad de greens<input type="text" data-c="velocidad_greens" value="${esc(c.velocidad_greens || "")}" placeholder="Ej. 10.5 stimp" ${dis}></label>
+          <label class="f">Posición de bandera<select data-c="bandera" ${dis}><option value="">Seleccione…</option>${Object.entries(BANDERA).map(([k, l]) => `<option value="${k}" ${c.bandera===k?"selected":""}>${l}</option>`).join("")}</select></label>
+          <label class="f">Regla de carritos<select data-c="regla_carritos" ${dis}><option value="">Seleccione…</option>${Object.entries(CARRITOS).map(([k, l]) => `<option value="${k}" ${c.regla_carritos===k?"selected":""}>${l}</option>`).join("")}</select></label>
+          <label class="f">Apertura del campo<input type="text" data-c="apertura" value="${esc(c.apertura || "")}" placeholder="Ej. 6:00 a. m." ${dis}></label>
+        </div>
+        <label class="f" style="margin-top:12px">Obras o accidentes en la cancha<input type="text" data-c="obras" value="${esc(c.obras || "")}" placeholder="Ej. Reparación de bunker en el hoyo 7; ninguno" ${dis}></label>
+        ${c.hora_superintendente ? `<p class="hint" style="margin:8px 0 0">Registrado a las ${esc(c.hora_superintendente)}</p>` : ""}
+      </div>
+      <div class="panel"><h2>Equipo del turno</h2><div class="stack" style="gap:10px" id="ctEq">
+        ${PUESTOS.map(([k, l, s]) => { const e = (d.equipo || {})[k] || {}; return `<div class="pz" style="flex-wrap:wrap" data-pu="${k}"><span class="mono" style="width:22px;color:var(--gold);font-weight:500">${s}</span>
+          <input type="text" data-nom="${k}" value="${esc(e.nombre || "")}" placeholder="${l}" aria-label="${l}" style="flex:1 1 140px" ${dis}>
+          <div class="seg" role="group" aria-label="Estado ${l}">${Object.entries(EST_PUESTO).map(([ek, el]) => `<button type="button" data-v="${ek === "presente" ? "si" : ek === "ausente" ? "no" : "na"}" data-est="${ek}" aria-pressed="${e.estado===ek}" ${dis}>${el}</button>`).join("")}</div></div>`; }).join("")}
+      </div><p class="hint" style="margin:10px 0 0">Cubierto: el puesto lo atiende otra persona (por ejemplo, el Comodín).</p></div>
+      <div class="panel"><h2>Inventario de insumos</h2><div class="stack" style="gap:10px" id="ctInv">
+        ${INSUMOS.map(([k, l]) => { const e = (d.inventario || {})[k] || {}; return `<div class="pz" style="flex-wrap:wrap" data-in="${k}"><span style="flex:1 1 130px;font-weight:600">${l}</span>
+          <div class="seg" role="group" aria-label="Nivel ${l}">${Object.entries(NIVEL).map(([nk, nl]) => `<button type="button" data-v="${nk === "suficiente" ? "si" : nk === "agotado" ? "no" : "na"}" data-niv="${nk}" aria-pressed="${e.nivel===nk}" ${dis}>${nl}</button>`).join("")}</div>
+          ${e.nivel && e.nivel !== "suficiente" ? `<input type="text" data-innota="${k}" value="${esc(e.nota || "")}" placeholder="Cantidad aproximada o pedido hecho" style="flex:1 1 100%" ${dis}>` : ""}</div>`; }).join("")}
+      </div></div>
+    </div>
+    <div class="stack g-check">
+      <div class="progress panel" style="padding:12px 16px"><span class="mono" id="ctProg">${st.answered}/${st.total}</span><div class="bar"><i id="ctBar" style="width:${st.total ? Math.round(100*st.answered/st.total) : 0}%"></i></div><span class="mono" id="ctCum">${st.cumpl}%</span></div>
+      <div id="ctAreas" class="stack" style="gap:10px"></div>
+    </div>
+    <div class="stack g-side" style="gap:16px">
+      <div class="panel"><h2>Cierre del turno</h2><div class="stack" style="gap:10px">
+        <label class="f">Observaciones<textarea id="ctObs" ${dis} placeholder="Preferencias de miembros, novedades del equipo, reglamento…">${esc(d.observaciones || "")}</textarea></label>
+        <label class="f">Pendientes para el siguiente turno<textarea id="ctPend" ${dis} placeholder="Tee sheet, cobros por cargar, insumos pedidos…">${esc(d.pendientes || "")}</textarea></label>
+        ${ro ? `<div class="callout">Firmado a las ${hora(d.firmado_en)}.${ct.val ? ` Validado a las ${hora(ct.val.validado_en)} por ${esc(nm(ct.val.validado_por))}${ct.val.observaciones ? ": " + esc(ct.val.observaciones) : "."}` : ""}</div>`
+             : `<div id="ctHint" class="hint"></div><button class="btn gold" id="ctSign" type="button">Firmar reporte del turno</button>`}
+      </div></div>
+    </div>
+  </div>`;
+  renderAreasCap(ro); updSaveCap(); updHintCap();
+  $("#ctTurno").onchange = async e => { await flushCap(); ct.turno = e.target.value; ct.loaded = false; ct.openAreas = null; renderTurnoCap(); };
+  if (ro) return;
+  v.querySelectorAll("[data-c]").forEach(el => el.oninput = el.onchange = () => {
+    const cond = {...(draftCap().condiciones || {}), [el.dataset.c]: el.value};
+    if (!cond.hora_superintendente) cond.hora_superintendente = hora(new Date().toISOString());
+    setRepCap({condiciones: cond});
+  });
+  $("#ctEq").onclick = e => { const b = e.target.closest("[data-est]"); if (!b) return; const k = b.closest("[data-pu]").dataset.pu;
+    const eq = {...(draftCap().equipo || {})}; eq[k] = {...(eq[k] || {}), estado: b.dataset.est}; setRepCap({equipo: eq});
+    b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); };
+  $("#ctEq").oninput = e => { const k = e.target.dataset.nom; if (!k) return; const eq = {...(draftCap().equipo || {})}; eq[k] = {...(eq[k] || {}), nombre: e.target.value}; setRepCap({equipo: eq}); };
+  $("#ctInv").onclick = e => { const b = e.target.closest("[data-niv]"); if (!b) return; const k = b.closest("[data-in]").dataset.in;
+    const inv = {...(draftCap().inventario || {})}; inv[k] = {...(inv[k] || {}), nivel: b.dataset.niv}; setRepCap({inventario: inv}); renderTurnoCap();
+    if (b.dataset.niv !== "suficiente") { const n = $(`[data-innota="${k}"]`); if (n) n.focus(); } };
+  $("#ctInv").oninput = e => { const k = e.target.dataset.innota; if (!k) return; const inv = {...(draftCap().inventario || {})}; inv[k] = {...(inv[k] || {}), nota: e.target.value}; setRepCap({inventario: inv}); };
+  $("#ctObs").oninput = e => setRepCap({observaciones: e.target.value});
+  $("#ctPend").oninput = e => setRepCap({pendientes: e.target.value});
+  $("#ctSign").onclick = firmarCap;
+}
+function renderAreasCap(ro){
+  const ct = S.ct, el = $("#ctAreas");
+  el.innerHTML = ct.areas.map((a, ai) => {
+    const n = a.items.filter(it => ct.resp[it.id]).length;
+    const open = ct.openAreas ? ct.openAreas.includes(a.codigo) : (!ro && n < a.items.length && ct.areas.slice(0, ai).every(p => p.items.every(it => ct.resp[it.id])));
+    return `<details class="area" data-a="${a.codigo}" ${open ? "open" : ""}><summary><span class="letter">${a.codigo}</span><span class="aname">${esc(a.nombre)}</span><span class="acount ${n===a.items.length?"done":""}" data-ccnt="${a.codigo}">${n}/${a.items.length}</span><span class="chev">›</span></summary>
+      ${a.nota ? `<div class="note-area">${esc(a.nota)}</div>` : ""}${a.items.map(it => itemCapHTML(it, ct.resp[it.id], ro)).join("")}</details>`;
+  }).join("");
+  if (ro) return;
+  el.onclick = e => { const b = e.target.closest(".seg button"); if (!b) return; const id = b.closest(".item").dataset.i, prev = ct.resp[id] || {};
+    setRespCap(id, {valor:b.dataset.v, nota:prev.nota || null, respondido_en:new Date().toISOString()});
+    const old = b.closest(".item"), w = document.createElement("div"); w.innerHTML = itemCapHTML(ct.items.find(x => x.id === id), ct.resp[id], false); old.replaceWith(w.firstElementChild);
+    if (b.dataset.v !== "si") { const n = $("#cn-" + id); if (n && !n.value) n.focus(); } updProgCap(); };
+  el.oninput = e => { if (!e.target.classList.contains("note")) return; const id = e.target.closest(".item").dataset.i, r = ct.resp[id]; if (!r) return;
+    setRespCap(id, {...r, nota:e.target.value}); e.target.classList.toggle("req", r.valor === "na" && !e.target.value.trim()); updProgCap(); };
+}
+function itemCapHTML(it, r, ro){
+  const v = r && r.valor, show = v === "na" || v === "no" || (r && r.nota);
+  return `<div class="item" data-i="${it.id}"><div class="item-row"><div class="item-text">${esc(it.texto)}<span class="item-time">${it.id}${r ? " · " + hora(r.respondido_en) : ""}</span></div>
+    <div class="seg" role="group" aria-label="Respuesta">${Object.entries(VAL).map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${v===k}" ${ro?"disabled":""}>${l}</button>`).join("")}</div></div>
+    ${show ? `<input type="text" class="note ${v==="na" && !(r.nota||"").trim() ? "req" : ""}" id="cn-${it.id}" value="${esc(r.nota||"")}" placeholder="${v==="na" ? "Justificación obligatoria para N/A" : "Observación: qué pasó y a quién se informó"}" ${ro?"disabled":""}>` : ""}</div>`;
+}
+function updProgCap(){ const st = statsCap(); $("#ctProg").textContent = `${st.answered}/${st.total}`; $("#ctBar").style.width = Math.round(100*st.answered/st.total) + "%"; $("#ctCum").textContent = st.cumpl + "%";
+  S.ct.areas.forEach(a => { const n = a.items.filter(it => S.ct.resp[it.id]).length, c = document.querySelector(`[data-ccnt="${a.codigo}"]`); if (c) { c.textContent = `${n}/${a.items.length}`; c.classList.toggle("done", n === a.items.length); } }); updHintCap(); }
+function updHintCap(){ const h = $("#ctHint"), b = $("#ctSign"); if (!h || !b) return; const m = faltaCap();
+  h.textContent = m.length ? "Para firmar falta: " + m.join(", ") + "." : "Todo listo. Al firmar, el reporte pasa a validación del Gerente de Operaciones y ya no se puede editar.";
+  h.classList.toggle("warn", !!m.length); b.disabled = !!m.length; }
+function marcarCap(){ const ct = S.ct; ct.pend.fecha = ct.fecha; ct.pend.turno = ct.turno; lsSet(ctKey(), ct.pend); }
+function setRespCap(id, row){ S.ct.resp[id] = row; S.ct.pend.resp[id] = row; marcarCap(); progCap(); }
+function setRepCap(patch){ if (S.ct.rep) Object.assign(S.ct.rep, patch); Object.assign(S.ct.pend.rep, patch); marcarCap(); progCap(); updHintCap(); }
+function progCap(){ updSaveCap(); clearTimeout(progCap._t); progCap._t = setTimeout(flushCap, 700); }
+async function flushCap(){
+  const ct = S.ct; clearTimeout(progCap._t);
+  if (ct.saving) { progCap(); return; }
+  const rows = Object.entries(ct.pend.resp), patch = {...ct.pend.rep};
+  if (!rows.length && !Object.keys(patch).length) { updSaveCap(); return; }
+  const f = ct.pend.fecha || ct.fecha, t = ct.pend.turno || ct.turno;
+  ct.saving = true; updSaveCap();
+  try {
+    let rep = (f === ct.fecha && t === ct.turno) ? ct.rep : null;
+    if (!rep) {
+      let r = await sb.from("cap_reportes").select("*").eq("fecha", f).eq("turno", t).eq("capitan_id", S.me.id).maybeSingle();
+      if (!r.data) { r = await sb.from("cap_reportes").insert({fecha:f, turno:t, capitan_id:S.me.id, ...patch}).select().single(); if (r.error && r.error.code === "23505") r = await sb.from("cap_reportes").select("*").eq("fecha", f).eq("turno", t).eq("capitan_id", S.me.id).single(); }
+      if (r.error) throw r.error; rep = r.data; if (f === ct.fecha && t === ct.turno) ct.rep = Object.assign(rep, patch);
+    }
+    if (Object.keys(patch).length && rep.estado === "borrador") { const { error } = await sb.from("cap_reportes").update(patch).eq("id", rep.id); if (error) throw error; }
+    if (rows.length && rep.estado === "borrador") { const { error } = await sb.from("cap_respuestas").upsert(rows.map(([item_id, x]) => ({reporte_id:rep.id, item_id, valor:x.valor, nota:x.nota || null, respondido_en:x.respondido_en}))); if (error) throw error; }
+    rows.forEach(([k, x]) => { if (ct.pend.resp[k] === x) delete ct.pend.resp[k]; });
+    Object.keys(patch).forEach(k => { if (ct.pend.rep[k] === patch[k]) delete ct.pend.rep[k]; });
+    lsSet(ctKey(), (Object.keys(ct.pend.resp).length || Object.keys(ct.pend.rep).length) ? ct.pend : null);
+    ct.last = new Date().toISOString(); setOnline(true);
+  } catch(e) { if (/fetch|network/i.test(errMsg(e)) || !navigator.onLine) { setOnline(false); setTimeout(flushCap, 8000); } else toast("No se pudo guardar: " + errMsg(e)); }
+  ct.saving = false; updSaveCap();
+  if (Object.keys(ct.pend.resp).length || Object.keys(ct.pend.rep).length) progCap();
+}
+function updSaveCap(){ const el = $("#ctSave"); if (!el) return; const ct = S.ct, hay = Object.keys(ct.pend.resp).length || Object.keys(ct.pend.rep).length;
+  el.classList.toggle("off", !S.online && hay);
+  el.textContent = ct.saving ? "Guardando…" : (!S.online && hay) ? "Guardado en el teléfono" : hay ? "Cambios por guardar" : ct.last ? "Guardado " + hora(ct.last) : "Se guarda automáticamente"; }
+async function firmarCap(){
+  if (faltaCap().length) return;
+  $("#ctSign").disabled = true; await flushCap();
+  if (Object.keys(S.ct.pend.resp).length || Object.keys(S.ct.pend.rep).length) { toast("Sin conexión. Firme cuando recupere señal."); updHintCap(); return; }
+  const { error } = await sb.rpc("firmar_reporte_capitan", {p_reporte:S.ct.rep.id});
+  if (error) { toast(errMsg(error)); updHintCap(); return; }
+  S.ct.loaded = false; renderTurnoCap(); toast("Reporte firmado. Gracias por su turno.");
+}
+
+/* ===================== Capitanes: supervisión de Gerencia ===================== */
+S.sup = {desde: diasAtras(6), hasta: hoyISO(), capitan:"todos", data:null};
+async function cargarSupervision(){
+  const v = $("#v-supervision"), g = S.sup; if (!S.esGer) return;
+  if (!g.data) v.innerHTML = `<div class="loading">Cargando supervisión…</div>`;
+  let q = sb.from("v_cap_resumen").select("*").gte("fecha", g.desde).lte("fecha", g.hasta).order("fecha", {ascending:false}).order("turno");
+  if (g.capitan !== "todos") q = q.eq("capitan_id", g.capitan);
+  const [r, al] = await Promise.all([q, sb.from("alquileres").select("id,estado,todo_ok,salida_en").gte("salida_en", isoLocal(g.desde)).lt("salida_en", isoLocal(g.hasta, true))]);
+  if (r.error) { v.innerHTML = `<div class="empty"><strong>No se pudo cargar</strong>${esc(errMsg(r.error))}</div>`; return; }
+  g.data = {reps:r.data, alq:al.data || []}; renderSupervision();
+}
+function renderSupervision(){
+  const v = $("#v-supervision"), g = S.sup, {reps, alq} = g.data;
+  const firm = reps.filter(x => x.estado === "firmado"); let resp = 0, ok = 0; firm.forEach(x => { resp += x.respondidas; ok += Math.round((x.cumplimiento_pct || 0) * x.respondidas / 100); });
+  const val = firm.filter(x => x.validado_en).length;
+  const ult = reps.find(x => x.estado === "firmado") || reps[0];
+  const alertas = ult ? INSUMOS.filter(([k]) => ["bajo","agotado"].includes(((ult.inventario || {})[k] || {}).nivel)) : [];
+  let aus = 0; reps.forEach(x => PUESTOS.forEach(([k]) => { if (((x.equipo || {})[k] || {}).estado === "ausente") aus++; }));
+  const hoy = reps.find(x => x.fecha === hoyISO() && x.condiciones && x.condiciones.velocidad_greens);
+  const caps = Object.values(S.perfiles).filter(p => p.activo && CAPITANIA.includes(p.rol));
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia de Operaciones · Capitanes</div><h1>Supervisión de Capitanes</h1><p class="sub">${esc(fechaCorta(g.desde))} – ${esc(fechaCorta(g.hasta))} · ${plural(reps.length, "reporte")} · ${firm.length - val} por validar</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="sRef" type="button">Actualizar</button><button class="btn" id="sXlsx" type="button">Exportar a Excel</button></div></div>
+    ${hoy ? `<div class="handoff"><div class="eyebrow">Condiciones de la cancha hoy · ${esc(TURNO_CORTO[hoy.turno])}</div><div class="kv">
+      <div><b>Greens</b>${esc(hoy.condiciones.velocidad_greens)}</div><div><b>Bandera</b>${esc(BANDERA[hoy.condiciones.bandera] || hoy.condiciones.bandera || "—")}</div>
+      <div><b>Carritos</b>${esc(CARRITOS[hoy.condiciones.regla_carritos] || "—")}</div><div><b>Apertura</b>${esc(hoy.condiciones.apertura || "—")}</div>
+      <div><b>Obras / accidentes</b>${esc(hoy.condiciones.obras || "Ninguno")}</div></div></div>` : ""}
+    ${alertas.length ? `<div class="callout crit">Pedido al proveedor: ${esc(alertas.map(([k, l]) => `${l} ${NIVEL[ult.inventario[k].nivel].toLowerCase()}${ult.inventario[k].nota ? " (" + ult.inventario[k].nota + ")" : ""}`).join(" · "))}</div>` : ""}
+    <div class="filters panel" style="padding:12px"><label class="f">Desde<input type="date" id="sDesde" value="${g.desde}"></label><label class="f">Hasta<input type="date" id="sHasta" value="${g.hasta}"></label>
+      <label class="f">Capitán<select id="sCap"><option value="todos">Todos</option>${caps.map(p => `<option value="${p.id}" ${g.capitan===p.id?"selected":""}>${esc(p.nombre)}</option>`).join("")}</select></label></div>
+    <div class="kpis">
+      ${kpi("Cumplimiento del checklist", resp ? Math.round(100*ok/resp) : null, "%", "Sí + N/A justificadas, sobre lo respondido", cls(resp ? Math.round(100*ok/resp) : null, 95, 85))}
+      ${kpi("Turnos validados", firm.length ? Math.round(100*val/firm.length) : null, "%", `${val} de ${firm.length} firmados · meta 100%`, cls(firm.length ? Math.round(100*val/firm.length) : null))}
+      ${kpi("Insumos en alerta", alertas.length, "", "Según el último reporte firmado", alertas.length ? "crit" : "ok")}
+      ${kpi("Ausencias del equipo", aus, "", "Puestos marcados como ausentes", aus ? "warn" : "ok")}
+      ${kpi("Alquileres de palos", alq.length, "", `${alq.filter(a => a.estado === "cerrado" && !a.todo_ok).length} con observaciones`, "")}
+    </div>
+    ${reps.length ? `<div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Turno</th><th>Capitán</th><th>Cumpl.</th><th>No</th><th>Equipo</th><th>Insumos</th><th>Estado</th></tr></thead><tbody>
+      ${reps.map(x => { const pres = PUESTOS.filter(([k]) => ((x.equipo || {})[k] || {}).estado === "presente").length, bj = INSUMOS.filter(([k]) => ["bajo","agotado"].includes(((x.inventario || {})[k] || {}).nivel)).length;
+        return `<tr class="click" data-cr="${x.id}"><td class="num">${esc(fechaCorta(x.fecha))}</td><td>${TURNO_CORTO[x.turno]}</td><td>${esc(x.capitan)}</td>
+        <td class="num">${x.estado === "firmado" ? (x.cumplimiento_pct ?? 0) + "%" : `${x.respondidas}/${S.ct.items.length || "—"}`}</td><td class="num">${x.no}</td><td class="num">${pres}/6</td>
+        <td>${bj ? `<span class="pill p-alta">${bj} bajo${bj > 1 ? "s" : ""}</span>` : `<span class="pill p-ok">OK</span>`}</td>
+        <td>${x.estado !== "firmado" ? `<span class="pill p-draft">En curso</span>` : x.validado_en ? `<span class="pill p-ok">Validado</span>` : `<span class="pill p-gold">Por validar</span>`}</td></tr>`; }).join("")}
+      </tbody></table></div>` : `<div class="empty"><strong>Sin reportes en este periodo</strong>Los checklists de los Capitanes aparecen aquí para su validación.</div>`}`;
+  $("#sDesde").onchange = e => { g.desde = e.target.value || g.desde; cargarSupervision(); };
+  $("#sHasta").onchange = e => { g.hasta = e.target.value || g.hasta; cargarSupervision(); };
+  $("#sCap").onchange = e => { g.capitan = e.target.value; cargarSupervision(); };
+  $("#sRef").onclick = cargarSupervision; $("#sXlsx").onclick = exportarCap;
+  v.querySelectorAll("tr[data-cr]").forEach(tr => tr.onclick = () => abrirReporteCap(tr.dataset.cr));
+}
+async function abrirReporteCap(id){
+  openSheet(`<div class="loading">Cargando reporte…</div>`);
+  if (!S.ct.items.length) await cargarTurnoCap();
+  const [r, x, v] = await Promise.all([sb.from("cap_reportes").select("*").eq("id", id).single(), sb.from("cap_respuestas").select("*").eq("reporte_id", id), sb.from("cap_validaciones").select("*").eq("reporte_id", id).maybeSingle()]);
+  if (r.error) { closeSheet(); toast(errMsg(r.error)); return; }
+  const d = r.data, resp = Object.fromEntries((x.data || []).map(a => [a.item_id, a])), val = v.data, c = d.condiciones || {};
+  let si=0,no=0,na=0; Object.values(resp).forEach(a => a.valor==="si"?si++:a.valor==="no"?no++:na++);
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(TURNOS[d.turno])} · Capitán</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(nm(d.capitan_id))} · ${esc(fechaLarga(d.fecha))}</h2></div><button class="btn ghost x" data-x type="button">Cerrar</button></div>
+    <div class="kv"><div><b>Greens</b>${esc(c.velocidad_greens || "—")}</div><div><b>Bandera</b>${esc(BANDERA[c.bandera] || "—")}</div><div><b>Carritos</b>${esc(CARRITOS[c.regla_carritos] || "—")}</div><div><b>Apertura</b>${esc(c.apertura || "—")}</div><div><b>Obras / accidentes</b>${esc(c.obras || "Ninguno")}</div><div><b>Firma</b>${d.firmado_en ? hora(d.firmado_en) : "Sin firmar"}</div></div>
+    <div class="tablewrap"><table style="min-width:420px"><thead><tr><th>Puesto</th><th>Colaborador</th><th>Estado</th></tr></thead><tbody>${PUESTOS.map(([k, l, s]) => { const e = (d.equipo || {})[k] || {}; return `<tr><td>${s} · ${l}</td><td>${esc(e.nombre || "—")}</td><td>${e.estado ? `<span class="pill ${e.estado === "presente" ? "p-ok" : e.estado === "ausente" ? "p-crit" : "p-gold"}">${EST_PUESTO[e.estado]}</span>` : "—"}</td></tr>`; }).join("")}</tbody></table></div>
+    <div class="tablewrap"><table style="min-width:420px"><thead><tr><th>Insumo</th><th>Nivel</th><th>Nota</th></tr></thead><tbody>${INSUMOS.map(([k, l]) => { const e = (d.inventario || {})[k] || {}; return `<tr><td>${l}</td><td>${e.nivel ? `<span class="pill ${e.nivel === "suficiente" ? "p-ok" : e.nivel === "bajo" ? "p-alta" : "p-crit"}">${NIVEL[e.nivel]}</span>` : "—"}</td><td>${esc(e.nota || "")}</td></tr>`; }).join("")}</tbody></table></div>
+    ${d.observaciones ? `<div><b class="hint">Observaciones</b><p style="margin:4px 0 0">${esc(d.observaciones)}</p></div>` : ""}
+    ${d.pendientes ? `<div><b class="hint">Pendientes para el siguiente turno</b><p style="margin:4px 0 0">${esc(d.pendientes)}</p></div>` : ""}
+    <details ${no ? "open" : ""}><summary style="cursor:pointer;font-weight:700">Checklist (${si+no+na}/${S.ct.items.length}) · ${si} Sí · ${no} No · ${na} N/A</summary><div style="margin-top:8px">
+      ${S.ct.areas.map(a => `<div class="eyebrow" style="margin-top:10px">${a.codigo} · ${esc(a.nombre)}</div>` + a.items.map(it => { const q = resp[it.id]; return `<div class="ans-row"><span class="s ${q ? q.valor : ""}">${q ? VAL[q.valor] : "—"}</span><span class="tx">${esc(it.texto)}${q && q.nota ? `<em>${esc(q.nota)}</em>` : ""}</span><span class="mono hint">${q ? hora(q.respondido_en) : ""}</span></div>`; }).join("")).join("")}</div></details>
+    ${val && val.observaciones ? `<div class="callout gold"><b>Observaciones de Gerencia:</b> ${esc(val.observaciones)}</div>` : ""}
+    ${d.estado === "firmado" ? `<div class="stack" style="gap:8px"><label class="f">Observaciones de Gerencia<textarea id="cvObs">${esc(val ? val.observaciones || "" : "")}</textarea></label>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${val ? `<button class="btn danger" id="cvUndo" type="button">Retirar validación</button>` : ""}<button class="btn primary" id="cvOk" type="button">${val ? "Actualizar validación" : "Validar turno"}</button></div></div>`
+      : `<div class="callout">El Capitán aún no ha firmado este turno.</div>`}`);
+  const ok = $("#cvOk"); if (ok) ok.onclick = async () => { ok.disabled = true; const { error } = await sb.from("cap_validaciones").upsert({reporte_id:id, validado_por:S.me.id, validado_en:new Date().toISOString(), observaciones:$("#cvObs").value.trim() || null}); if (error) { toast(errMsg(error)); ok.disabled = false; return; } closeSheet(); toast("Turno validado"); cargarSupervision(); };
+  const un = $("#cvUndo"); if (un) un.onclick = async () => { const { error } = await sb.from("cap_validaciones").delete().eq("reporte_id", id); if (error) { toast(errMsg(error)); return; } closeSheet(); toast("Validación retirada"); cargarSupervision(); };
+}
+async function exportarCap(){
+  const b = $("#sXlsx"); b.disabled = true; b.textContent = "Preparando…";
+  try {
+    await cargarScript(XLSX_URL);
+    const filas = S.sup.data.reps.map(x => { const o = {"Fecha":x.fecha, "Turno":TURNO_CORTO[x.turno], "Capitán":x.capitan, "Sí":x.si, "No":x.no, "N/A":x.na, "Cumplimiento %":x.cumplimiento_pct,
+      "Estado":x.estado === "firmado" ? "Firmado" : "En curso", "Validado":x.validado_en ? new Date(x.validado_en).toLocaleString("es-PA") : "",
+      "Greens":(x.condiciones || {}).velocidad_greens || "", "Bandera":BANDERA[(x.condiciones || {}).bandera] || "", "Carritos":CARRITOS[(x.condiciones || {}).regla_carritos] || "", "Apertura":(x.condiciones || {}).apertura || "", "Obras / accidentes":(x.condiciones || {}).obras || ""};
+      PUESTOS.forEach(([k, l]) => { const e = (x.equipo || {})[k] || {}; o[l] = [e.nombre, e.estado ? EST_PUESTO[e.estado] : ""].filter(Boolean).join(" · "); });
+      INSUMOS.forEach(([k, l]) => { const e = (x.inventario || {})[k] || {}; o[l] = e.nivel ? NIVEL[e.nivel] + (e.nota ? " · " + e.nota : "") : ""; });
+      return o; });
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas.length ? filas : [{"Sin datos":""}]), "Capitanes");
+    XLSX.writeFile(wb, `SMGC_Capitanes_${S.sup.desde}_a_${S.sup.hasta}.xlsx`);
+  } catch(e){ toast("No se pudo generar el Excel. " + errMsg(e)); }
+  b.disabled = false; b.textContent = "Exportar a Excel";
 }
 
 /* ===================== Hoja modal ===================== */
