@@ -93,7 +93,7 @@ td select{min-width:190px;padding:7px 9px;font-size:14px}
 .stack{display:grid;gap:12px;align-content:start;min-width:0}
 .fields{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 label.f{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
-input[type=text],input[type=password],input[type=date],select,textarea{background:var(--paper);border:1px solid var(--line-strong);border-radius:8px;padding:10px 11px;width:100%;min-width:0;font-size:16px}
+input[type=text],input[type=password],input[type=email],input[type=date],select,textarea{background:var(--paper);border:1px solid var(--line-strong);border-radius:8px;padding:10px 11px;width:100%;min-width:0;font-size:16px}
 textarea{resize:vertical;min-height:72px}
 input:disabled,select:disabled,textarea:disabled{opacity:.7}
 .btn{border:1px solid var(--line-strong);background:var(--paper);border-radius:8px;padding:10px 15px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center;justify-content:center;text-decoration:none}
@@ -215,6 +215,62 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .lightbox img{max-height:90vh;border-radius:8px}
 .loading{padding:60px 16px;text-align:center;color:var(--muted)}
 #printArea{display:none}
+/* Módulos */
+.modsw{display:inline-flex;background:rgba(255,255,255,.1);border-radius:99px;padding:3px;margin-top:10px;gap:2px}
+.modsw button{border:0;background:none;color:rgba(255,255,255,.8);padding:6px 14px;border-radius:99px;font-weight:700;font-size:13px;cursor:pointer}
+.modsw button[aria-pressed="true"]{background:#fff;color:#123d2a}
+/* Capitanes · palos */
+.tipos{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.tipo{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:4px}
+.tipo .k{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tipo .v{font-family:var(--f-display);font-size:28px;line-height:1}
+.tipo .v small{font-family:var(--f-body);font-size:13px;color:var(--muted)}
+.tipo .bar{flex:none;height:6px}
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.jcard{text-align:left;border:1px solid var(--line);border-left:4px solid var(--ok);background:var(--paper);border-radius:10px;padding:12px;cursor:pointer;display:grid;gap:4px;min-width:0}
+.jcard.alquilado{border-left-color:var(--gold)} .jcard.mantenimiento{border-left-color:var(--warn)}
+.jcard .jid{font-family:var(--f-mono);font-weight:500;font-size:16px}
+.jcard .jsub{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rowlist{display:grid;gap:8px}
+.lrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.lrow .main{flex:1 1 200px;min-width:0}
+.lrow .main b{display:block}
+.seg button[aria-pressed="true"][data-v="ok"]{background:var(--ok);color:#fff}
+.seg button[aria-pressed="true"][data-v="falta"]{background:var(--crit);color:#fff}
+.seg button[aria-pressed="true"][data-v="danado"]{background:var(--warn);color:#fff}
+.pz{display:flex;gap:8px;align-items:center}
+.pz input[type=text]{flex:1}
+.pz input.qty{width:70px;flex:none}
+/* Pantalla del huésped */
+.guest{position:fixed;inset:0;z-index:80;background:var(--paper);overflow-y:auto;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.gwrap{max-width:640px;margin:0 auto;padding-block:20px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:18px}
+.ghead{display:flex;align-items:center;gap:14px}
+.ghead img{height:64px;width:auto;background:#fff;border-radius:8px;padding:4px}
+.ghead .x{margin-left:auto}
+.gwrap h1{font-size:30px}
+.gwrap p.lead{font-size:17px;margin:0;color:var(--muted)}
+.gpieza{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:2px solid var(--line-strong);background:var(--paper);border-radius:12px;padding:14px 16px;font-size:17px;font-weight:600;cursor:pointer}
+.gpieza .chk{width:30px;height:30px;border-radius:50%;border:2px solid var(--line-strong);display:grid;place-items:center;flex:none;font-size:17px;color:transparent}
+.gpieza[aria-pressed="true"]{border-color:var(--ok);background:var(--ok-soft)}
+.gpieza[aria-pressed="true"] .chk{background:var(--ok);border-color:var(--ok);color:#fff}
+.gpieza .qty{margin-left:auto;font-family:var(--f-mono);color:var(--muted);font-weight:500}
+.firma{border:2px dashed var(--line-strong);border-radius:12px;background:#fff;touch-action:none;width:100%;height:190px;display:block;cursor:crosshair}
+.terms{display:flex;gap:12px;align-items:flex-start;font-size:15px}
+.terms input{width:24px;height:24px;flex:none;margin-top:2px}
+.gok{text-align:center;display:grid;gap:14px;justify-items:center;padding-top:40px}
+.gok .tick{width:84px;height:84px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:44px}
+/* Capitanes · bolsas */
+.bsearch input{font-size:20px;padding:14px 16px}
+.bigcas{display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:center}
+.bigcas .num{font-family:var(--f-display);font-size:76px;line-height:.9;color:var(--accent);text-align:center;min-width:110px}
+.bigcas .num small{display:block;font-family:var(--f-body);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:6px}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:6px}
+.cel{aspect-ratio:1;max-width:100%;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;font-family:var(--f-mono);font-size:13px;cursor:pointer;background:var(--paper);padding:0}
+.cel.ocupada{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.cel.fuera{background:var(--gold-soft);color:var(--gold);font-weight:700;border-color:var(--gold)}
+.cel.libre{border-style:dashed;color:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (max-width:560px){h1{font-size:23px}.crest img{height:46px}.club{font-size:19px}.who .nm,.who .rolechip{display:none}.holes,.heat{gap:4px}.hole{font-size:12px}}
 @media print{
@@ -238,7 +294,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 <section id="screenLogin" class="login wrap" hidden>
   <form class="login-card" id="loginForm" novalidate>
     <div class="login-logo"><img src="logo.png" alt="Santa Maria Golf Club"></div>
-    <div><h1>Control de Marshals</h1><p class="sub">Ingrese con el usuario que le asignó Gerencia.</p></div>
+    <div><h1>Control operativo</h1><p class="sub">Marshals y Capitanes: ingrese con el usuario que le asignó Gerencia.</p></div>
     <label class="f">Usuario<input type="text" id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ej. jperez"></label>
     <label class="f">Contraseña<input type="password" id="lgPass" autocomplete="current-password"></label>
     <div class="err" id="lgErr" role="alert"></div>
@@ -272,7 +328,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <div class="wrap">
       <div class="brandrow">
         <div class="crest"><img src="logo.png" alt="Santa Maria Golf Club"></div>
-        <div class="club">Marshals<small>Control operativo</small></div>
+        <div class="club"><span id="modName">Marshals</span><small>Control operativo</small></div>
         <div class="who">
           <span class="nm" id="whoName"></span><span class="rolechip" id="whoRole"></span>
           <button class="menubtn" id="menuBtn" type="button" aria-label="Menú de la cuenta" aria-expanded="false">☰</button>
@@ -283,13 +339,8 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
           </div>
         </div>
       </div>
-      <nav class="tabs" role="tablist" id="tabs">
-        <button class="tab" role="tab" data-view="turno" aria-selected="true">Mi turno</button>
-        <button class="tab" role="tab" data-view="incidencias" aria-selected="false">Incidencias <span class="count" id="cntInc">0</span></button>
-        <button class="tab" role="tab" data-view="gerencia" aria-selected="false" data-ger hidden>Gerencia</button>
-        <button class="tab" role="tab" data-view="equipo" aria-selected="false" data-ger hidden>Equipo</button>
-        <button class="tab" role="tab" data-view="protocolo" aria-selected="false">Protocolo</button>
-      </nav>
+      <div class="modsw" id="modSw" role="group" aria-label="Módulo" hidden></div>
+      <nav class="tabs" role="tablist" id="tabs"></nav>
     </div>
   </header>
   <div class="alert" id="alert" hidden><div class="wrap"><span id="alertText"></span><button id="alertBtn" type="button">Ver críticas</button></div></div>
@@ -300,6 +351,9 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-gerencia" hidden></section>
     <section class="view" id="v-equipo" hidden></section>
     <section class="view" id="v-protocolo" hidden></section>
+    <section class="view" id="v-palos" hidden></section>
+    <section class="view" id="v-bolsas" hidden></section>
+    <section class="view" id="v-historial" hidden></section>
   </main>
 </div>
 
@@ -319,8 +373,13 @@ const CATS = {ritmo_juego:"Ritmo de juego", campo_carritos:"Campo y carritos", a
 const ETAPAS = {deteccion:"Detección", comunicacion:"Comunicación", seguimiento:"Seguimiento", escalamiento:"Escalamiento"};
 const NOTIF = {gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Operaciones de Golf", starter:"Starter", mantenimiento:"Mantenimiento", ninguno:"Ninguno aún"};
 const PRIO = {critica:{l:"Crítica",c:"p-crit"}, alta:{l:"Alta",c:"p-alta"}, ordinaria:{l:"Ordinaria",c:"p-ord"}};
-const ROLES = {marshal:"Marshal", gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Op. de Golf", admin:"Administrador"};
+const ROLES = {marshal:"Marshal", capitan:"Capitán", gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Op. de Golf", admin:"Administrador"};
 const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
+const CAPITANIA = ["capitan", ...GERENCIA];
+const MODULOS = {
+  marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["equipo","Equipo","ger"]]},
+  capitanes:{nombre:"Capitanes", tabs:[["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["equipo","Equipo","ger"]]},
+};
 const VAL = {si:"Sí", no:"No", na:"N/A"};
 
 /* ===================== Utilidades ===================== */
@@ -417,9 +476,9 @@ async function entrar(){
   if (error || !data || !data.length) { await sb.auth.signOut(); mostrar("login"); $("#lgErr").textContent = error ? errMsg(error) : "No se encontró su perfil."; return; }
   S.me = data[0];
   if (!S.me.activo) { mostrar("blocked"); return; }
-  S.esGer = GERENCIA.includes(S.me.rol);
-  document.querySelectorAll("[data-ger]").forEach(t => t.hidden = !S.esGer);
-  $("#whoName").textContent = S.me.nombre; $("#whoRole").textContent = S.esGer ? "Gerencia" : "Marshal"; $("#whoRole").classList.toggle("g", S.esGer);
+  S.esGer = GERENCIA.includes(S.me.rol); S.esCap = CAPITANIA.includes(S.me.rol);
+  S.mods = []; if (S.me.rol === "marshal" || S.esGer) S.mods.push("marshals"); if (S.esCap) S.mods.push("capitanes");
+  $("#whoName").textContent = S.me.nombre; $("#whoRole").textContent = S.esGer ? "Gerencia" : ROLES[S.me.rol]; $("#whoRole").classList.toggle("g", S.esGer);
   $("#menuWho").textContent = `${S.me.nombre} · ${ROLES[S.me.rol]}${S.me.usuario ? " · " + S.me.usuario : ""}`;
   try {
     const [a, it, pf] = await Promise.all([
@@ -433,15 +492,30 @@ async function entrar(){
     S.perfiles = Object.fromEntries(pf.data.map(p => [p.id, p]));
   } catch(x){ mostrar("app"); $("#v-turno").innerHTML = `<div class="empty"><strong>No se pudo cargar el checklist</strong>${esc(errMsg(x))}</div>`; return; }
   mostrar("app");
-  const pendLocal = lsGet(pendKey());
-  if (pendLocal) { S.pend = pendLocal; }
-  await cargarTurno();
-  cargarIncidencias();
-  suscribir();
-  let v = "turno"; try { v = localStorage.getItem("smgc_view") || "turno"; } catch(e){}
-  if ((v === "gerencia" || v === "equipo") && !S.esGer) v = "turno";
-  go(v);
-  if (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length) flush();
+  if (S.mods.includes("marshals")) {
+    const pendLocal = lsGet(pendKey());
+    if (pendLocal) { S.pend = pendLocal; }
+    await cargarTurno();
+    cargarIncidencias();
+    suscribir();
+  }
+  if (S.mods.includes("capitanes")) { cargarCapitanes(); suscribirCap(); }
+  const sw = $("#modSw"); sw.hidden = S.mods.length < 2;
+  sw.innerHTML = S.mods.map(m => `<button type="button" data-mod="${m}">${MODULOS[m].nombre}</button>`).join("");
+  sw.onclick = e => { const b = e.target.closest("[data-mod]"); if (b) setModulo(b.dataset.mod); };
+  let m = S.mods[0]; try { const g = localStorage.getItem("smgc_mod"); if (S.mods.includes(g)) m = g; } catch(e){}
+  setModulo(m);
+  if (S.mods.includes("marshals") && (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length)) flush();
+}
+function tabsDe(m){ return MODULOS[m].tabs.filter(t => t[2] !== "ger" || S.esGer); }
+function setModulo(m){
+  S.modulo = m; $("#modName").textContent = MODULOS[m].nombre;
+  document.querySelectorAll("#modSw [data-mod]").forEach(b => b.setAttribute("aria-pressed", b.dataset.mod === m));
+  $("#tabs").innerHTML = tabsDe(m).map(([k, l, f]) => `<button class="tab" role="tab" data-view="${k}" aria-selected="false">${l}${f === "inc" ? ` <span class="count" id="cntInc">0</span>` : ""}</button>`).join("");
+  if (m === "marshals") refreshChrome();
+  try { localStorage.setItem("smgc_mod", m); } catch(e){}
+  let v = null; try { v = localStorage.getItem("smgc_view_" + m); } catch(e){}
+  go(tabsDe(m).some(t => t[0] === v) ? v : tabsDe(m)[0][0]);
 }
 const nm = id => (S.perfiles[id] && S.perfiles[id].nombre) || "—";
 
@@ -450,12 +524,12 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo})[v]();
-  try { localStorage.setItem("smgc_view", v); } catch(e){}
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial})[v]();
+  try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
-$("#alertBtn").onclick = () => { S.incFiltro = {estado:"abierta", prio:"critica"}; go("incidencias"); };
+$("#alertBtn").onclick = () => { S.incFiltro = {estado:"abierta", prio:"critica"}; if (S.modulo !== "marshals") setModulo("marshals"); go("incidencias"); };
 $("#menuBtn").onclick = e => { e.stopPropagation(); const m = $("#menu"); m.hidden = !m.hidden; $("#menuBtn").setAttribute("aria-expanded", !m.hidden); };
 document.addEventListener("click", e => { if (!e.target.closest(".who")) { $("#menu").hidden = true; $("#menuBtn").setAttribute("aria-expanded", "false"); } });
 $("#mPass").onclick = () => {
@@ -728,7 +802,7 @@ function suscribir(){
 }
 function refreshChrome(){
   const ab = S.inc.filter(i => i.estado === "abierta"), cr = ab.filter(i => i.prioridad === "critica");
-  const c = $("#cntInc"); c.textContent = ab.length; c.classList.toggle("crit", cr.length > 0);
+  const c = $("#cntInc"); if (c) { c.textContent = ab.length; c.classList.toggle("crit", cr.length > 0); }
   $("#alert").hidden = !cr.length;
   if (cr.length) { const l = cr[0]; $("#alertText").textContent = `${plural(cr.length,"incidencia crítica abierta","incidencias críticas abiertas")} · ${ubic(l)}: ${l.descripcion.slice(0,70)}${l.descripcion.length > 70 ? "…" : ""}`; }
 }
@@ -966,7 +1040,7 @@ async function renderEquipo(){
   const { data } = await sb.from("perfiles").select("id,nombre,usuario,rol,activo").order("activo", {ascending:false}).order("nombre");
   if (data) S.perfiles = Object.fromEntries(data.map(p => [p.id, p]));
   const list = data || [];
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia</div><h1>Equipo</h1><p class="sub">${plural(list.filter(p => p.activo).length,"cuenta activa","cuentas activas")}. Cree aquí el usuario de cada Marshal y entréguele su contraseña temporal.</p></div></div>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia</div><h1>Equipo</h1><p class="sub">${plural(list.filter(p => p.activo).length,"cuenta activa","cuentas activas")}. Cree aquí el usuario de cada Marshal o Capitán y entréguele su contraseña temporal.</p></div></div>
     <div class="grid2">
       <div class="stack">
         ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>
@@ -981,7 +1055,7 @@ async function renderEquipo(){
           <label class="f">Nombre completo<input type="text" id="eNombre" autocomplete="off" placeholder="Ej. Juan Pérez"></label>
           <label class="f">Usuario para entrar<input type="text" id="eUser" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Ej. jperez"></label>
           <label class="f">Contraseña temporal<input type="text" id="ePass" autocomplete="off" value="${tempPass()}"></label>
-          <label class="f">Rol<select id="eRol"><option value="marshal">Marshal</option><option value="gerente_operaciones">Gerente de Operaciones</option><option value="gerente_golf">Gerente de Op. de Golf</option></select></label>
+          <label class="f">Rol<select id="eRol"><option value="marshal">Marshal</option><option value="capitan">Capitán</option><option value="gerente_operaciones">Gerente de Operaciones</option><option value="gerente_golf">Gerente de Op. de Golf</option></select></label>
           <div class="err" id="eErr"></div>
           <button class="btn primary" id="eCrear" type="button">Crear cuenta</button>
           <div id="eCred"></div>
@@ -1030,6 +1104,473 @@ function renderProtocolo(){
   <div class="panel"><h2>Las siete áreas del checklist</h2><div class="stack" style="gap:6px">${S.areas.map(a => `<div><b class="mono" style="color:var(--gold)">${a.codigo}</b> · ${esc(a.nombre)} <span class="hint">(${plural(a.items.length,"actividad","actividades")})</span></div>`).join("")}</div></div>
   <div class="panel"><h2>Turnos y responsables</h2><div class="kv">
     <div><b>Apertura</b>5:00 a. m. – 1:00 p. m.</div><div><b>Cierre</b>11:00 a. m. – 7:00 p. m.</div><div><b>Valida los reportes</b>Gerente de Operaciones</div><div><b>Supervisión general</b>Gerente de Operaciones de Golf</div><div><b>Orden de salida</b>Starter</div><div><b>Reparaciones</b>Mantenimiento</div></div></div>`;
+}
+
+/* ===================== Capitanes ===================== */
+const TIPOS_J = {regular:"Regular", stiff:"Stiff", senior:"Senior", damas:"Damas", zurdos:"Zurdos"};
+const EST_J = {disponible:{l:"Disponible", c:"p-ok"}, alquilado:{l:"Alquilado", c:"p-gold"}, mantenimiento:{l:"Mantenimiento", c:"p-alta"}};
+const EST_P = {ok:"Bien", falta:"Falta", danado:"Dañado"};
+const EST_B = {en_casilla:{l:"En su casilla", c:"p-ok"}, entregada:{l:"Con el miembro", c:"p-gold"}, sin_bolsa:{l:"Sin bolsa en el club", c:"p-draft"}};
+const CLIENTE = {huesped:"Huésped del hotel", invitado:"Invitado de miembro"};
+S.cap = {juegos:[], piezas:{}, activos:[], correos:[], miembros:[], casillas:[], movHoy:[], loaded:false, q:"", selMiembro:null,
+  hist:{desde: diasAtras(30), hasta: hoyISO(), tipo:"todos", estado:"todos"}, histData:null};
+const inicioHoyISO = () => { const d = new Date(); d.setHours(0,0,0,0); return d.toISOString(); };
+const isoLocal = (f, fin) => { const d = fechaDe(f); if (fin) d.setDate(d.getDate() + 1); return d.toISOString(); };
+const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const durac = iso => { const m = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m/60)} h ${pad(m % 60)} min`; };
+const juegoDe = id => S.cap.juegos.find(j => j.id === id);
+const tipoDe = id => TIPOS_J[(juegoDe(id) || {}).tipo] || "";
+
+async function cargarCapitanes(){
+  const [j, p, a, c, m, k, mv] = await Promise.all([
+    sb.from("juegos_alquiler").select("*").eq("activo", true).order("orden"),
+    sb.from("juego_piezas").select("*").order("orden"),
+    sb.from("alquileres").select("id,folio,juego_id,huesped_nombre,huesped_correo,huesped_telefono,tipo_cliente,referencia,salida_en,capitan_salida,check_salida").eq("estado", "activo").order("salida_en"),
+    sb.from("correos").select("id,alquiler_id,tipo,estado,error,destinatario,creado_en,enviado_en").order("creado_en", {ascending:false}).limit(300),
+    sb.from("miembros").select("*").eq("activo", true).order("numero"),
+    sb.from("casillas").select("*").order("numero"),
+    sb.from("movimientos_bolsa").select("*").gte("en", inicioHoyISO()).order("en", {ascending:false}).limit(300),
+  ]);
+  const bad = [j, p, a, c, m, k, mv].find(x => x.error);
+  if (bad) { toast(errMsg(bad.error)); return; }
+  S.cap.juegos = j.data; S.cap.piezas = {};
+  p.data.forEach(x => (S.cap.piezas[x.juego_id] = S.cap.piezas[x.juego_id] || []).push(x));
+  S.cap.activos = a.data; S.cap.correos = c.data; S.cap.miembros = m.data; S.cap.casillas = k.data; S.cap.movHoy = mv.data; S.cap.loaded = true;
+  if ($("#ov") || $("#guest")) return;
+  if (S.view === "palos") renderPalos(); else if (S.view === "bolsas") renderBolsas(true);
+}
+function suscribirCap(){
+  const re = () => { clearTimeout(suscribirCap._t); suscribirCap._t = setTimeout(cargarCapitanes, 400); };
+  sb.channel("capitanes-vivo")
+    .on("postgres_changes", {event:"*", schema:"public", table:"juegos_alquiler"}, re)
+    .on("postgres_changes", {event:"*", schema:"public", table:"alquileres"}, re)
+    .on("postgres_changes", {event:"*", schema:"public", table:"miembros"}, re)
+    .subscribe();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) cargarCapitanes(); });
+}
+function correoEstado(alqId, tipo){
+  const c = S.cap.correos.find(x => x.alquiler_id === alqId && x.tipo === tipo);
+  if (!c) return "";
+  return c.estado === "enviado" ? `<span class="pill p-ok">Correo enviado</span>` : c.estado === "error" ? `<span class="pill p-crit" title="${esc(c.error || "")}">Correo con error</span>` : `<span class="pill p-draft">Correo en cola</span>`;
+}
+async function procesarCorreos(alquilerId, silencioso){
+  try {
+    const { data, error } = await sb.functions.invoke("correos", {body:{accion:"procesar", alquiler_id: alquilerId || undefined}});
+    if (error) throw error;
+    if (!data.configurado) { if (!silencioso) toast("Los correos quedan en cola: falta conectar el envío desde smcapibara.com."); return {ok:false, cola:true}; }
+    const r = data.resultados || [], malos = r.filter(x => x.estado !== "enviado");
+    if (!silencioso) toast(!r.length ? "No hay correos pendientes." : malos.length ? `${r.length - malos.length} enviados, ${malos.length} con error.` : `${plural(r.length, "correo enviado", "correos enviados")}.`);
+    return {ok: !malos.length && r.length > 0, cola:false};
+  } catch(e){ if (!silencioso) toast("No se pudieron enviar los correos. " + errMsg(e)); return {ok:false, cola:true}; }
+  finally { cargarCapitanes(); }
+}
+
+/* ---------- Tablero de palos ---------- */
+function renderPalos(){
+  const v = $("#v-palos");
+  if (!S.cap.loaded) { v.innerHTML = `<div class="loading">Cargando palos…</div>`; return; }
+  const J = S.cap.juegos, act = Object.fromEntries(S.cap.activos.map(a => [a.juego_id, a]));
+  const disp = J.filter(j => j.estado === "disponible").length, mant = J.filter(j => j.estado === "mantenimiento").length;
+  const pend = S.cap.correos.filter(c => c.estado !== "enviado");
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes</div><h1>Palos de alquiler</h1>
+      <p class="sub">${disp} de ${J.length} juegos disponibles · ${S.cap.activos.length} en uso${mant ? ` · ${mant} en mantenimiento` : ""}</p></div>
+      <button class="btn primary" id="pEntregar" type="button">Entregar palos</button></div>
+    <div class="tipos">${Object.entries(TIPOS_J).map(([k, l]) => { const t = J.filter(j => j.tipo === k), d = t.filter(j => j.estado === "disponible").length;
+      return `<div class="tipo"><div class="k">${l}</div><div class="v">${d}<small> de ${t.length} disponibles</small></div><div class="bar"><i style="width:${t.length ? Math.round(100*d/t.length) : 0}%"></i></div></div>`; }).join("")}</div>
+    ${pend.length ? `<div class="callout gold" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>${plural(pend.length, "correo a huéspedes sin enviar", "correos a huéspedes sin enviar")}.</span><button class="btn small" id="pReint" type="button" style="margin-left:auto">Enviar ahora</button></div>` : ""}
+    <div class="stack"><h2>En uso ahora</h2>
+      ${S.cap.activos.length ? `<div class="rowlist">${S.cap.activos.map(a => `<div class="lrow"><span class="mono" style="font-weight:500;font-size:16px">${esc(a.juego_id)}</span>
+        <div class="main"><b>${esc(a.huesped_nombre)}</b><span class="hint">${esc(tipoDe(a.juego_id))} · ${esc(CLIENTE[a.tipo_cliente])}${a.referencia ? " · " + esc(a.referencia) : ""} · salió ${hora(a.salida_en)} (${durac(a.salida_en)})</span></div>
+        ${correoEstado(a.id, "entrega")}<button class="btn small primary" data-recibir="${a.id}" type="button">Recibir</button></div>`).join("")}</div>`
+      : `<div class="empty"><strong>No hay palos en uso</strong>Cuando entregue un juego aparecerá aquí con el nombre del cliente y la hora de salida.</div>`}
+    </div>
+    ${Object.entries(TIPOS_J).map(([k, l]) => `<div class="stack"><h2>${l}</h2><div class="jgrid">${J.filter(j => j.tipo === k).map(j => { const a = act[j.id];
+      return `<button type="button" class="jcard ${j.estado}" data-j="${esc(j.id)}"><span class="jid">${esc(j.id)}</span><span class="pill ${EST_J[j.estado].c}" style="justify-self:start">${EST_J[j.estado].l}</span>
+        <span class="jsub">${a ? esc(a.huesped_nombre) + " · " + hora(a.salida_en) : esc(j.notas || j.descripcion || ((S.cap.piezas[j.id] || []).length + " piezas"))}</span></button>`; }).join("")}</div></div>`).join("")}`;
+  $("#pEntregar").onclick = elegirJuego;
+  const r = $("#pReint"); if (r) r.onclick = async () => { r.disabled = true; await procesarCorreos(null); };
+  v.querySelectorAll("[data-recibir]").forEach(b => b.onclick = () => abrirRecepcion(S.cap.activos.find(a => a.id === b.dataset.recibir)));
+  v.querySelectorAll("[data-j]").forEach(b => b.onclick = () => {
+    const j = juegoDe(b.dataset.j);
+    if (j.estado === "disponible") abrirEntrega(j.id);
+    else if (j.estado === "alquilado") { const a = act[j.id]; if (a) abrirRecepcion(a); }
+    else abrirJuego(j.id);
+  });
+}
+function elegirJuego(){
+  const J = S.cap.juegos.filter(j => j.estado === "disponible");
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">¿Qué juego entrega?</h2><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    ${J.length ? Object.entries(TIPOS_J).map(([k, l]) => { const t = J.filter(j => j.tipo === k); return `<div class="stack" style="gap:8px"><div class="eyebrow">${l} · ${t.length} disponibles</div>
+      ${t.length ? `<div class="chips">${t.map(j => `<button type="button" class="chip" data-pick="${esc(j.id)}">${esc(j.id)}</button>`).join("")}</div>` : `<span class="hint">Ninguno disponible</span>`}</div>`; }).join("")
+    : `<div class="empty"><strong>No hay juegos disponibles</strong>Todos están en uso o en mantenimiento.</div>`}`);
+  $("#overlayRoot").querySelectorAll("[data-pick]").forEach(b => b.onclick = () => abrirEntrega(b.dataset.pick));
+}
+
+/* ---------- Gestionar un juego: piezas y estado ---------- */
+function abrirJuego(id){
+  const j = juegoDe(id), piezas = (S.cap.piezas[id] || []).map(p => ({pieza:p.pieza, cantidad:p.cantidad}));
+  const filas = () => piezas.map((p, i) => `<div class="pz"><input type="text" data-pz="${i}" value="${esc(p.pieza)}" aria-label="Pieza"><input type="text" class="qty mono" inputmode="numeric" data-qt="${i}" value="${p.cantidad}" aria-label="Cantidad"><button class="btn small" data-del="${i}" type="button" aria-label="Quitar">✕</button></div>`).join("");
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(TIPOS_J[j.tipo])}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Juego ${esc(j.id)}</h2></div><button class="btn ghost x" data-x type="button">Cerrar</button></div>
+    <span class="pill ${EST_J[j.estado].c}" style="justify-self:start">${EST_J[j.estado].l}</span>
+    <div class="fields"><label class="f">Marca / modelo<input type="text" id="jDesc" value="${esc(j.descripcion || "")}" placeholder="Ej. Callaway Strata"></label>
+      <label class="f">Notas<input type="text" id="jNotas" value="${esc(j.notas || "")}" placeholder="Ej. Grip del driver gastado"></label></div>
+    <div class="stack" style="gap:8px"><div class="hint">Piezas que el huésped confirma al recibir el juego</div><div id="jPz" class="stack" style="gap:8px">${filas()}</div>
+      <button class="btn small" id="jAdd" type="button" style="justify-self:start">Agregar pieza</button></div>
+    <div class="err" id="jErr"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+      ${j.estado === "disponible" ? `<button class="btn" id="jMant" type="button">Enviar a mantenimiento</button>` : j.estado === "mantenimiento" ? `<button class="btn" id="jDisp" type="button">Marcar disponible</button>` : ""}
+      <button class="btn primary" id="jSave" type="button">Guardar cambios</button></div>`);
+  const ov = $("#overlayRoot"), sync = () => { ov.querySelectorAll("[data-pz]").forEach(x => piezas[+x.dataset.pz].pieza = x.value); ov.querySelectorAll("[data-qt]").forEach(x => piezas[+x.dataset.qt].cantidad = parseInt(x.value, 10) || 0); };
+  const bindDel = () => ov.querySelectorAll("[data-del]").forEach(b => b.onclick = () => { sync(); piezas.splice(+b.dataset.del, 1); $("#jPz").innerHTML = filas(); bindDel(); });
+  bindDel();
+  $("#jAdd").onclick = () => { sync(); piezas.push({pieza:"", cantidad:1}); $("#jPz").innerHTML = filas(); bindDel(); ov.querySelector(`[data-pz="${piezas.length-1}"]`).focus(); };
+  const estado = async est => { const { error } = await sb.from("juegos_alquiler").update({estado:est, actualizado_en:new Date().toISOString()}).eq("id", id); if (error) { $("#jErr").textContent = errMsg(error); return; } closeSheet(); toast(est === "disponible" ? `${id} disponible` : `${id} en mantenimiento`); cargarCapitanes(); };
+  const m = $("#jMant"); if (m) m.onclick = () => estado("mantenimiento");
+  const d = $("#jDisp"); if (d) d.onclick = () => estado("disponible");
+  $("#jSave").onclick = async () => {
+    sync();
+    const lista = piezas.map(p => ({pieza:p.pieza.trim(), cantidad:p.cantidad})).filter(p => p.pieza);
+    if (!lista.length) { $("#jErr").textContent = "El juego necesita al menos una pieza."; return; }
+    if (lista.some(p => p.cantidad < 1 || p.cantidad > 20)) { $("#jErr").textContent = "Revise las cantidades (de 1 a 20)."; return; }
+    $("#jSave").disabled = true;
+    const u = await sb.from("juegos_alquiler").update({descripcion:$("#jDesc").value.trim() || null, notas:$("#jNotas").value.trim() || null, actualizado_en:new Date().toISOString()}).eq("id", id);
+    const del = u.error ? u : await sb.from("juego_piezas").delete().eq("juego_id", id);
+    const ins = del.error ? del : await sb.from("juego_piezas").insert(lista.map((p, i) => ({juego_id:id, pieza:p.pieza, cantidad:p.cantidad, orden:i+1})));
+    if (ins.error) { $("#jErr").textContent = errMsg(ins.error); $("#jSave").disabled = false; return; }
+    closeSheet(); toast("Juego actualizado"); cargarCapitanes();
+  };
+}
+
+/* ---------- Entrega: datos del cliente y pantalla del huésped ---------- */
+function abrirEntrega(id){
+  const j = juegoDe(id), piezas = S.cap.piezas[id] || [];
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">Entregar · ${esc(TIPOS_J[j.tipo])}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Juego ${esc(id)}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <label class="f">Nombre del cliente<input type="text" id="eNom" autocomplete="off" placeholder="Nombre y apellido"></label>
+    <div><div class="hint" style="margin-bottom:6px">Tipo de cliente</div><div class="seg" id="eTipo">${Object.entries(CLIENTE).map(([k, l], i) => `<button type="button" data-v="${k}" aria-pressed="${i === 0}">${l}</button>`).join("")}</div></div>
+    <div class="fields"><label class="f" id="eRefL">Habitación<input type="text" id="eRef" placeholder="Ej. 204"></label>
+      <label class="f">Teléfono (opcional)<input type="text" id="eTel" inputmode="tel" placeholder="Ej. 6000-0000"></label></div>
+    <div class="callout"><b>${plural(piezas.length, "pieza")}:</b> ${esc(piezas.map(p => (p.cantidad > 1 ? p.cantidad + " " : "") + p.pieza).join(", "))} <button class="link" id="eEdit" type="button">Editar</button></div>
+    <div class="err" id="eErr"></div>
+    <button class="btn primary" id="eGo" type="button">Pasar la pantalla al cliente</button>
+    <p class="hint" style="margin:0">El cliente confirma cada pieza, escribe su correo y firma con el dedo.</p>`);
+  let tipo = "huesped";
+  $("#eTipo").onclick = e => { const b = e.target.closest("button"); if (!b) return; tipo = b.dataset.v; $("#eTipo").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    $("#eRefL").firstChild.textContent = tipo === "huesped" ? "Habitación" : "Miembro anfitrión"; $("#eRef").placeholder = tipo === "huesped" ? "Ej. 204" : "Nombre o número de miembro"; };
+  $("#eEdit").onclick = () => abrirJuego(id);
+  $("#eGo").onclick = () => {
+    const nombre = $("#eNom").value.trim();
+    if (!nombre) { $("#eErr").textContent = "Escriba el nombre del cliente."; return; }
+    if (!piezas.length) { $("#eErr").textContent = "Este juego no tiene piezas. Agréguelas con Editar."; return; }
+    const datos = {juego:id, nombre, tipo, referencia:$("#eRef").value.trim(), telefono:$("#eTel").value.trim(), piezas:piezas.map(p => ({pieza:p.pieza, cantidad:p.cantidad, ok:false}))};
+    closeSheet(); pantallaHuesped(datos);
+  };
+}
+function pantallaHuesped(d){
+  const j = juegoDe(d.juego), g = document.createElement("div");
+  g.className = "guest"; g.id = "guest"; document.body.append(g); document.body.style.overflow = "hidden";
+  g.innerHTML = `<div class="gwrap">
+    <div class="ghead"><img src="logo.png" alt="Santa Maria Golf Club"><div class="eyebrow">Palos de alquiler</div><button class="btn small ghost x" id="gCancel" type="button">Cancelar</button></div>
+    <div><h1>Hola, ${esc(d.nombre.split(" ")[0])}</h1><p class="lead">Juego ${esc(d.juego)} · ${esc(TIPOS_J[j.tipo])}. Toque cada pieza para confirmar que la recibe.</p></div>
+    <div class="stack" style="gap:10px" id="gPz">${d.piezas.map((p, i) => `<button type="button" class="gpieza" data-i="${i}" aria-pressed="false"><span class="chk">✓</span>${esc(p.pieza)}<span class="qty">× ${p.cantidad}</span></button>`).join("")}</div>
+    <div class="hint" id="gCnt" style="font-size:14px"></div>
+    <label class="f" style="font-size:14px">Su correo electrónico<input type="email" id="gMail" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="nombre@correo.com" style="font-size:18px"></label>
+    <p class="hint" style="margin:-8px 0 0;font-size:14px">Le enviaremos la confirmación de entrega y, al devolverlos, la de cierre.</p>
+    <label class="terms"><input type="checkbox" id="gTerm"><span>Recibo los palos en buen estado y me comprometo a devolverlos a un Capitán al terminar mi ronda, según las políticas del club.</span></label>
+    <div class="stack" style="gap:6px"><div style="display:flex;align-items:center"><span class="hint" style="font-size:14px">Firme aquí con el dedo</span><button class="link" id="gClr" type="button" style="margin-left:auto">Borrar firma</button></div><canvas class="firma" id="gSig"></canvas></div>
+    <div class="err" id="gErr"></div>
+    <button class="btn primary block" id="gOk" type="button" style="padding:16px;font-size:18px" disabled>Confirmar recepción</button>
+  </div>`;
+  const cv = $("#gSig"), ctx = cv.getContext("2d"); let trazos = 0, dib = false, last = null;
+  const ajustar = () => { const r = cv.getBoundingClientRect(), k = Math.min(2, window.devicePixelRatio || 1); cv.width = r.width * k; cv.height = r.height * k; ctx.setTransform(k, 0, 0, k, 0, 0); ctx.lineWidth = 2.6; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#111"; trazos = 0; validar(); };
+  const pt = e => { const r = cv.getBoundingClientRect(); return {x:e.clientX - r.left, y:e.clientY - r.top}; };
+  cv.addEventListener("pointerdown", e => { dib = true; last = pt(e); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointermove", e => { if (!dib) return; const p = pt(e); ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke(); trazos += Math.hypot(p.x - last.x, p.y - last.y); last = p; });
+  const fin = () => { if (dib) { dib = false; validar(); } };
+  cv.addEventListener("pointerup", fin); cv.addEventListener("pointercancel", fin);
+  $("#gClr").onclick = () => { ctx.clearRect(0, 0, cv.width, cv.height); trazos = 0; validar(); };
+  const okMail = () => /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test($("#gMail").value.trim());
+  function validar(){
+    const n = d.piezas.filter(p => p.ok).length;
+    $("#gCnt").textContent = `${n} de ${d.piezas.length} piezas confirmadas`;
+    $("#gOk").disabled = !(n === d.piezas.length && okMail() && $("#gTerm").checked && trazos > 60);
+  }
+  $("#gPz").onclick = e => { const b = e.target.closest(".gpieza"); if (!b) return; const p = d.piezas[+b.dataset.i]; p.ok = !p.ok; b.setAttribute("aria-pressed", p.ok); validar(); };
+  $("#gMail").oninput = validar; $("#gTerm").onchange = validar;
+  requestAnimationFrame(ajustar); window.addEventListener("resize", ajustar, {once:true});
+  const cerrar = () => { g.remove(); document.body.style.overflow = ""; cargarCapitanes(); renderPalos(); };
+  $("#gCancel").onclick = cerrar;
+  $("#gOk").onclick = async () => {
+    const correo = $("#gMail").value.trim().toLowerCase();
+    $("#gOk").disabled = true; $("#gOk").textContent = "Guardando…"; $("#gErr").textContent = "";
+    const firma = cv.toDataURL("image/png");
+    const { data: alqId, error } = await sb.rpc("entregar_juego", {p_juego:d.juego, p_nombre:d.nombre, p_correo:correo, p_telefono:d.telefono, p_tipo_cliente:d.tipo, p_referencia:d.referencia, p_check:d.piezas, p_firma:firma});
+    if (error) { $("#gErr").textContent = errMsg(error); $("#gOk").disabled = false; $("#gOk").textContent = "Confirmar recepción"; return; }
+    const r = await procesarCorreos(alqId, true);
+    g.innerHTML = `<div class="gwrap"><div class="gok"><div class="tick">✓</div><h1>¡Listo, ${esc(d.nombre.split(" ")[0])}!</h1>
+      <p class="lead">${r.ok ? `Le enviamos la confirmación a <b>${esc(correo)}</b>.` : `La confirmación llegará a <b>${esc(correo)}</b> en breve.`}</p><p class="lead">Que disfrute su ronda en Santa María.</p>
+      <button class="btn primary" id="gFin" type="button" style="margin-top:12px;padding:14px 22px">Devolver la pantalla al Capitán</button></div></div>`;
+    $("#gFin").onclick = cerrar;
+  };
+}
+
+/* ---------- Recepción ---------- */
+function abrirRecepcion(a){
+  if (!a) return;
+  const filas = a.check_salida.map(p => ({pieza:p.pieza, cantidad:p.cantidad, estado:null, nota:""}));
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">Recibir · ${esc(tipoDe(a.juego_id))} · Folio ${a.folio}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(a.juego_id)} de ${esc(a.huesped_nombre)}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <div class="kv"><div><b>Salió</b>${hora(a.salida_en)} · hace ${durac(a.salida_en)}</div><div><b>Entregó</b>${esc(nm(a.capitan_salida))}</div><div><b>${esc(CLIENTE[a.tipo_cliente])}</b>${esc(a.referencia || "—")}</div><div><b>Correo</b>${esc(a.huesped_correo)}</div></div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="hint">Revise cada pieza que devuelve el cliente</span><button class="btn small" id="rTodo" type="button" style="margin-left:auto">Todo en buen estado</button></div>
+    <div id="rPz" class="stack" style="gap:0"></div>
+    <label class="f">Observaciones<textarea id="rObs" placeholder="Ej. Putter no devuelto; el cliente lo trae mañana"></textarea></label>
+    <label class="terms" style="font-size:14px"><input type="checkbox" id="rMant"><span>Enviar el juego a mantenimiento (por ejemplo, para limpieza o reparación)</span></label>
+    <div class="err" id="rErr"></div>
+    <button class="btn primary" id="rOk" type="button" disabled>Cerrar alquiler y enviar correo</button>`);
+  const pintar = () => {
+    $("#rPz").innerHTML = filas.map((p, i) => `<div class="item" data-i="${i}" style="padding-inline:0"><div class="item-row"><div class="item-text"><b>${esc(p.pieza)}</b> <span class="mono hint">× ${p.cantidad}</span></div>
+      <div class="seg" role="group" aria-label="Estado">${Object.entries(EST_P).map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${p.estado === k}">${l}</button>`).join("")}</div></div>
+      ${p.estado && p.estado !== "ok" ? `<input type="text" class="note" data-n="${i}" value="${esc(p.nota)}" placeholder="Detalle: qué falta o qué daño tiene">` : ""}</div>`).join("");
+    const listos = filas.every(p => p.estado), malos = filas.filter(p => p.estado && p.estado !== "ok").length;
+    $("#rOk").disabled = !listos; if (malos) $("#rMant").checked = true;
+  };
+  pintar();
+  $("#rPz").onclick = e => { const b = e.target.closest(".seg button"); if (!b) return; const i = +b.closest(".item").dataset.i; filas[i].estado = b.dataset.v; pintar(); const n = $("#rPz").querySelector(`[data-n="${i}"]`); if (n) n.focus(); };
+  $("#rPz").oninput = e => { const n = e.target.closest("[data-n]"); if (n) filas[+n.dataset.n].nota = n.value; };
+  $("#rTodo").onclick = () => { filas.forEach(p => p.estado = "ok"); pintar(); };
+  $("#rOk").onclick = async () => {
+    $("#rOk").disabled = true; $("#rOk").textContent = "Cerrando…";
+    const { error } = await sb.rpc("recibir_juego", {p_alquiler:a.id, p_check:filas.map(p => ({pieza:p.pieza, cantidad:p.cantidad, estado:p.estado, nota:p.nota.trim() || null})), p_observaciones:$("#rObs").value, p_mantenimiento:$("#rMant").checked});
+    if (error) { $("#rErr").textContent = errMsg(error); $("#rOk").disabled = false; $("#rOk").textContent = "Cerrar alquiler y enviar correo"; return; }
+    closeSheet();
+    const r = await procesarCorreos(a.id, true);
+    toast(`${a.juego_id} recibido. ${r.ok ? "Correo de cierre enviado." : "El correo de cierre quedó en cola."}`);
+  };
+}
+
+/* ---------- Historial ---------- */
+async function cargarHistorial(){
+  const v = $("#v-historial"), h = S.cap.hist;
+  if (!S.cap.histData) v.innerHTML = `<div class="loading">Cargando historial…</div>`;
+  let q = sb.from("alquileres").select("id,folio,juego_id,huesped_nombre,huesped_correo,huesped_telefono,tipo_cliente,referencia,salida_en,capitan_salida,devuelto_en,capitan_entrada,estado,todo_ok,observaciones_cierre,check_salida,check_entrada")
+    .gte("salida_en", isoLocal(h.desde)).lt("salida_en", isoLocal(h.hasta, true)).order("salida_en", {ascending:false}).limit(500);
+  if (h.estado === "activo") q = q.eq("estado", "activo");
+  if (h.estado === "ok") q = q.eq("estado", "cerrado").eq("todo_ok", true);
+  if (h.estado === "obs") q = q.eq("estado", "cerrado").eq("todo_ok", false);
+  const { data, error } = await q;
+  if (error) { v.innerHTML = `<div class="empty"><strong>No se pudo cargar el historial</strong>${esc(errMsg(error))}</div>`; return; }
+  S.cap.histData = data.filter(a => h.tipo === "todos" || (juegoDe(a.juego_id) || {}).tipo === h.tipo);
+  renderHistorial();
+}
+function estadoAlq(a){ return a.estado === "activo" ? `<span class="pill p-gold">En uso</span>` : a.todo_ok ? `<span class="pill p-ok">Cerrado sin novedad</span>` : `<span class="pill p-crit">Con observaciones</span>`; }
+function renderHistorial(){
+  const v = $("#v-historial"), h = S.cap.hist, L = S.cap.histData || [];
+  const cerr = L.filter(a => a.estado === "cerrado"), obs = cerr.filter(a => !a.todo_ok).length;
+  const prom = cerr.length ? Math.round(cerr.reduce((s, a) => s + (new Date(a.devuelto_en) - new Date(a.salida_en)), 0) / cerr.length / 60000) : null;
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes</div><h1>Historial de alquileres</h1><p class="sub">${esc(fechaCorta(h.desde))} – ${esc(fechaCorta(h.hasta))} · ${plural(L.length, "alquiler", "alquileres")}</p></div>
+      <button class="btn" id="hXlsx" type="button">Exportar a Excel</button></div>
+    <div class="filters panel" style="padding:12px">
+      <label class="f">Desde<input type="date" id="hDesde" value="${h.desde}"></label><label class="f">Hasta<input type="date" id="hHasta" value="${h.hasta}"></label>
+      <label class="f">Tipo<select id="hTipo"><option value="todos">Todos</option>${Object.entries(TIPOS_J).map(([k, l]) => `<option value="${k}" ${h.tipo===k?"selected":""}>${l}</option>`).join("")}</select></label>
+      <label class="f">Estado<select id="hEst">${[["todos","Todos"],["activo","En uso"],["ok","Cerrados sin novedad"],["obs","Con observaciones"]].map(([k, l]) => `<option value="${k}" ${h.estado===k?"selected":""}>${l}</option>`).join("")}</select></label></div>
+    <div class="kpis">${kpi("Alquileres", L.length, "", "En el periodo", "")}${kpi("Con observaciones", obs, "", "Piezas faltantes o dañadas", obs ? "crit" : "ok")}${kpi("Tiempo promedio", prom == null ? null : (prom >= 60 ? Math.floor(prom/60) + " h " + pad(prom % 60) : prom + " min"), "", "Desde la entrega a la devolución", "")}${kpi("Juego más usado", (() => { const c = {}; L.forEach(a => c[a.juego_id] = (c[a.juego_id] || 0) + 1); const t = Object.entries(c).sort((a, b) => b[1] - a[1])[0]; return t ? t[0] : null; })(), "", "Rotación del inventario", "")}</div>
+    ${L.length ? `<div class="tablewrap"><table><thead><tr><th>Folio</th><th>Salida</th><th>Juego</th><th>Cliente</th><th>Devolución</th><th>Estado</th></tr></thead><tbody>
+      ${L.map(a => `<tr class="click" data-a="${a.id}"><td class="num">${a.folio}</td><td class="num">${esc(fechaCorta(a.salida_en.slice(0,10)))} ${hora(a.salida_en)}</td><td class="num">${esc(a.juego_id)}</td><td>${esc(a.huesped_nombre)}<div class="hint">${esc(CLIENTE[a.tipo_cliente])}${a.referencia ? " · " + esc(a.referencia) : ""}</div></td>
+        <td class="num">${a.devuelto_en ? hora(a.devuelto_en) : "—"}</td><td>${estadoAlq(a)}</td></tr>`).join("")}</tbody></table></div>`
+    : `<div class="empty"><strong>Sin alquileres en este periodo</strong>Cada entrega queda registrada aquí con la firma del cliente y el resultado de la devolución.</div>`}`;
+  $("#hDesde").onchange = e => { h.desde = e.target.value || h.desde; cargarHistorial(); };
+  $("#hHasta").onchange = e => { h.hasta = e.target.value || h.hasta; cargarHistorial(); };
+  $("#hTipo").onchange = e => { h.tipo = e.target.value; cargarHistorial(); };
+  $("#hEst").onchange = e => { h.estado = e.target.value; cargarHistorial(); };
+  $("#hXlsx").onclick = exportarAlquileres;
+  v.querySelectorAll("tr[data-a]").forEach(tr => tr.onclick = () => detalleAlquiler(tr.dataset.a));
+}
+async function detalleAlquiler(id){
+  const a = (S.cap.histData || []).find(x => x.id === id); if (!a) return;
+  openSheet(`<div class="loading">Cargando…</div>`);
+  const [f, c] = await Promise.all([sb.from("alquileres").select("firma").eq("id", id).single(), sb.from("correos").select("*").eq("alquiler_id", id).order("creado_en")]);
+  const ent = Object.fromEntries((a.check_entrada || []).map(p => [p.pieza, p]));
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">Folio ${a.folio} · ${esc(tipoDe(a.juego_id))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(a.juego_id)} · ${esc(a.huesped_nombre)}</h2></div><button class="btn ghost x" data-x type="button">Cerrar</button></div>
+    ${estadoAlq(a)}
+    <div class="kv"><div><b>Salida</b>${new Date(a.salida_en).toLocaleString("es-PA")}</div><div><b>Entregó</b>${esc(nm(a.capitan_salida))}</div>
+      <div><b>Devolución</b>${a.devuelto_en ? new Date(a.devuelto_en).toLocaleString("es-PA") : "Pendiente"}</div><div><b>Recibió</b>${a.capitan_entrada ? esc(nm(a.capitan_entrada)) : "—"}</div>
+      <div><b>${esc(CLIENTE[a.tipo_cliente])}</b>${esc(a.referencia || "—")}</div><div><b>Correo</b>${esc(a.huesped_correo)}</div><div><b>Teléfono</b>${esc(a.huesped_telefono || "—")}</div></div>
+    <div class="tablewrap"><table style="min-width:420px"><thead><tr><th>Pieza</th><th>Cant.</th><th>Entrega</th><th>Devolución</th></tr></thead><tbody>
+      ${a.check_salida.map(p => { const e = ent[p.pieza]; return `<tr><td>${esc(p.pieza)}</td><td class="num">${p.cantidad}</td><td><span class="pill p-ok">Confirmada</span></td><td>${e ? `<span class="pill ${e.estado === "ok" ? "p-ok" : e.estado === "falta" ? "p-crit" : "p-alta"}">${EST_P[e.estado]}</span>${e.nota ? `<div class="hint">${esc(e.nota)}</div>` : ""}` : "—"}</td></tr>`; }).join("")}</tbody></table></div>
+    ${a.observaciones_cierre ? `<div class="callout gold"><b>Observaciones:</b> ${esc(a.observaciones_cierre)}</div>` : ""}
+    ${f.data && f.data.firma ? `<div><div class="hint" style="margin-bottom:6px">Firma del cliente</div><img src="${esc(f.data.firma)}" alt="Firma del cliente" style="background:#fff;border:1px solid var(--line);border-radius:8px;max-height:150px"></div>` : ""}
+    <div><div class="hint" style="margin-bottom:6px">Correos</div>${(c.data || []).map(x => `<div class="ans-row"><span class="tx">${x.tipo === "entrega" ? "Confirmación de entrega" : "Confirmación de cierre"} · ${esc(x.destinatario)}${x.error ? `<em>${esc(x.error)}</em>` : ""}</span><span>${x.estado === "enviado" ? `<span class="pill p-ok">Enviado ${hora(x.enviado_en)}</span>` : x.estado === "error" ? `<span class="pill p-crit">Error</span>` : `<span class="pill p-draft">En cola</span>`}</span></div>`).join("") || `<span class="hint">Sin correos</span>`}</div>
+    ${(c.data || []).some(x => x.estado !== "enviado") ? `<button class="btn" id="dReint" type="button">Reintentar envío</button>` : ""}`);
+  const r = $("#dReint"); if (r) r.onclick = async () => { r.disabled = true; await procesarCorreos(id); closeSheet(); };
+}
+async function exportarAlquileres(){
+  const b = $("#hXlsx"); b.disabled = true; b.textContent = "Preparando…";
+  try {
+    await cargarScript(XLSX_URL);
+    const filas = (S.cap.histData || []).map(a => ({"Folio":a.folio, "Juego":a.juego_id, "Tipo":tipoDe(a.juego_id), "Cliente":a.huesped_nombre, "Tipo de cliente":CLIENTE[a.tipo_cliente], "Referencia":a.referencia || "",
+      "Correo":a.huesped_correo, "Teléfono":a.huesped_telefono || "", "Salida":new Date(a.salida_en).toLocaleString("es-PA"), "Entregó":nm(a.capitan_salida),
+      "Devolución":a.devuelto_en ? new Date(a.devuelto_en).toLocaleString("es-PA") : "", "Recibió":a.capitan_entrada ? nm(a.capitan_entrada) : "",
+      "Estado":a.estado === "activo" ? "En uso" : a.todo_ok ? "Cerrado sin novedad" : "Con observaciones",
+      "Piezas con novedad":(a.check_entrada || []).filter(p => p.estado !== "ok").map(p => `${p.pieza}: ${EST_P[p.estado]}${p.nota ? " (" + p.nota + ")" : ""}`).join("; "), "Observaciones":a.observaciones_cierre || ""}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas.length ? filas : [{"Sin datos":""}]), "Alquileres");
+    XLSX.writeFile(wb, `SMGC_Alquiler_palos_${S.cap.hist.desde}_a_${S.cap.hist.hasta}.xlsx`);
+  } catch(e){ toast("No se pudo generar el Excel. " + errMsg(e)); }
+  b.disabled = false; b.textContent = "Exportar a Excel";
+}
+
+/* ---------- Bolsas de miembros ---------- */
+function buscarMiembros(q){
+  q = q.trim(); if (!q) return [];
+  const M = S.cap.miembros, n = norm(q);
+  if (/^\d+$/.test(q)) {
+    const exacto = M.filter(m => m.numero === q), cas = M.filter(m => String(m.casilla) === q && m.numero !== q), pref = M.filter(m => m.numero.startsWith(q) && m.numero !== q && String(m.casilla) !== q);
+    return [...exacto, ...cas, ...pref].slice(0, 8);
+  }
+  return M.filter(m => norm(m.nombre).includes(n) || norm(m.numero).includes(n)).slice(0, 8);
+}
+function tarjetaMiembro(m){
+  const e = EST_B[m.estado_bolsa];
+  return `<div class="panel bigcas"><div class="num"><small>Casilla</small>${m.casilla ?? "—"}</div>
+    <div class="stack" style="gap:6px"><div><b style="font-size:20px">${esc(m.nombre)}</b><div class="hint" style="font-size:14px">Miembro ${esc(m.numero)}${m.telefono ? " · " + esc(m.telefono) : ""}</div></div>
+      <span class="pill ${e.c}" style="justify-self:start">${e.l}</span>
+      ${m.notas ? `<div class="hint">${esc(m.notas)}</div>` : ""}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        ${m.estado_bolsa === "en_casilla" ? `<button class="btn primary" data-mov="entrega" data-m="${m.id}" type="button">Entregar bolsa al miembro</button>`
+          : m.casilla ? `<button class="btn primary" data-mov="recepcion" data-m="${m.id}" type="button">Recibir y guardar en casilla ${m.casilla}</button>` : `<span class="hint">Asigne una casilla para guardar su bolsa.</span>`}
+        <button class="btn" data-edit="${m.id}" type="button">Editar</button></div></div></div>`;
+}
+function renderBolsas(soft){
+  const v = $("#v-bolsas");
+  if (!S.cap.loaded) { v.innerHTML = `<div class="loading">Cargando bolsas…</div>`; return; }
+  const M = S.cap.miembros, K = S.cap.casillas, porCas = Object.fromEntries(M.filter(m => m.casilla).map(m => [m.casilla, m]));
+  const guardadas = M.filter(m => m.casilla && m.estado_bolsa === "en_casilla").length, fuera = M.filter(m => m.estado_bolsa === "entregada");
+  const libres = K.filter(k => !porCas[k.numero]).length;
+  if (!(soft && $("#bq"))) {
+    v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes</div><h1>Bolsas de miembros</h1><p class="sub" id="bSub"></p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bNuevo" type="button">Agregar miembro</button><button class="btn" id="bImp" type="button">Importar lista</button><button class="btn" id="bCas" type="button">Casillas</button></div></div>
+      <div class="panel bsearch stack" style="gap:12px"><input type="text" id="bq" inputmode="search" autocomplete="off" placeholder="Número de miembro, nombre o casilla" aria-label="Buscar miembro"><div id="bRes"></div></div>
+      <div class="grid2"><div class="stack"><div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h2>Casillas</h2><div class="legend"><span><i style="background:var(--ok-soft)"></i>Con bolsa</span><span><i style="background:var(--gold-soft);border:1px solid var(--gold)"></i>Bolsa con el miembro</span><span><i style="border:1px dashed var(--line-strong)"></i>Libre</span></div></div><div id="bBoard"></div></div>
+        <div class="stack" style="gap:16px"><div class="panel"><h2>Bolsas con miembros ahora <span class="pill p-gold" id="bFueraN"></span></h2><div id="bFuera"></div></div>
+          <div class="panel"><h2>Movimientos de hoy</h2><div id="bMov"></div></div></div></div>`;
+    $("#bq").value = S.cap.q;
+    $("#bq").oninput = e => { S.cap.q = e.target.value; S.cap.selMiembro = null; pintarResultados(); };
+    $("#bNuevo").onclick = () => editarMiembro(null);
+    $("#bImp").onclick = importarMiembros;
+    $("#bCas").onclick = crearCasillas;
+    if (!v.dataset.bound) { v.addEventListener("click", accionesBolsa); v.dataset.bound = "1"; }
+  }
+  $("#bSub").textContent = `${K.length} casillas · ${guardadas} bolsas guardadas · ${fuera.length} con miembros ahora · ${libres} libres`;
+  $("#bBoard").innerHTML = K.length ? `<div class="cgrid">${K.map(k => { const m = porCas[k.numero]; const c = !m ? "libre" : m.estado_bolsa === "entregada" ? "fuera" : "ocupada";
+      return `<button type="button" class="cel ${c}" data-cas="${k.numero}" title="${m ? esc(m.nombre) + " · " + esc(EST_B[m.estado_bolsa].l) : "Libre"}">${k.numero}</button>`; }).join("")}</div>`
+    : `<div class="empty"><strong>Aún no hay casillas</strong>Use el botón Casillas para crear la numeración del cuarto de bolsas.</div>`;
+  $("#bFueraN").textContent = fuera.length;
+  $("#bFuera").innerHTML = fuera.length ? `<div class="rowlist">${fuera.map(m => `<div class="lrow"><div class="main"><b>${esc(m.nombre)}</b><span class="hint">Miembro ${esc(m.numero)} · casilla ${m.casilla ?? "—"}</span></div><button class="btn small" data-mov="recepcion" data-m="${m.id}" type="button" ${m.casilla ? "" : "disabled"}>Recibir</button></div>`).join("")}</div>` : `<p class="hint" style="margin:0">Todas las bolsas están en su casilla.</p>`;
+  const MM = Object.fromEntries(M.map(m => [m.id, m]));
+  $("#bMov").innerHTML = S.cap.movHoy.length ? `<div class="stack" style="gap:0">${S.cap.movHoy.slice(0, 30).map(x => `<div class="ans-row"><span class="mono hint" style="width:44px;flex:none">${hora(x.en)}</span><span class="tx">${x.tipo === "entrega" ? "Entregó" : "Guardó"} la bolsa de <b>${esc((MM[x.miembro_id] || {}).nombre || "miembro")}</b> · casilla ${x.casilla ?? "—"}<em>${esc(nm(x.por))}</em></span></div>`).join("")}</div>` : `<p class="hint" style="margin:0">Sin movimientos hoy.</p>`;
+  pintarResultados();
+}
+function pintarResultados(){
+  const el = $("#bRes"); if (!el) return;
+  if (S.cap.selMiembro) { const m = S.cap.miembros.find(x => x.id === S.cap.selMiembro); if (m) { el.innerHTML = tarjetaMiembro(m); return; } }
+  const r = buscarMiembros(S.cap.q);
+  if (!S.cap.q.trim()) { el.innerHTML = S.cap.miembros.length ? "" : `<p class="hint" style="margin:0">Agregue los miembros con su número y casilla, o importe la lista completa.</p>`; return; }
+  if (!r.length) { el.innerHTML = `<p class="hint" style="margin:0">Ningún miembro coincide con “${esc(S.cap.q)}”.</p>`; return; }
+  const exacto = r[0].numero === S.cap.q.trim() || r.length === 1;
+  el.innerHTML = (exacto ? tarjetaMiembro(r[0]) : "") + (r.length > (exacto ? 1 : 0) ? `<div class="rowlist" style="margin-top:${exacto ? 10 : 0}px">${r.slice(exacto ? 1 : 0).map(m => `<button type="button" class="lrow" data-sel="${m.id}" style="text-align:left;cursor:pointer;width:100%"><span class="mono" style="font-weight:500;min-width:52px">${esc(m.numero)}</span><span class="main"><b>${esc(m.nombre)}</b><span class="hint">Casilla ${m.casilla ?? "—"}</span></span><span class="pill ${EST_B[m.estado_bolsa].c}">${EST_B[m.estado_bolsa].l}</span></button>`).join("")}</div>` : "");
+}
+async function accionesBolsa(e){
+  const sel = e.target.closest("[data-sel]"); if (sel) { S.cap.selMiembro = sel.dataset.sel; pintarResultados(); return; }
+  const cas = e.target.closest("[data-cas]");
+  if (cas) { const m = S.cap.miembros.find(x => String(x.casilla) === cas.dataset.cas);
+    if (m) { S.cap.selMiembro = m.id; S.cap.q = m.numero; $("#bq").value = m.numero; pintarResultados(); $("#bq").scrollIntoView({behavior:"smooth", block:"center"}); }
+    else editarMiembro(null, +cas.dataset.cas); return; }
+  const ed = e.target.closest("[data-edit]"); if (ed) { editarMiembro(S.cap.miembros.find(x => x.id === ed.dataset.edit)); return; }
+  const mv = e.target.closest("[data-mov]");
+  if (mv) {
+    mv.disabled = true;
+    const m = S.cap.miembros.find(x => x.id === mv.dataset.m);
+    const { error } = await sb.rpc("mover_bolsa", {p_miembro:m.id, p_tipo:mv.dataset.mov});
+    if (error) { toast(errMsg(error)); mv.disabled = false; return; }
+    toast(mv.dataset.mov === "entrega" ? `Bolsa de ${m.nombre} entregada · casilla ${m.casilla}` : `Bolsa de ${m.nombre} guardada en la casilla ${m.casilla}`);
+    S.cap.selMiembro = m.id; await cargarCapitanes();
+  }
+}
+function editarMiembro(m, casillaInicial){
+  const nuevo = !m; m = m || {numero:"", nombre:"", telefono:"", casilla:casillaInicial ?? null, notas:"", estado_bolsa:"en_casilla"};
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${nuevo ? "Agregar miembro" : esc(m.nombre)}</h2><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <div class="fields"><label class="f">Número de miembro<input type="text" id="mNum" value="${esc(m.numero)}" ${nuevo ? "" : "disabled"}></label>
+      <label class="f">Casilla<input type="text" id="mCas" inputmode="numeric" value="${m.casilla ?? ""}" placeholder="Ej. 8"></label></div>
+    <label class="f">Nombre completo<input type="text" id="mNom" value="${esc(m.nombre)}"></label>
+    <label class="f">Teléfono (opcional)<input type="text" id="mTel" inputmode="tel" value="${esc(m.telefono || "")}"></label>
+    <label class="f">Estado de la bolsa<select id="mEst">${Object.entries(EST_B).map(([k, x]) => `<option value="${k}" ${m.estado_bolsa===k?"selected":""}>${x.l}</option>`).join("")}</select></label>
+    <label class="f">Notas<input type="text" id="mNot" value="${esc(m.notas || "")}" placeholder="Ej. Bolsa negra Titleist con carrito"></label>
+    <div class="err" id="mErr"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${nuevo ? "" : `<button class="btn danger" id="mBaja" type="button">Dar de baja</button>`}<button class="btn primary" id="mOk" type="button">Guardar</button></div>`);
+  $("#mOk").onclick = async () => {
+    const numero = $("#mNum").value.trim(), nombre = $("#mNom").value.trim(), casTxt = $("#mCas").value.trim();
+    if (!numero || !nombre) { $("#mErr").textContent = "Escriba el número y el nombre del miembro."; return; }
+    const casilla = casTxt ? parseInt(casTxt, 10) : null;
+    if (casTxt && !(casilla > 0)) { $("#mErr").textContent = "La casilla debe ser un número."; return; }
+    if (casilla && !S.cap.casillas.some(k => k.numero === casilla)) { $("#mErr").textContent = `La casilla ${casilla} no existe. Créela con el botón Casillas.`; return; }
+    const otro = casilla && S.cap.miembros.find(x => x.casilla === casilla && x.id !== m.id);
+    if (otro) { $("#mErr").textContent = `La casilla ${casilla} ya es de ${otro.nombre} (miembro ${otro.numero}).`; return; }
+    const row = {nombre, telefono:$("#mTel").value.trim() || null, casilla, notas:$("#mNot").value.trim() || null, estado_bolsa:$("#mEst").value};
+    $("#mOk").disabled = true;
+    const r = nuevo ? await sb.from("miembros").insert({numero, ...row}) : await sb.from("miembros").update(row).eq("id", m.id);
+    if (r.error) { $("#mErr").textContent = r.error.code === "23505" ? "Ya existe un miembro con ese número o esa casilla." : errMsg(r.error); $("#mOk").disabled = false; return; }
+    closeSheet(); toast(nuevo ? "Miembro agregado" : "Miembro actualizado"); S.cap.q = numero; S.cap.selMiembro = null; await cargarCapitanes(); const q = $("#bq"); if (q) q.value = numero; pintarResultados();
+  };
+  const baja = $("#mBaja");
+  if (baja) baja.onclick = async () => {
+    if (baja.dataset.confirm !== "1") { baja.dataset.confirm = "1"; baja.textContent = "Toque otra vez para confirmar"; return; }
+    const { error } = await sb.from("miembros").update({activo:false, casilla:null}).eq("id", m.id);
+    if (error) { $("#mErr").textContent = errMsg(error); return; }
+    closeSheet(); toast("Miembro dado de baja; su casilla quedó libre"); S.cap.selMiembro = null; S.cap.q = ""; cargarCapitanes();
+  };
+}
+function importarMiembros(){
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Importar lista de miembros</h2><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <p class="hint" style="margin:0;font-size:14px">Pegue una línea por miembro: <span class="mono">número, nombre, casilla</span>. Puede copiar las tres columnas directamente desde Excel. Si el número ya existe, se actualiza.</p>
+    <textarea id="iTxt" style="min-height:200px;font-family:var(--f-mono);font-size:14px" placeholder="1045, Carlos Méndez, 8&#10;1046, Ana Ríos, 9"></textarea>
+    <div class="hint" id="iPrev"></div><div class="err" id="iErr"></div>
+    <button class="btn primary" id="iOk" type="button" disabled>Importar</button>`);
+  let filas = [];
+  $("#iTxt").oninput = () => {
+    filas = $("#iTxt").value.split(/\r?\n/).map(l => l.split(/\t|;|,/).map(x => x.trim())).filter(c => c[0] && c[1])
+      .map(c => ({numero:c[0], nombre:c[1], casilla: c[2] && /^\d+$/.test(c[2]) ? parseInt(c[2], 10) : null}));
+    const dupCas = filas.filter((f, i) => f.casilla && filas.findIndex(g => g.casilla === f.casilla) !== i);
+    $("#iPrev").textContent = filas.length ? `${plural(filas.length, "miembro")} listos · ${filas.filter(f => f.casilla).length} con casilla` : "";
+    $("#iErr").textContent = dupCas.length ? `La casilla ${dupCas[0].casilla} aparece más de una vez.` : "";
+    $("#iOk").disabled = !filas.length || dupCas.length > 0;
+  };
+  $("#iOk").onclick = async () => {
+    $("#iOk").disabled = true; $("#iOk").textContent = "Importando…";
+    const cas = [...new Set(filas.map(f => f.casilla).filter(Boolean))].map(n => ({numero:n}));
+    if (cas.length) { const r = await sb.from("casillas").upsert(cas, {onConflict:"numero", ignoreDuplicates:true}); if (r.error) { $("#iErr").textContent = errMsg(r.error); $("#iOk").disabled = false; $("#iOk").textContent = "Importar"; return; } }
+    const nums = new Set(filas.map(f => f.numero));
+    const libera = filas.filter(f => f.casilla).map(f => f.casilla);
+    const choque = S.cap.miembros.filter(m => m.casilla && libera.includes(m.casilla) && !nums.has(m.numero));
+    if (choque.length) { $("#iErr").textContent = `La casilla ${choque[0].casilla} ya es de ${choque[0].nombre} (miembro ${choque[0].numero}). Corrija la lista o libere esa casilla.`; $("#iOk").disabled = false; $("#iOk").textContent = "Importar"; return; }
+    const r = await sb.from("miembros").upsert(filas.map(f => ({...f, activo:true})), {onConflict:"numero"});
+    if (r.error) { $("#iErr").textContent = r.error.code === "23505" ? "Hay casillas repetidas entre miembros. Revise la lista." : errMsg(r.error); $("#iOk").disabled = false; $("#iOk").textContent = "Importar"; return; }
+    closeSheet(); toast(`${plural(filas.length, "miembro importado", "miembros importados")}`); cargarCapitanes();
+  };
+}
+function crearCasillas(){
+  const K = S.cap.casillas, max = K.length ? K[K.length - 1].numero : 0;
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Casillas del cuarto de bolsas</h2><button class="btn ghost x" data-x type="button">Cerrar</button></div>
+    <p class="hint" style="margin:0;font-size:14px">${K.length ? `Hay ${K.length} casillas (de la ${K[0].numero} a la ${max}).` : "Aún no hay casillas."} Cree un rango nuevo; las que ya existen no se duplican.</p>
+    <div class="fields"><label class="f">Desde<input type="text" id="cDesde" inputmode="numeric" value="${max + 1}"></label><label class="f">Hasta<input type="text" id="cHasta" inputmode="numeric" value="${max + 50}"></label>
+      <label class="f">Zona (opcional)<input type="text" id="cZona" placeholder="Ej. Pared norte"></label></div>
+    <div class="err" id="cErr"></div><button class="btn primary" id="cOk" type="button">Crear casillas</button>`);
+  $("#cOk").onclick = async () => {
+    const a = parseInt($("#cDesde").value, 10), b = parseInt($("#cHasta").value, 10);
+    if (!(a > 0) || !(b >= a) || b - a > 999) { $("#cErr").textContent = "Indique un rango válido (máximo 1.000 casillas a la vez)."; return; }
+    const zona = $("#cZona").value.trim() || null;
+    const rows = Array.from({length:b - a + 1}, (_, i) => ({numero:a + i, zona}));
+    const { error } = await sb.from("casillas").upsert(rows, {onConflict:"numero", ignoreDuplicates:true});
+    if (error) { $("#cErr").textContent = errMsg(error); return; }
+    closeSheet(); toast(`Casillas ${a} a ${b} listas`); cargarCapitanes();
+  };
 }
 
 /* ===================== Hoja modal ===================== */
