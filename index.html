@@ -299,7 +299,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <label class="f">Contraseña<input type="password" id="lgPass" autocomplete="current-password"></label>
     <div class="err" id="lgErr" role="alert"></div>
     <button class="btn primary block" id="lgBtn" type="submit">Entrar</button>
-    <p class="hint" style="text-align:center;margin:0">¿Olvidó su contraseña? Pídale a Gerencia que la restablezca.</p>
+    <p class="hint" style="text-align:center;margin:0">¿Olvidó su contraseña? <button class="link" type="button" id="lgForgot">Recuperarla por correo</button><br>Marshals y Capitanes con usuario: pídanle a Gerencia que la restablezca.</p>
     <button class="link" type="button" id="lgSetup" hidden style="justify-self:center">Configuración inicial de Gerencia</button>
   </form>
   <form class="login-card" id="setupForm" hidden novalidate>
@@ -406,7 +406,10 @@ function errMsg(e){
 }
 
 /* ===================== Estado ===================== */
-const sb = supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:true, autoRefreshToken:true, storageKey:"smgc-marshals-auth"}});
+// Se lee antes de crear el cliente, porque el cliente limpia el enlace de la barra de direcciones.
+const URL_AUTH = new URLSearchParams((location.hash || "").replace(/^#/, "") + "&" + location.search.replace(/^\?/, ""));
+let RECUPERANDO = URL_AUTH.get("type") === "recovery";
+const sb =supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:true, autoRefreshToken:true, storageKey:"smgc-marshals-auth"}});
 const S = {
   me:null, dominio:null, esGer:false, view:"turno",
   areas:[], items:[], perfiles:{},
@@ -420,9 +423,17 @@ const S = {
 /* ===================== Arranque y acceso ===================== */
 async function boot(){
   fnStaff({accion:"estado"}).then(r => { S.dominio = r.dominio; $("#lgSetup").hidden = !!r.hayGerente; }).catch(()=>{});
+  sb.auth.onAuthStateChange((ev) => {
+    if (ev === "SIGNED_OUT") { mostrar("login"); }
+    if (ev === "PASSWORD_RECOVERY") { RECUPERANDO = true; if (S.me) { RECUPERANDO = false; setTimeout(() => abrirCambioPass(true), 0); } }
+  });
   const { data } = await sb.auth.getSession();
   if (data.session) await entrar(); else mostrar("login");
-  sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") { mostrar("login"); } });
+  if (!data.session && URL_AUTH.get("error_description")) {
+    $("#lgErr").textContent = /expired|invalid/i.test(URL_AUTH.get("error_code") || URL_AUTH.get("error_description")) ? "El enlace de recuperación ya venció o ya se usó. Pida uno nuevo." : URL_AUTH.get("error_description");
+  }
+  if (location.hash && (URL_AUTH.has("access_token") || URL_AUTH.has("error"))) history.replaceState(null, "", location.pathname + location.search);
+  if (data.session && S.me && RECUPERANDO) { RECUPERANDO = false; abrirCambioPass(true); }
 }
 function mostrar(p){ ["Loading","Login","Blocked","App"].forEach(x => $("#screen"+x).hidden = x.toLowerCase() !== p); }
 async function fnStaff(body){
@@ -449,6 +460,25 @@ $("#loginForm").addEventListener("submit", async e => {
   $("#lgPass").value = "";
   await entrar();
 });
+$("#lgForgot").onclick = () => {
+  const previo = $("#lgUser").value.trim().toLowerCase();
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Recuperar contraseña</h2><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <p class="hint" style="margin:0">Le enviaremos un enlace a su correo para elegir una contraseña nueva. Solo funciona para cuentas que entran con correo electrónico.</p>
+    <label class="f">Correo electrónico<input type="email" id="rcMail" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" value="${previo.includes("@") ? esc(previo) : ""}"></label>
+    <div class="err" id="rcErr" role="alert"></div><button class="btn primary" id="rcOk" type="button">Enviar enlace</button>`);
+  $("#rcOk").onclick = async () => {
+    const correo = $("#rcMail").value.trim().toLowerCase(), err = $("#rcErr"); err.textContent = "";
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) { err.textContent = "Escriba un correo válido. Si entra con usuario, pídale a Gerencia que restablezca su contraseña."; return; }
+    if (S.dominio && correo.endsWith("@" + S.dominio)) { err.textContent = "Esa cuenta entra con usuario y no recibe correos. Pídale a Gerencia que restablezca su contraseña."; return; }
+    $("#rcOk").disabled = true;
+    const { error } = await sb.auth.resetPasswordForEmail(correo, {redirectTo: location.origin + location.pathname});
+    $("#rcOk").disabled = false;
+    if (error) { err.textContent = /rate|seconds|many/i.test(error.message) ? "Ya se pidió un enlace hace poco. Espere unos minutos e intente de nuevo." : errMsg(error); return; }
+    openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Revise su correo</h2><button class="btn ghost x" data-x type="button">Listo</button></div>
+      <p style="margin:0;font-size:16px">Si <b>${esc(correo)}</b> tiene una cuenta, le llegará un enlace en unos minutos. Ábralo en este mismo teléfono o computadora para elegir su contraseña nueva.</p>
+      <p class="hint" style="margin:0">¿No llega? Revise la carpeta de spam.</p>`);
+  };
+};
 $("#lgSetup").onclick = () => { $("#loginForm").hidden = true; $("#setupForm").hidden = false; };
 $("#suBack").onclick = () => { $("#loginForm").hidden = false; $("#setupForm").hidden = true; };
 $("#setupForm").addEventListener("submit", async e => {
@@ -532,9 +562,10 @@ function go(v){
 $("#alertBtn").onclick = () => { S.incFiltro = {estado:"abierta", prio:"critica"}; if (S.modulo !== "marshals") setModulo("marshals"); go("incidencias"); };
 $("#menuBtn").onclick = e => { e.stopPropagation(); const m = $("#menu"); m.hidden = !m.hidden; $("#menuBtn").setAttribute("aria-expanded", !m.hidden); };
 document.addEventListener("click", e => { if (!e.target.closest(".who")) { $("#menu").hidden = true; $("#menuBtn").setAttribute("aria-expanded", "false"); } });
-$("#mPass").onclick = () => {
-  $("#menu").hidden = true;
-  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Cambiar mi contraseña</h2><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+$("#mPass").onclick = () => { $("#menu").hidden = true; abrirCambioPass(); };
+function abrirCambioPass(recuperando){
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${recuperando ? "Escriba su nueva contraseña" : "Cambiar mi contraseña"}</h2><button class="btn ghost x" data-x type="button">${recuperando ? "Ahora no" : "Cancelar"}</button></div>
+    ${recuperando ? `<p class="hint" style="margin:0">Entró con el enlace de recuperación. Elija una contraseña nueva para su cuenta.</p>` : ""}
     <label class="f">Nueva contraseña (mínimo 8 caracteres)<input type="password" id="np1" autocomplete="new-password"></label>
     <label class="f">Repita la contraseña<input type="password" id="np2" autocomplete="new-password"></label>
     <div class="err" id="npErr"></div><button class="btn primary" id="npOk" type="button">Guardar contraseña</button>`);
@@ -546,7 +577,7 @@ $("#mPass").onclick = () => {
     if (error) { $("#npErr").textContent = errMsg(error); return; }
     closeSheet(); toast("Contraseña actualizada");
   };
-};
+}
 
 /* ===================== Mi turno ===================== */
 const pendKey = () => S.me ? `smgc_pend_${S.me.id}` : "smgc_pend";
