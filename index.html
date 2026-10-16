@@ -1,0 +1,1048 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Marshals SMGC</title>
+<meta name="theme-color" content="#123d2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Marshals SMGC">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+/* Barra institucional verde con el logo oficial; contenido en una columna de trabajo pensada para el teléfono, que se abre a dos columnas en escritorio. */
+:root{
+  --paper:#ffffff; --ground:#f3f5f3; --ink:#17221c; --muted:#5b6a61; --line:#dbe3dd; --line-strong:#c3cec6;
+  --brand:#123d2a; --brand-2:#1e5a3e; --on-brand:#ffffff; --accent:#1e5a3e; --gold:#a8873a; --gold-soft:#f5efe0;
+  --ok:#1f7a4d; --ok-soft:#e6f3ec; --warn:#a15c07; --warn-soft:#fbf0e1; --crit:#b42318; --crit-soft:#fdeceb;
+  --shadow:0 1px 2px rgba(18,61,42,.06),0 8px 24px rgba(18,61,42,.08);
+  --f-display:"Marcellus",Georgia,serif; --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --paper:#131b17; --ground:#0c120f; --ink:#e7eee9; --muted:#9aa9a0; --line:#25322b; --line-strong:#34453b;
+  --brand:#16432f; --brand-2:#2c7151; --accent:#86c9a5; --gold:#d3b56e; --gold-soft:#2a2516;
+  --ok:#6cc495; --ok-soft:#14281e; --warn:#e3a55a; --warn-soft:#2b2012; --crit:#f08a80; --crit-soft:#33171a;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3); color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+img{max-width:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* Acceso */
+.login{min-height:100vh;display:grid;place-items:center;padding-block:32px}
+.login-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);width:100%;max-width:400px;padding:28px 24px;display:grid;gap:16px}
+.login-logo{background:#fff;border-radius:10px;padding:10px;justify-self:center}
+.login-logo img{display:block;height:120px;width:auto}
+.login h1{font-family:var(--f-display);font-weight:400;font-size:24px;text-align:center;margin:0}
+.login .sub{text-align:center}
+
+/* Barra institucional */
+.top{position:sticky;top:0;z-index:20;background:var(--brand);color:var(--on-brand);padding-top:env(safe-area-inset-top,0px);margin-top:calc(-1 * env(safe-area-inset-top,0px))}
+.top .wrap{padding-top:10px}
+.brandrow{display:flex;align-items:center;gap:12px}
+.crest{background:#fff;border-radius:9px;padding:5px 7px;flex:none;box-shadow:0 0 0 1px rgba(168,135,58,.55)}
+.crest img{display:block;height:58px;width:auto}
+.club{font-family:var(--f-display);font-size:23px;line-height:1.1}
+.club small{display:block;font-family:var(--f-body);font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.75;margin-top:3px}
+.who{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;position:relative}
+.who .nm{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rolechip{border:1px solid rgba(255,255,255,.35);border-radius:99px;padding:2px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.rolechip.g{border-color:#d3b56e;color:#f1dfae}
+.menubtn{background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:18px;line-height:1}
+.menu{position:absolute;right:0;top:44px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:220px;padding:6px;z-index:30;display:grid}
+.menu button{background:none;border:0;text-align:left;padding:10px 12px;border-radius:7px;cursor:pointer;font-weight:600}
+.menu button:hover{background:var(--ground)}
+.menu .who-line{padding:8px 12px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line);margin-bottom:4px}
+.tabs{display:flex;gap:2px;margin-top:8px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:0;color:rgba(255,255,255,.72);padding:10px 13px 12px;font-weight:600;font-size:14px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tab[aria-selected="true"]{color:#fff;border-bottom-color:#d3b56e}
+.tab .count{background:rgba(255,255,255,.16);border-radius:99px;padding:0 7px;font-size:12px}
+.tab .count.crit{background:#b42318;color:#fff}
+.alert{background:#b42318;color:#fff}
+.alert .wrap{padding-block:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-weight:600}
+.alert button{margin-left:auto;background:#fff;color:#b42318;border:0;border-radius:6px;padding:6px 12px;font-weight:700;cursor:pointer}
+.netbar{background:var(--warn-soft);color:var(--warn);font-weight:600;font-size:13px}
+.netbar .wrap{padding-block:6px}
+
+main.wrap{padding-block:20px 72px}
+.view{display:grid;gap:16px}
+h1,h2,h3{text-wrap:balance;margin:0}
+h1{font-family:var(--f-display);font-weight:400;font-size:28px}
+h2{font-size:16px;font-weight:700}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700}
+.sub{color:var(--muted);font-size:14px;margin:4px 0 0}
+.head{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;justify-content:space-between}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.panel>h2{margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.grid2{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){.grid2{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}.grid2.even{grid-template-columns:1fr 1fr}
+  .turno-grid{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);grid-template-areas:"check asig" "check side";grid-template-rows:auto 1fr}
+  .turno-grid>.g-check{grid-area:check}.turno-grid>.g-asig{grid-area:asig}.turno-grid>.g-side{grid-area:side}}
+td select{min-width:190px;padding:7px 9px;font-size:14px}
+.stack{display:grid;gap:12px;align-content:start;min-width:0}
+.fields{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+label.f{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+input[type=text],input[type=password],input[type=date],select,textarea{background:var(--paper);border:1px solid var(--line-strong);border-radius:8px;padding:10px 11px;width:100%;min-width:0;font-size:16px}
+textarea{resize:vertical;min-height:72px}
+input:disabled,select:disabled,textarea:disabled{opacity:.7}
+.btn{border:1px solid var(--line-strong);background:var(--paper);border-radius:8px;padding:10px 15px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center;justify-content:center;text-decoration:none}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#1a1405}
+.btn.danger{color:var(--crit);border-color:var(--crit)}
+.btn.small{padding:6px 10px;font-size:13px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:none;border-color:transparent;color:var(--accent)}
+.link{background:none;border:0;color:var(--accent);font-weight:600;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px}
+.err{color:var(--crit);font-size:14px;font-weight:600;min-height:1em}
+
+.holes{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:6px}
+.nine{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);grid-column:1/-1;margin-top:4px;font-weight:600}
+.hole{aspect-ratio:1;max-width:100%;border:1px solid var(--line-strong);background:var(--paper);border-radius:50%;font-family:var(--f-mono);font-weight:500;font-size:14px;cursor:pointer;display:grid;place-items:center;padding:0}
+.hole[aria-pressed="true"]{background:var(--brand-2);border-color:var(--brand-2);color:#fff}
+.hole:disabled{cursor:default}
+
+.progress{display:flex;align-items:center;gap:10px}
+.bar{flex:1;height:8px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.area{border:1px solid var(--line);border-radius:10px;background:var(--paper);overflow:hidden}
+.area>summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;gap:12px;align-items:center}
+.area>summary::-webkit-details-marker{display:none}
+.area .letter{font-family:var(--f-display);font-size:22px;color:var(--gold);width:26px;flex:none}
+.area .aname{font-weight:700;flex:1;min-width:0}
+.area .acount{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.area .acount.done{color:var(--ok)}
+.area .chev{transition:transform .2s;color:var(--muted)}
+.area[open] .chev{transform:rotate(90deg)}
+.area .note-area{margin:0 16px 8px;padding:10px 12px;background:var(--gold-soft);border-radius:8px;font-size:13px}
+.item{border-top:1px solid var(--line);padding:12px 16px;display:grid;gap:8px}
+.item-row{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.item-text{flex:1 1 220px;min-width:0}
+.item-time{font-family:var(--f-mono);font-size:12px;color:var(--muted);display:block}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;flex:none}
+.seg button{border:0;background:var(--paper);padding:9px 15px;font-weight:600;font-size:14px;cursor:pointer;border-right:1px solid var(--line-strong)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"][data-v="si"]{background:var(--ok);color:#fff}
+.seg button[aria-pressed="true"][data-v="no"]{background:var(--crit);color:#fff}
+.seg button[aria-pressed="true"][data-v="na"]{background:var(--muted);color:var(--paper)}
+.seg button:disabled{cursor:default}
+.item input.note.req{border-color:var(--warn)}
+.hint{font-size:12px;color:var(--muted)}
+.hint.warn{color:var(--warn);font-weight:600}
+
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:2px 9px;font-size:12px;font-weight:700;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.p-crit{background:var(--crit-soft);color:var(--crit)} .p-alta{background:var(--warn-soft);color:var(--warn)} .p-ord{background:var(--ground);color:var(--muted)}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-gold{background:var(--gold-soft);color:var(--gold)} .p-draft{background:var(--ground);color:var(--muted)}
+
+.inc-list{display:grid;gap:10px}
+.inc{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:8px;padding:12px 14px;display:grid;gap:6px;min-width:0}
+.inc.crit{border-left-color:var(--crit)} .inc.alta{border-left-color:var(--warn)} .inc.cerrada{opacity:.78}
+.inc-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.inc-top .where{font-family:var(--f-mono);font-weight:500}
+.inc-top .when{margin-left:auto;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.inc p{margin:0;overflow-wrap:anywhere}
+.inc .meta{font-size:13px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.photos{display:flex;gap:6px;flex-wrap:wrap}
+.photos img,.photos .ph{width:84px;height:84px;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--ground);cursor:zoom-in}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line-strong);background:var(--paper);border-radius:99px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.prio-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.prio-pick button{border:1px solid var(--line-strong);background:var(--paper);border-radius:8px;padding:10px 6px;font-weight:700;font-size:14px;cursor:pointer}
+.prio-pick button[aria-pressed="true"][data-p="critica"]{background:var(--crit);border-color:var(--crit);color:#fff}
+.prio-pick button[aria-pressed="true"][data-p="alta"]{background:var(--warn);border-color:var(--warn);color:#fff}
+.prio-pick button[aria-pressed="true"][data-p="ordinaria"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.callout{border-radius:8px;padding:10px 12px;font-size:14px;background:var(--ground)}
+.callout.crit{background:var(--crit-soft);color:var(--crit);font-weight:600}
+.callout.ok{background:var(--ok-soft);color:var(--ok)}
+.callout.gold{background:var(--gold-soft)}
+
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.filters>*{flex:1 1 140px;min-width:0}
+.kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(165px,1fr))}
+.kpi{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:4px}
+.kpi .k{font-size:12px;color:var(--muted);font-weight:600}
+.kpi .v{font-family:var(--f-display);font-size:30px;line-height:1.1}
+.kpi .t{font-size:12px;color:var(--muted)}
+.kpi .v.ok{color:var(--ok)} .kpi .v.warn{color:var(--warn)} .kpi .v.crit{color:var(--crit)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:640px}
+th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);font-weight:700;background:var(--ground)}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--ground)}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.heat{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:6px}
+.heat .cell{border-radius:8px;border:1px solid var(--line);padding:6px 2px;text-align:center;font-family:var(--f-mono);font-size:12px;background:var(--paper)}
+.heat .cell b{display:block;font-size:15px}
+.heat .cell.l1{background:var(--warn-soft)} .heat .cell.l2{background:var(--crit-soft);color:var(--crit)}
+
+.empty{text-align:center;padding:28px 16px;color:var(--muted);border:1px dashed var(--line-strong);border-radius:10px;background:var(--paper)}
+.empty strong{display:block;color:var(--ink);margin-bottom:4px}
+.handoff{background:var(--gold-soft);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:6px}
+.statusbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.saved{font-family:var(--f-mono);font-size:12px}
+.saved.off{color:var(--warn);font-weight:600}
+
+.overlay{position:fixed;inset:0;background:rgba(10,20,15,.55);z-index:50;display:flex;justify-content:center;align-items:flex-start;overflow-y:auto;padding:calc(20px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.sheet{background:var(--paper);border-radius:12px;max-width:760px;width:100%;padding:20px;display:grid;gap:14px;box-shadow:var(--shadow);min-width:0}
+.sheet-head{display:flex;gap:8px;align-items:flex-start}
+.sheet-head .x{margin-left:auto}
+.ans-row{display:flex;gap:10px;font-size:14px;padding:6px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.ans-row .s{width:40px;flex:none;font-weight:700;font-size:12px;padding-top:2px}
+.ans-row .s.si{color:var(--ok)} .ans-row .s.no{color:var(--crit)} .ans-row .s.na{color:var(--muted)}
+.ans-row .tx{flex:1;min-width:0}
+.ans-row .tx em{display:block;color:var(--muted);font-size:13px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.kv div{font-size:14px} .kv b{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.cred{border:1px dashed var(--gold);background:var(--gold-soft);border-radius:10px;padding:14px;display:grid;gap:6px;font-size:15px}
+.cred .mono{font-size:16px;user-select:all}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);padding:11px 16px;border-radius:8px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:70;display:grid;place-items:center;padding:16px;cursor:zoom-out}
+.lightbox img{max-height:90vh;border-radius:8px}
+.loading{padding:60px 16px;text-align:center;color:var(--muted)}
+#printArea{display:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:560px){h1{font-size:23px}.crest img{height:46px}.club{font-size:19px}.who .nm,.who .rolechip{display:none}.holes,.heat{gap:4px}.hole{font-size:12px}}
+@media print{
+  body{background:#fff;color:#000}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block!important;font-size:12px}
+  #printArea .phead{display:flex;gap:16px;align-items:center;border-bottom:2px solid #123d2a;padding-bottom:10px;margin-bottom:12px}
+  #printArea .phead img{height:70px}
+  #printArea h1{font-size:20px}
+  #printArea table{min-width:0;font-size:11px}
+  #printArea td,#printArea th{padding:4px 6px}
+  #printArea .sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}
+  #printArea .sig div{border-top:1px solid #000;padding-top:4px}
+}
+</style>
+</head>
+<body>
+
+<div id="screenLoading" class="loading">Cargando…</div>
+
+<section id="screenLogin" class="login wrap" hidden>
+  <form class="login-card" id="loginForm" novalidate>
+    <div class="login-logo"><img src="logo.png" alt="Santa Maria Golf Club"></div>
+    <div><h1>Control de Marshals</h1><p class="sub">Ingrese con el usuario que le asignó Gerencia.</p></div>
+    <label class="f">Usuario<input type="text" id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="ej. jperez"></label>
+    <label class="f">Contraseña<input type="password" id="lgPass" autocomplete="current-password"></label>
+    <div class="err" id="lgErr" role="alert"></div>
+    <button class="btn primary block" id="lgBtn" type="submit">Entrar</button>
+    <p class="hint" style="text-align:center;margin:0">¿Olvidó su contraseña? Pídale a Gerencia que la restablezca.</p>
+    <button class="link" type="button" id="lgSetup" hidden style="justify-self:center">Configuración inicial de Gerencia</button>
+  </form>
+  <form class="login-card" id="setupForm" hidden novalidate>
+    <div class="login-logo"><img src="logo.png" alt="Santa Maria Golf Club"></div>
+    <div><h1>Configuración inicial</h1><p class="sub">Cree la primera cuenta de Gerencia. Solo funciona con el correo autorizado y una sola vez.</p></div>
+    <label class="f">Nombre completo<input type="text" id="suName" autocomplete="name"></label>
+    <label class="f">Correo autorizado<input type="text" id="suMail" autocomplete="email" autocapitalize="none" inputmode="email"></label>
+    <label class="f">Contraseña (mínimo 8 caracteres)<input type="password" id="suPass" autocomplete="new-password"></label>
+    <div class="err" id="suErr" role="alert"></div>
+    <button class="btn primary block" id="suBtn" type="submit">Crear cuenta de Gerencia</button>
+    <button class="link" type="button" id="suBack" style="justify-self:center">Volver al acceso</button>
+  </form>
+</section>
+
+<section id="screenBlocked" class="login wrap" hidden>
+  <div class="login-card">
+    <div class="login-logo"><img src="logo.png" alt="Santa Maria Golf Club"></div>
+    <h1>Cuenta desactivada</h1>
+    <p class="sub">Su usuario existe pero no está activo. Contacte al Gerente de Operaciones.</p>
+    <button class="btn block" type="button" data-logout>Cerrar sesión</button>
+  </div>
+</section>
+
+<div id="screenApp" hidden>
+  <header class="top">
+    <div class="wrap">
+      <div class="brandrow">
+        <div class="crest"><img src="logo.png" alt="Santa Maria Golf Club"></div>
+        <div class="club">Marshals<small>Control operativo</small></div>
+        <div class="who">
+          <span class="nm" id="whoName"></span><span class="rolechip" id="whoRole"></span>
+          <button class="menubtn" id="menuBtn" type="button" aria-label="Menú de la cuenta" aria-expanded="false">☰</button>
+          <div class="menu" id="menu" hidden>
+            <div class="who-line" id="menuWho"></div>
+            <button type="button" id="mPass">Cambiar mi contraseña</button>
+            <button type="button" data-logout>Cerrar sesión</button>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs" role="tablist" id="tabs">
+        <button class="tab" role="tab" data-view="turno" aria-selected="true">Mi turno</button>
+        <button class="tab" role="tab" data-view="incidencias" aria-selected="false">Incidencias <span class="count" id="cntInc">0</span></button>
+        <button class="tab" role="tab" data-view="gerencia" aria-selected="false" data-ger hidden>Gerencia</button>
+        <button class="tab" role="tab" data-view="equipo" aria-selected="false" data-ger hidden>Equipo</button>
+        <button class="tab" role="tab" data-view="protocolo" aria-selected="false">Protocolo</button>
+      </nav>
+    </div>
+  </header>
+  <div class="alert" id="alert" hidden><div class="wrap"><span id="alertText"></span><button id="alertBtn" type="button">Ver críticas</button></div></div>
+  <div class="netbar" id="netbar" hidden><div class="wrap" id="netText">Sin conexión. Sus respuestas se guardan en el teléfono y se enviarán al recuperar señal.</div></div>
+  <main class="wrap">
+    <section class="view" id="v-turno"></section>
+    <section class="view" id="v-incidencias" hidden></section>
+    <section class="view" id="v-gerencia" hidden></section>
+    <section class="view" id="v-equipo" hidden></section>
+    <section class="view" id="v-protocolo" hidden></section>
+  </main>
+</div>
+
+<div id="overlayRoot"></div>
+<div id="printArea"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ===================== Configuración ===================== */
+const SB_URL = "https://kqupzmmudvegropbtbwu.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxdXB6bW11ZHZlZ3JvcGJ0Ynd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwOTQ0NjksImV4cCI6MjEwNzY3MDQ2OX0.o-2D4npIhzS9L2cuuFFmrdLmXFeUQi8jnd0wPD5niXg";
+const XLSX_URL = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+
+const TURNOS = {apertura:"Apertura · 5:00 a. m. – 1:00 p. m.", cierre:"Cierre · 11:00 a. m. – 7:00 p. m."};
+const TURNO_CORTO = {apertura:"Apertura", cierre:"Cierre"};
+const CATS = {ritmo_juego:"Ritmo de juego", campo_carritos:"Campo y carritos", agronomia_riego:"Agronomía y riego", seguridad:"Seguridad", instalaciones:"Instalaciones", atencion_miembros:"Atención a miembros"};
+const ETAPAS = {deteccion:"Detección", comunicacion:"Comunicación", seguimiento:"Seguimiento", escalamiento:"Escalamiento"};
+const NOTIF = {gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Operaciones de Golf", starter:"Starter", mantenimiento:"Mantenimiento", ninguno:"Ninguno aún"};
+const PRIO = {critica:{l:"Crítica",c:"p-crit"}, alta:{l:"Alta",c:"p-alta"}, ordinaria:{l:"Ordinaria",c:"p-ord"}};
+const ROLES = {marshal:"Marshal", gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Op. de Golf", admin:"Administrador"};
+const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
+const VAL = {si:"Sí", no:"No", na:"N/A"};
+
+/* ===================== Utilidades ===================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const hoyISO = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const diasAtras = n => hoyISO(new Date(Date.now() - n*864e5));
+const hora = iso => { if (!iso) return ""; const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fechaDe = f => { const [y,m,d] = f.split("-").map(Number); return new Date(y, m-1, d); };
+const fechaLarga = f => fechaDe(f).toLocaleDateString("es-PA", {weekday:"long", day:"numeric", month:"long"});
+const fechaCorta = f => f ? fechaDe(f).toLocaleDateString("es-PA", {day:"2-digit", month:"short"}) : "";
+const turnoPorHora = () => new Date().getHours() < 11 ? "apertura" : "cierre";
+const ubic = i => i.ubicacion === "hoyo" ? "Hoyo " + i.hoyo : i.ubicacion === "instalaciones" ? "Instalaciones" : "General";
+const plural = (n, s, p) => `${n} ${n === 1 ? s : (p || s + "s")}`;
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 3200); }
+function lsGet(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
+function lsSet(k, v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function tempPass(){ const w = ["Fairway","Green","Birdie","Eagle","Bunker","Tee","Par","Hoyo"]; return w[Math.floor(Math.random()*w.length)] + "-" + String(Math.floor(1000 + Math.random()*9000)) + "-" + "SMGC"; }
+function errMsg(e){
+  const m = (e && (e.message || e.error_description || e.error)) || String(e || "");
+  if (/Failed to fetch|NetworkError|network/i.test(m)) return "Sin conexión. Intente de nuevo cuando tenga señal.";
+  return m;
+}
+
+/* ===================== Estado ===================== */
+const sb = supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:true, autoRefreshToken:true, storageKey:"smgc-marshals-auth"}});
+const S = {
+  me:null, dominio:null, esGer:false, view:"turno",
+  areas:[], items:[], perfiles:{},
+  turno: turnoPorHora(), fecha: hoyISO(), report:null, resp:{}, valid:null, handoff:null,
+  pend:{resp:{}, rep:{}}, flushing:false, online:navigator.onLine, lastSaved:null,
+  inc:[], incLoaded:false, incFiltro:{estado:"abierta", prio:"todas"}, fotoUrls:{},
+  ger:{desde: diasAtras(6), hasta: hoyISO(), marshal:"todos", turno:"todos"}, gerData:null,
+  openAreas:null,
+};
+
+/* ===================== Arranque y acceso ===================== */
+async function boot(){
+  fnStaff({accion:"estado"}).then(r => { S.dominio = r.dominio; $("#lgSetup").hidden = !!r.hayGerente; }).catch(()=>{});
+  const { data } = await sb.auth.getSession();
+  if (data.session) await entrar(); else mostrar("login");
+  sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") { mostrar("login"); } });
+}
+function mostrar(p){ ["Loading","Login","Blocked","App"].forEach(x => $("#screen"+x).hidden = x.toLowerCase() !== p); }
+async function fnStaff(body){
+  const { data, error } = await sb.functions.invoke("staff", {body});
+  if (error) {
+    let msg = error.message;
+    try { const j = await error.context.json(); if (j && j.error) msg = j.error; } catch(e){}
+    throw new Error(msg);
+  }
+  return data;
+}
+
+$("#loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const u = $("#lgUser").value.trim().toLowerCase(), p = $("#lgPass").value;
+  const err = $("#lgErr"); err.textContent = "";
+  if (!u || !p) { err.textContent = "Escriba su usuario y contraseña."; return; }
+  if (!u.includes("@") && !S.dominio) { try { S.dominio = (await fnStaff({accion:"estado"})).dominio; } catch(x){ err.textContent = errMsg(x); return; } }
+  const email = u.includes("@") ? u : `${u}@${S.dominio}`;
+  $("#lgBtn").disabled = true;
+  const { error } = await sb.auth.signInWithPassword({email, password:p});
+  $("#lgBtn").disabled = false;
+  if (error) { err.textContent = /Invalid login/i.test(error.message) ? "Usuario o contraseña incorrectos." : errMsg(error); return; }
+  $("#lgPass").value = "";
+  await entrar();
+});
+$("#lgSetup").onclick = () => { $("#loginForm").hidden = true; $("#setupForm").hidden = false; };
+$("#suBack").onclick = () => { $("#loginForm").hidden = false; $("#setupForm").hidden = true; };
+$("#setupForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = $("#suErr"); err.textContent = "";
+  const nombre = $("#suName").value.trim(), correo = $("#suMail").value.trim().toLowerCase(), password = $("#suPass").value;
+  if (!nombre || !correo || password.length < 8) { err.textContent = "Complete los tres campos. La contraseña necesita al menos 8 caracteres."; return; }
+  $("#suBtn").disabled = true;
+  try {
+    await fnStaff({accion:"primer_gerente", nombre, correo, password});
+    const { error } = await sb.auth.signInWithPassword({email:correo, password});
+    if (error) throw error;
+    $("#setupForm").hidden = true; $("#loginForm").hidden = false; $("#lgSetup").hidden = true;
+    await entrar(); toast("Cuenta de Gerencia creada");
+  } catch(x){ err.textContent = errMsg(x); }
+  $("#suBtn").disabled = false;
+});
+document.addEventListener("click", async e => {
+  if (e.target.closest("[data-logout]")) { await guardarAhora(); await sb.auth.signOut(); location.reload(); }
+});
+
+async function entrar(){
+  mostrar("loading");
+  const { data, error } = await sb.rpc("mi_perfil");
+  if (error || !data || !data.length) { await sb.auth.signOut(); mostrar("login"); $("#lgErr").textContent = error ? errMsg(error) : "No se encontró su perfil."; return; }
+  S.me = data[0];
+  if (!S.me.activo) { mostrar("blocked"); return; }
+  S.esGer = GERENCIA.includes(S.me.rol);
+  document.querySelectorAll("[data-ger]").forEach(t => t.hidden = !S.esGer);
+  $("#whoName").textContent = S.me.nombre; $("#whoRole").textContent = S.esGer ? "Gerencia" : "Marshal"; $("#whoRole").classList.toggle("g", S.esGer);
+  $("#menuWho").textContent = `${S.me.nombre} · ${ROLES[S.me.rol]}${S.me.usuario ? " · " + S.me.usuario : ""}`;
+  try {
+    const [a, it, pf] = await Promise.all([
+      sb.from("areas_checklist").select("*").order("orden"),
+      sb.from("items_checklist").select("*").eq("activo", true).order("orden"),
+      sb.from("perfiles").select("id,nombre,usuario,rol,activo").order("nombre"),
+    ]);
+    if (a.error || it.error || pf.error) throw (a.error || it.error || pf.error);
+    S.areas = a.data.map(x => ({...x, items: it.data.filter(i => i.area === x.codigo)}));
+    S.items = S.areas.flatMap(x => x.items);
+    S.perfiles = Object.fromEntries(pf.data.map(p => [p.id, p]));
+  } catch(x){ mostrar("app"); $("#v-turno").innerHTML = `<div class="empty"><strong>No se pudo cargar el checklist</strong>${esc(errMsg(x))}</div>`; return; }
+  mostrar("app");
+  const pendLocal = lsGet(pendKey());
+  if (pendLocal) { S.pend = pendLocal; }
+  await cargarTurno();
+  cargarIncidencias();
+  suscribir();
+  let v = "turno"; try { v = localStorage.getItem("smgc_view") || "turno"; } catch(e){}
+  if ((v === "gerencia" || v === "equipo") && !S.esGer) v = "turno";
+  go(v);
+  if (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length) flush();
+}
+const nm = id => (S.perfiles[id] && S.perfiles[id].nombre) || "—";
+
+/* ===================== Navegación y menú ===================== */
+$("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); if (b) go(b.dataset.view); });
+function go(v){
+  S.view = v;
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
+  ["turno","incidencias","gerencia","equipo","protocolo"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo})[v]();
+  try { localStorage.setItem("smgc_view", v); } catch(e){}
+  window.scrollTo({top:0});
+}
+$("#alertBtn").onclick = () => { S.incFiltro = {estado:"abierta", prio:"critica"}; go("incidencias"); };
+$("#menuBtn").onclick = e => { e.stopPropagation(); const m = $("#menu"); m.hidden = !m.hidden; $("#menuBtn").setAttribute("aria-expanded", !m.hidden); };
+document.addEventListener("click", e => { if (!e.target.closest(".who")) { $("#menu").hidden = true; $("#menuBtn").setAttribute("aria-expanded", "false"); } });
+$("#mPass").onclick = () => {
+  $("#menu").hidden = true;
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Cambiar mi contraseña</h2><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <label class="f">Nueva contraseña (mínimo 8 caracteres)<input type="password" id="np1" autocomplete="new-password"></label>
+    <label class="f">Repita la contraseña<input type="password" id="np2" autocomplete="new-password"></label>
+    <div class="err" id="npErr"></div><button class="btn primary" id="npOk" type="button">Guardar contraseña</button>`);
+  $("#npOk").onclick = async () => {
+    const a = $("#np1").value, b = $("#np2").value;
+    if (a.length < 8) { $("#npErr").textContent = "Use al menos 8 caracteres."; return; }
+    if (a !== b) { $("#npErr").textContent = "Las contraseñas no coinciden."; return; }
+    const { error } = await sb.auth.updateUser({password:a});
+    if (error) { $("#npErr").textContent = errMsg(error); return; }
+    closeSheet(); toast("Contraseña actualizada");
+  };
+};
+
+/* ===================== Mi turno ===================== */
+const pendKey = () => S.me ? `smgc_pend_${S.me.id}` : "smgc_pend";
+async function cargarTurno(){
+  S.fecha = hoyISO();
+  const [rep, prev] = await Promise.all([
+    sb.from("reportes_turno").select("*").eq("fecha", S.fecha).eq("turno", S.turno).eq("marshal_id", S.me.id).maybeSingle(),
+    sb.from("reportes_turno").select("id,marshal_id,fecha,turno,pendientes,firmado_en").eq("estado","firmado").order("firmado_en", {ascending:false}).limit(3),
+  ]);
+  S.report = rep.data || null; S.resp = {}; S.valid = null;
+  if (S.report) {
+    const [r, v] = await Promise.all([
+      sb.from("respuestas_checklist").select("*").eq("reporte_id", S.report.id),
+      sb.from("validaciones").select("*").eq("reporte_id", S.report.id).maybeSingle(),
+    ]);
+    (r.data || []).forEach(x => S.resp[x.item_id] = x); S.valid = v.data || null;
+  }
+  // Cambios guardados en el teléfono que aún no llegaron al servidor
+  if (S.pend.fecha === S.fecha && S.pend.turno === S.turno) {
+    Object.assign(S.resp, S.pend.resp);
+    if (S.report) Object.assign(S.report, S.pend.rep);
+  } else if (S.pend.fecha && (S.pend.fecha !== S.fecha || S.pend.turno !== S.turno) && !Object.keys(S.pend.resp).length && !Object.keys(S.pend.rep).length) {
+    S.pend = {resp:{}, rep:{}};
+  }
+  S.handoff = (prev.data || []).find(x => !S.report || x.id !== S.report.id) || null;
+}
+const draft = () => S.report || Object.assign({hoyos:[], vehiculo:"", radio:"", observaciones:"", pendientes:"", estado:"borrador"}, S.pend.fecha === S.fecha && S.pend.turno === S.turno ? S.pend.rep : {});
+function stats(resp){
+  let si=0,no=0,na=0,naSinJ=0;
+  for (const it of S.items) { const r = resp[it.id]; if (!r) continue; if (r.valor==="si") si++; else if (r.valor==="no") no++; else { na++; if (!(r.nota||"").trim()) naSinJ++; } }
+  const answered = si+no+na; return {si,no,na,naSinJ,answered,total:S.items.length,cumpl: answered ? Math.round(100*(si+na-naSinJ)/answered) : 0};
+}
+function renderTurno(){
+  const v = $("#v-turno");
+  const ex = v.querySelectorAll("#areas details"); if (ex.length) S.openAreas = [...ex].filter(x => x.open).map(x => x.dataset.a);
+  const d = draft(), firmado = d.estado === "firmado", st = stats(S.resp);
+  const misInc = S.inc.filter(i => S.report && i.reporte_id === S.report.id);
+  const abiertas = S.inc.filter(i => i.estado === "abierta");
+  const h = S.handoff;
+  v.innerHTML = `
+  <div class="head">
+    <div><div class="eyebrow">${esc(TURNOS[S.turno])}</div><h1>${esc(fechaLarga(S.fecha))}</h1>
+    <p class="sub">${firmado ? (S.valid ? "Turno firmado y validado por Gerencia." : "Turno firmado. Pendiente de validación del Gerente de Operaciones.") : "Responda cada actividad con Sí, No o N/A. Las respuestas N/A necesitan justificación."}</p></div>
+    <div class="statusbar">${firmado ? `<span class="pill ${S.valid ? "p-ok" : "p-gold"}">${S.valid ? "Validado" : "Firmado"}</span>` : `<span class="pill p-draft">Borrador</span><span class="saved" id="saveStatus"></span>`}</div>
+  </div>
+  ${h ? `<div class="handoff"><div class="eyebrow">Entrega del turno anterior</div>
+    <div><b>${esc(nm(h.marshal_id))}</b> · ${esc(fechaCorta(h.fecha))} · ${esc(TURNO_CORTO[h.turno])} · firmado ${hora(h.firmado_en)}</div>
+    <div>${h.pendientes ? esc(h.pendientes) : "<span class='hint'>Sin pendientes anotados.</span>"}</div>
+    <div class="hint">${plural(abiertas.length,"incidencia abierta","incidencias abiertas")} en el campo${abiertas.some(i => i.prioridad === "critica") ? " · <b style='color:var(--crit)'>incluye críticas</b>" : ""}.</div></div>` : ""}
+  <div class="grid2 turno-grid">
+    <div class="panel g-asig"><h2>Asignación del turno</h2>
+        <div class="fields">
+          <label class="f">Turno<select id="fTurno">${Object.entries(TURNO_CORTO).map(([k,l]) => `<option value="${k}" ${k===S.turno?"selected":""}>${l} · ${k==="apertura"?"5–13 h":"11–19 h"}</option>`).join("")}</select></label>
+          <label class="f">Vehículo<input type="text" id="fVeh" value="${esc(d.vehiculo)}" placeholder="Ej. Carrito M-03" ${firmado?"disabled":""}></label>
+          <label class="f">Radio<input type="text" id="fRadio" value="${esc(d.radio)}" placeholder="Ej. Canal 4 · R-07" ${firmado?"disabled":""}></label>
+        </div>
+        <div style="margin-top:14px"><div class="hint" id="holesHint" style="margin-bottom:6px">Hoyos asignados (${(d.hoyos||[]).length}/18) · toque para marcar</div><div class="holes" id="holes"></div></div>
+    </div>
+    <div class="stack g-check">
+      <div class="progress panel" style="padding:12px 16px"><span class="mono" id="progTxt">${st.answered}/${st.total}</span><div class="bar"><i id="progBar" style="width:${st.total ? Math.round(100*st.answered/st.total) : 0}%"></i></div><span class="mono" id="cumplTxt" title="Cumplimiento">${st.cumpl}%</span></div>
+      <div id="areas" class="stack" style="gap:10px"></div>
+    </div>
+    <div class="stack g-side" style="gap:16px">
+      <div class="panel"><h2>Incidencias de este turno <span class="pill p-ord">${misInc.length}</span></h2>
+        ${misInc.length ? `<div class="inc-list">${misInc.slice(0,4).map(incCard).join("")}</div>` : `<p class="hint" style="margin:0 0 10px">Registre cada anomalía, intervención por ritmo de juego o queja en el momento.</p>`}
+        <button class="btn primary block" id="btnNewInc" style="margin-top:10px" type="button">Registrar incidencia</button>
+      </div>
+      <div class="panel"><h2>Cierre del turno</h2>
+        <div class="stack" style="gap:10px">
+          <label class="f">Observaciones<textarea id="fObs" ${firmado?"disabled":""} placeholder="Condiciones generales, comentarios de miembros…">${esc(d.observaciones)}</textarea></label>
+          <label class="f">Pendientes para el siguiente turno<textarea id="fPend" ${firmado?"disabled":""} placeholder="Restricciones vigentes, grupos pendientes, reparaciones en curso…">${esc(d.pendientes)}</textarea></label>
+          ${firmado ? `<div class="callout">Firmado a las ${hora(d.firmado_en)}.${S.valid ? ` Validado a las ${hora(S.valid.validado_en)} por ${esc(nm(S.valid.validado_por))}${S.valid.observaciones ? ": " + esc(S.valid.observaciones) : "."}` : ""}</div>`
+                    : `<div id="signHint" class="hint"></div><button class="btn gold" id="btnSign" type="button">Firmar reporte del turno</button>`}
+        </div>
+      </div>
+    </div>
+  </div>`;
+  renderHoles(firmado); renderAreas(firmado); updateSaveStatus(); updateSignHint(); bindIncCards(v);
+  $("#fTurno").onchange = async e => { await guardarAhora(); S.turno = e.target.value; S.openAreas = null; $("#v-turno").innerHTML = `<div class="loading">Cargando turno…</div>`; await cargarTurno(); renderTurno(); };
+  $("#btnNewInc").onclick = () => openIncForm();
+  if (firmado) return;
+  $("#fVeh").oninput = e => setRep({vehiculo:e.target.value});
+  $("#fRadio").oninput = e => setRep({radio:e.target.value});
+  $("#fObs").oninput = e => setRep({observaciones:e.target.value});
+  $("#fPend").oninput = e => setRep({pendientes:e.target.value});
+  $("#btnSign").onclick = firmar;
+}
+function renderHoles(ro){
+  const el = $("#holes"), d = draft(); let h = `<div class="nine">Ida · 1–9</div>`;
+  for (let i = 1; i <= 18; i++) { if (i === 10) h += `<div class="nine">Vuelta · 10–18</div>`; h += `<button type="button" class="hole" data-h="${i}" aria-pressed="${(d.hoyos||[]).includes(i)}" ${ro?"disabled":""}>${i}</button>`; }
+  el.innerHTML = h;
+  if (!ro) el.onclick = e => {
+    const b = e.target.closest(".hole"); if (!b) return;
+    const n = +b.dataset.h, hs = [...(draft().hoyos || [])]; const i = hs.indexOf(n);
+    i >= 0 ? hs.splice(i,1) : hs.push(n); hs.sort((a,b) => a-b);
+    b.setAttribute("aria-pressed", i < 0); setRep({hoyos:hs});
+    $("#holesHint").textContent = `Hoyos asignados (${hs.length}/18) · toque para marcar`;
+  };
+}
+function renderAreas(ro){
+  const el = $("#areas");
+  el.innerHTML = S.areas.map((a, ai) => {
+    const n = a.items.filter(it => S.resp[it.id]).length;
+    const open = S.openAreas ? S.openAreas.includes(a.codigo) : (!ro && n < a.items.length && S.areas.slice(0, ai).every(p => p.items.every(it => S.resp[it.id])));
+    return `<details class="area" data-a="${a.codigo}" ${open?"open":""}>
+      <summary><span class="letter">${a.codigo}</span><span class="aname">${esc(a.nombre)}</span><span class="acount ${n===a.items.length?"done":""}" data-cnt="${a.codigo}">${n}/${a.items.length}</span><span class="chev">›</span></summary>
+      ${a.nota ? `<div class="note-area">${esc(a.nota)}</div>` : ""}
+      ${a.items.map(it => itemHTML(it, S.resp[it.id], ro)).join("")}</details>`;
+  }).join("");
+  if (ro) return;
+  el.onclick = e => {
+    const b = e.target.closest(".seg button"); if (!b) return;
+    const id = b.closest(".item").dataset.i, prev = S.resp[id] || {};
+    setResp(id, {valor:b.dataset.v, nota:prev.nota || null, respondido_en:new Date().toISOString()});
+    refreshItem(id);
+  };
+  el.oninput = e => {
+    if (!e.target.classList.contains("note")) return;
+    const id = e.target.closest(".item").dataset.i; const r = S.resp[id]; if (!r) return;
+    setResp(id, {...r, nota:e.target.value});
+    e.target.classList.toggle("req", r.valor === "na" && !e.target.value.trim()); updateProgress();
+  };
+}
+function itemHTML(it, r, ro){
+  const v = r && r.valor, show = v === "na" || v === "no" || (r && r.nota);
+  return `<div class="item" data-i="${it.id}"><div class="item-row"><div class="item-text">${esc(it.texto)}<span class="item-time">${it.id}${r ? " · " + hora(r.respondido_en) : ""}</span></div>
+    <div class="seg" role="group" aria-label="Respuesta">${Object.entries(VAL).map(([k,l]) => `<button type="button" data-v="${k}" aria-pressed="${v===k}" ${ro?"disabled":""}>${l}</button>`).join("")}</div></div>
+    ${show ? `<input type="text" class="note ${v==="na" && !(r.nota||"").trim() ? "req" : ""}" id="n-${it.id}" value="${esc(r.nota||"")}" placeholder="${v==="na" ? "Justificación obligatoria para N/A" : "Observación: qué se encontró, a quién se notificó"}" ${ro?"disabled":""}>` : ""}</div>`;
+}
+function refreshItem(id){
+  const it = S.items.find(x => x.id === id), old = document.querySelector(`.item[data-i="${id}"]`);
+  const w = document.createElement("div"); w.innerHTML = itemHTML(it, S.resp[id], false); old.replaceWith(w.firstElementChild);
+  if (S.resp[id].valor !== "si") { const n = $("#n-"+id); if (n && !n.value) n.focus(); }
+  updateProgress();
+}
+function updateProgress(){
+  const st = stats(S.resp); $("#progTxt").textContent = `${st.answered}/${st.total}`; $("#progBar").style.width = Math.round(100*st.answered/st.total) + "%"; $("#cumplTxt").textContent = st.cumpl + "%";
+  S.areas.forEach(a => { const n = a.items.filter(it => S.resp[it.id]).length; const c = document.querySelector(`[data-cnt="${a.codigo}"]`); if (c) { c.textContent = `${n}/${a.items.length}`; c.classList.toggle("done", n === a.items.length); } });
+  updateSignHint();
+}
+function missingForSign(){
+  const d = draft(), st = stats(S.resp), m = [];
+  if (!(d.hoyos||[]).length) m.push("marcar los hoyos asignados");
+  if (!(d.vehiculo||"").trim()) m.push("anotar el vehículo");
+  if (!(d.radio||"").trim()) m.push("anotar el radio");
+  if (st.answered < st.total) m.push(`responder ${plural(st.total - st.answered, "actividad", "actividades")}`);
+  if (st.naSinJ) m.push(`justificar ${st.naSinJ} N/A`);
+  return m;
+}
+function updateSignHint(){
+  const h = $("#signHint"), b = $("#btnSign"); if (!h || !b) return;
+  const m = missingForSign();
+  h.textContent = m.length ? "Para firmar falta: " + m.join(", ") + "." : "Todo listo. Al firmar, el reporte pasa a validación del Gerente de Operaciones y ya no se puede editar.";
+  h.classList.toggle("warn", !!m.length); b.disabled = !!m.length;
+}
+
+/* --- Guardado con cola: funciona aunque se pierda la señal en el campo --- */
+function marcarPend(){ S.pend.fecha = S.fecha; S.pend.turno = S.turno; lsSet(pendKey(), S.pend); }
+function setResp(id, row){ S.resp[id] = row; S.pend.resp[id] = row; marcarPend(); programarFlush(); }
+function setRep(patch){ if (S.report) Object.assign(S.report, patch); Object.assign(S.pend.rep, patch); marcarPend(); programarFlush(); updateSignHint(); }
+function programarFlush(){ updateSaveStatus(); clearTimeout(programarFlush._t); programarFlush._t = setTimeout(flush, 700); }
+async function asegurarReporte(){
+  if (S.report && S.report.id) return S.report;
+  const base = {fecha:S.fecha, turno:S.turno, marshal_id:S.me.id, hoyos:[], vehiculo:null, radio:null, ...S.pend.rep};
+  let { data, error } = await sb.from("reportes_turno").insert(base).select().single();
+  if (error && error.code === "23505") ({ data, error } = await sb.from("reportes_turno").select("*").eq("fecha",S.fecha).eq("turno",S.turno).eq("marshal_id",S.me.id).single());
+  if (error) throw error;
+  S.report = data; return data;
+}
+async function flush(){
+  if (S.flushing) { programarFlush(); return; }
+  const respRows = Object.entries(S.pend.resp), repPatch = {...S.pend.rep};
+  if (!respRows.length && !Object.keys(repPatch).length) { updateSaveStatus(); return; }
+  if (S.pend.fecha && (S.pend.fecha !== S.fecha || S.pend.turno !== S.turno)) { await flushOtro(); return; }
+  S.flushing = true; updateSaveStatus();
+  try {
+    const rep = await asegurarReporte();
+    if (Object.keys(repPatch).length) { const { error } = await sb.from("reportes_turno").update(repPatch).eq("id", rep.id); if (error) throw error; }
+    if (respRows.length) {
+      const rows = respRows.map(([item_id, r]) => ({reporte_id:rep.id, item_id, valor:r.valor, nota:r.nota || null, respondido_en:r.respondido_en}));
+      const { error } = await sb.from("respuestas_checklist").upsert(rows); if (error) throw error;
+    }
+    respRows.forEach(([k, r]) => { if (S.pend.resp[k] === r) delete S.pend.resp[k]; });
+    Object.keys(repPatch).forEach(k => { if (S.pend.rep[k] === repPatch[k]) delete S.pend.rep[k]; });
+    lsSet(pendKey(), (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length) ? S.pend : null);
+    S.lastSaved = new Date().toISOString(); setOnline(true);
+  } catch(e) {
+    const red = /fetch|network/i.test(errMsg(e)) || !navigator.onLine;
+    if (red) { setOnline(false); setTimeout(flush, 8000); }
+    else toast("No se pudo guardar: " + errMsg(e));
+  }
+  S.flushing = false; updateSaveStatus();
+  if (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length) programarFlush();
+}
+async function flushOtro(){ // cambios pendientes de otro turno o día: se envían a su propio reporte
+  const p = S.pend; S.flushing = true;
+  try {
+    let { data: rep } = await sb.from("reportes_turno").select("*").eq("fecha",p.fecha).eq("turno",p.turno).eq("marshal_id",S.me.id).maybeSingle();
+    if (!rep) { const r = await sb.from("reportes_turno").insert({fecha:p.fecha, turno:p.turno, marshal_id:S.me.id, ...p.rep}).select().single(); if (r.error) throw r.error; rep = r.data; }
+    else if (Object.keys(p.rep).length && rep.estado === "borrador") await sb.from("reportes_turno").update(p.rep).eq("id", rep.id);
+    const rows = Object.entries(p.resp).map(([item_id, r]) => ({reporte_id:rep.id, item_id, valor:r.valor, nota:r.nota||null, respondido_en:r.respondido_en}));
+    if (rows.length && rep.estado === "borrador") await sb.from("respuestas_checklist").upsert(rows);
+    S.pend = {resp:{}, rep:{}}; lsSet(pendKey(), null); setOnline(true);
+  } catch(e){ setOnline(false); setTimeout(flush, 8000); }
+  S.flushing = false;
+}
+async function guardarAhora(){ clearTimeout(programarFlush._t); if (S.me && (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length)) await flush(); }
+function setOnline(on){ S.online = on; $("#netbar").hidden = on; updateSaveStatus(); }
+window.addEventListener("online", () => { setOnline(true); flush(); cargarIncidencias(); });
+window.addEventListener("offline", () => setOnline(false));
+function updateSaveStatus(){
+  const el = $("#saveStatus"); if (!el) return;
+  const hay = Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length;
+  el.classList.toggle("off", !S.online && hay);
+  el.textContent = S.flushing ? "Guardando…" : (!S.online && hay) ? "Guardado en el teléfono" : hay ? "Cambios por guardar" : S.lastSaved ? "Guardado " + hora(S.lastSaved) : "Se guarda automáticamente";
+}
+async function firmar(){
+  if (missingForSign().length) return;
+  $("#btnSign").disabled = true;
+  await guardarAhora();
+  if (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length) { toast("Sin conexión. Firme cuando recupere señal."); updateSignHint(); return; }
+  const { error } = await sb.rpc("firmar_reporte", {p_reporte:S.report.id});
+  if (error) { toast(errMsg(error)); updateSignHint(); return; }
+  await cargarTurno(); renderTurno(); toast("Reporte firmado. Gracias por su turno.");
+}
+
+/* ===================== Incidencias ===================== */
+async function cargarIncidencias(){
+  const { data, error } = await sb.from("incidencias").select("*, incidencia_fotos(id,storage_path)")
+    .or(`estado.eq.abierta,fecha.gte.${diasAtras(30)}`).order("creado_en", {ascending:false}).limit(400);
+  if (error) return;
+  S.inc = data; S.incLoaded = true;
+  await firmarFotos(data);
+  refreshChrome();
+  if (!$("#overlayRoot").firstChild) { if (S.view === "incidencias") renderIncidencias(); if (S.view === "turno") actualizarTurnoSuave(); }
+}
+function actualizarTurnoSuave(){ const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return; renderTurno(); }
+async function firmarFotos(list){
+  const paths = list.flatMap(i => (i.incidencia_fotos || []).map(f => f.storage_path)).filter(p => !S.fotoUrls[p]);
+  if (!paths.length) return;
+  const { data } = await sb.storage.from("incidencias").createSignedUrls(paths, 6*3600);
+  (data || []).forEach(x => { if (x.signedUrl) S.fotoUrls[x.path] = x.signedUrl; });
+}
+function suscribir(){
+  sb.channel("incidencias-vivo").on("postgres_changes", {event:"*", schema:"public", table:"incidencias"}, payload => {
+    if (payload.eventType === "INSERT" && payload.new.prioridad === "critica" && payload.new.autor_id !== S.me.id) {
+      toast(`Incidencia CRÍTICA · ${ubic(payload.new)}`);
+      try { navigator.vibrate && navigator.vibrate([300,120,300]); } catch(e){}
+    }
+    clearTimeout(suscribir._t); suscribir._t = setTimeout(cargarIncidencias, 400);
+  }).subscribe();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { cargarIncidencias(); flush(); } });
+}
+function refreshChrome(){
+  const ab = S.inc.filter(i => i.estado === "abierta"), cr = ab.filter(i => i.prioridad === "critica");
+  const c = $("#cntInc"); c.textContent = ab.length; c.classList.toggle("crit", cr.length > 0);
+  $("#alert").hidden = !cr.length;
+  if (cr.length) { const l = cr[0]; $("#alertText").textContent = `${plural(cr.length,"incidencia crítica abierta","incidencias críticas abiertas")} · ${ubic(l)}: ${l.descripcion.slice(0,70)}${l.descripcion.length > 70 ? "…" : ""}`; }
+}
+function incCard(i){
+  const p = PRIO[i.prioridad], cerrada = i.estado === "cerrada", fotos = i.incidencia_fotos || [];
+  const puedeCerrar = !cerrada && (i.autor_id === S.me.id || S.esGer);
+  return `<article class="inc ${i.prioridad==="critica"?"crit":i.prioridad==="alta"?"alta":""} ${cerrada?"cerrada":""}">
+    <div class="inc-top"><span class="pill ${p.c}">${p.l}</span><span class="where">${esc(ubic(i))}</span><span class="hint">${esc(CATS[i.categoria])}${i.etapa ? " · " + esc(ETAPAS[i.etapa]) : ""}</span><span class="when">${esc(fechaCorta(i.fecha))} ${hora(i.creado_en)}</span></div>
+    <p>${esc(i.descripcion)}</p>
+    ${i.accion ? `<p class="hint" style="font-size:13px"><b>Acción:</b> ${esc(i.accion)}</p>` : ""}
+    ${fotos.length ? `<div class="photos">${fotos.map(f => S.fotoUrls[f.storage_path] ? `<img src="${esc(S.fotoUrls[f.storage_path])}" alt="Foto de la incidencia" loading="lazy" data-zoom>` : `<span class="ph"></span>`).join("")}</div>` : ""}
+    <div class="meta"><span>${esc(nm(i.autor_id))}</span><span>Notificado: ${esc(NOTIF[i.notificado])}</span>
+      ${cerrada ? `<span class="pill p-ok">Cerrada ${hora(i.cerrado_en)}${i.cerrado_por ? " · " + esc(nm(i.cerrado_por)) : ""}</span>` : `<span class="pill p-gold">Abierta</span>`}
+      ${puedeCerrar ? `<button class="btn small" data-close="${i.id}" type="button">Cerrar</button>` : ""}</div></article>`;
+}
+function bindIncCards(root){ root.querySelectorAll("[data-close]").forEach(b => b.onclick = () => cerrarInc(b.dataset.close)); }
+document.addEventListener("click", e => { const im = e.target.closest("img[data-zoom]"); if (im) { const lb = document.createElement("div"); lb.className = "lightbox"; lb.innerHTML = `<img src="${esc(im.src)}" alt="Foto ampliada">`; lb.onclick = () => lb.remove(); document.body.append(lb); } });
+function cerrarInc(id){
+  const cur = S.inc.find(x => x.id === id);
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Cerrar incidencia</h2><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <p class="hint" style="margin:0;font-size:14px">${esc(ubic(cur))} · ${esc(cur.descripcion)}</p>
+    <label class="f">Acción correctiva final<textarea id="cAcc" placeholder="Qué se hizo y quién lo resolvió">${esc(cur.accion || "")}</textarea></label>
+    <div class="err" id="cErr"></div><button class="btn primary" id="cOk" type="button">Cerrar incidencia</button>`);
+  $("#cOk").onclick = async () => {
+    $("#cOk").disabled = true;
+    const { error } = await sb.from("incidencias").update({estado:"cerrada", cerrado_en:new Date().toISOString(), cerrado_por:S.me.id, accion:$("#cAcc").value.trim() || null}).eq("id", id);
+    if (error) { $("#cErr").textContent = errMsg(error); $("#cOk").disabled = false; return; }
+    closeSheet(); toast("Incidencia cerrada"); cargarIncidencias();
+  };
+}
+function openIncForm(){
+  const st = {prioridad:"ordinaria", fotos:[]};
+  const ubOpts = `<option value="">Seleccione…</option>${Array.from({length:18}, (_, i) => `<option value="${i+1}">Hoyo ${i+1}</option>`).join("")}<option value="instalaciones">Instalaciones</option><option value="general">General</option>`;
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">Nueva incidencia · ${hora(new Date().toISOString())}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Registrar en el campo</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <div><div class="hint" style="margin-bottom:6px">Prioridad</div><div class="prio-pick" id="iPrio">${Object.entries(PRIO).map(([k,p]) => `<button type="button" data-p="${k}" aria-pressed="${k==="ordinaria"}">${p.l}</button>`).join("")}</div></div>
+    <div class="callout" id="iPrioHelp"></div>
+    <div class="fields"><label class="f">Ubicación<select id="iUb">${ubOpts}</select></label>
+      <label class="f">Categoría<select id="iCat">${Object.entries(CATS).map(([k,l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
+      <label class="f" id="iEtapaW">Etapa del protocolo<select id="iEtapa">${Object.entries(ETAPAS).map(([k,l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
+      <label class="f">Notificado a<select id="iNotif">${Object.entries(NOTIF).map(([k,l]) => `<option value="${k}" ${k==="ninguno"?"selected":""}>${l}</option>`).join("")}</select></label></div>
+    <label class="f">Qué ocurre<textarea id="iDesc" placeholder="Situación observada, grupo involucrado, condición del campo…"></textarea></label>
+    <label class="f">Acción tomada<input type="text" id="iAcc" placeholder="Ej. Se pidió cart path only en bordes húmedos"></label>
+    <label class="f">Fotografías<input type="file" id="iFoto" accept="image/*" multiple></label>
+    <div class="photos" id="iFotoPrev"></div>
+    <div class="err" id="iErr"></div>
+    <button class="btn primary" id="iSave" type="button">Guardar incidencia</button>`);
+  const help = {critica:"Comunique de inmediato por radio al Gerente de Operaciones y active el protocolo. Luego registre aquí.", alta:"Avise de inmediato al Gerente de Operaciones y dé seguimiento hasta el cierre.", ordinaria:"Registre y canalice al área responsable."};
+  const setP = p => { st.prioridad = p; document.querySelectorAll("#iPrio button").forEach(b => b.setAttribute("aria-pressed", b.dataset.p === p)); const h = $("#iPrioHelp"); h.textContent = help[p]; h.className = "callout" + (p === "critica" ? " crit" : ""); };
+  setP("ordinaria"); $("#iPrio").onclick = e => { const b = e.target.closest("button"); if (b) setP(b.dataset.p); };
+  const syncE = () => $("#iEtapaW").hidden = $("#iCat").value !== "ritmo_juego"; syncE(); $("#iCat").onchange = syncE;
+  $("#iFoto").onchange = async e => {
+    for (const f of [...e.target.files]) { try { const b = await reducir(f); st.fotos.push(b); const im = document.createElement("img"); im.src = URL.createObjectURL(b); im.alt = "Foto adjunta"; $("#iFotoPrev").append(im); } catch(x){ $("#iErr").textContent = "No se pudo leer una de las fotos."; } }
+    e.target.value = "";
+  };
+  $("#iSave").onclick = async () => {
+    const ub = $("#iUb").value, desc = $("#iDesc").value.trim();
+    if (!ub || !desc) { $("#iErr").textContent = "Indique la ubicación y describa lo que ocurre."; return; }
+    const cat = $("#iCat").value, esHoyo = /^\d+$/.test(ub);
+    $("#iSave").disabled = true; $("#iSave").textContent = "Guardando…";
+    try {
+      let repId = S.report && S.report.id;
+      if (!repId && Object.keys(S.resp).length) { try { repId = (await asegurarReporte()).id; } catch(x){} }
+      const row = {fecha:hoyISO(), turno:S.turno, reporte_id:repId || null, ubicacion: esHoyo ? "hoyo" : ub, hoyo: esHoyo ? +ub : null, categoria:cat, etapa: cat === "ritmo_juego" ? $("#iEtapa").value : null,
+        prioridad:st.prioridad, descripcion:desc, accion:$("#iAcc").value.trim() || null, notificado:$("#iNotif").value, autor_id:S.me.id};
+      const { data, error } = await sb.from("incidencias").insert(row).select().single(); if (error) throw error;
+      let fallidas = 0;
+      for (const b of st.fotos) {
+        const path = `${data.id}/${crypto.randomUUID()}.jpg`;
+        const up = await sb.storage.from("incidencias").upload(path, b, {contentType:"image/jpeg"});
+        if (up.error) { fallidas++; continue; }
+        const r = await sb.from("incidencia_fotos").insert({incidencia_id:data.id, storage_path:path, subido_por:S.me.id}); if (r.error) fallidas++;
+      }
+      closeSheet(); await cargarIncidencias();
+      toast(st.prioridad === "critica" ? "Incidencia CRÍTICA registrada. Confirme el aviso por radio." : fallidas ? `Incidencia registrada; ${plural(fallidas,"foto no se subió","fotos no se subieron")}.` : "Incidencia registrada");
+      if (S.view === "turno") renderTurno();
+    } catch(x){ $("#iErr").textContent = errMsg(x); $("#iSave").disabled = false; $("#iSave").textContent = "Guardar incidencia"; }
+  };
+}
+function reducir(file){ return new Promise((res, rej) => { const img = new Image(), u = URL.createObjectURL(file); img.onload = () => { const m = 1600, s = Math.min(1, m / Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width*s); c.height = Math.round(img.height*s); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); c.toBlob(b => b ? res(b) : rej(new Error("foto")), "image/jpeg", .82); }; img.onerror = () => rej(new Error("foto")); img.src = u; }); }
+function renderIncidencias(){
+  const v = $("#v-incidencias"), f = S.incFiltro;
+  const list = S.inc.filter(i => (f.estado === "todas" || i.estado === f.estado) && (f.prio === "todas" || i.prioridad === f.prio));
+  const ab = S.inc.filter(i => i.estado === "abierta");
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Bitácora del campo</div><h1>Incidencias</h1><p class="sub">${ab.length} abiertas · ${ab.filter(i => i.prioridad==="critica").length} críticas · ${ab.filter(i => i.prioridad==="alta").length} altas · cerradas de los últimos 30 días</p></div>
+    <button class="btn primary" id="btnNewInc2" type="button">Registrar incidencia</button></div>
+    <div class="filters"><div class="chips" id="fEstado">${[["abierta","Abiertas"],["cerrada","Cerradas"],["todas","Todas"]].map(([k,l]) => `<button type="button" class="chip" data-k="${k}" aria-pressed="${f.estado===k}">${l}</button>`).join("")}</div>
+      <div class="chips" id="fPrio">${[["todas","Toda prioridad"],["critica","Crítica"],["alta","Alta"],["ordinaria","Ordinaria"]].map(([k,l]) => `<button type="button" class="chip" data-k="${k}" aria-pressed="${f.prio===k}">${l}</button>`).join("")}</div></div>
+    ${!S.incLoaded ? `<div class="loading">Cargando incidencias…</div>` : list.length ? `<div class="inc-list">${list.map(incCard).join("")}</div>` : `<div class="empty"><strong>${S.inc.length ? "Nada con estos filtros" : "Aún no hay incidencias registradas"}</strong>Cada anomalía, intervención por ritmo de juego o queja que registre un Marshal aparece aquí con su hoyo, prioridad y estado.</div>`}`;
+  $("#fEstado").onclick = e => { const b = e.target.closest(".chip"); if (b) { f.estado = b.dataset.k; renderIncidencias(); } };
+  $("#fPrio").onclick = e => { const b = e.target.closest(".chip"); if (b) { f.prio = b.dataset.k; renderIncidencias(); } };
+  $("#btnNewInc2").onclick = () => openIncForm(); bindIncCards(v);
+}
+
+/* ===================== Gerencia ===================== */
+async function cargarGerencia(){
+  const v = $("#v-gerencia"); if (!S.esGer) return;
+  if (!S.gerData) v.innerHTML = `<div class="loading">Cargando panel…</div>`;
+  const g = S.ger;
+  let qr = sb.from("v_reportes_resumen").select("*").gte("fecha", g.desde).lte("fecha", g.hasta).order("fecha", {ascending:false}).order("turno");
+  let qi = sb.from("incidencias").select("*").gte("fecha", g.desde).lte("fecha", g.hasta);
+  if (g.marshal !== "todos") { qr = qr.eq("marshal_id", g.marshal); qi = qi.eq("autor_id", g.marshal); }
+  if (g.turno !== "todos") { qr = qr.eq("turno", g.turno); qi = qi.eq("turno", g.turno); }
+  const [r, i, c] = await Promise.all([qr, qi, sb.from("v_cobertura_diaria").select("*").gte("fecha", g.desde).lte("fecha", g.hasta)]);
+  if (r.error || i.error) { v.innerHTML = `<div class="empty"><strong>No se pudo cargar el panel</strong>${esc(errMsg(r.error || i.error))}</div>`; return; }
+  S.gerData = {reps:r.data, incs:i.data, cob:c.data || []};
+  renderGerencia();
+}
+const cls = (v, good = 100, warn = 85) => v == null ? "" : v >= good ? "ok" : v >= warn ? "warn" : "crit";
+function kpi(k, v, u, t, c){ return `<div class="kpi"><div class="k">${esc(k)}</div><div class="v ${c}">${v == null ? "—" : v + u}</div><div class="t">${esc(t)}</div></div>`; }
+function renderGerencia(){
+  const v = $("#v-gerencia"), g = S.ger, {reps, incs, cob} = S.gerData;
+  const firm = reps.filter(x => x.estado === "firmado");
+  let resp = 0, ok = 0; firm.forEach(x => { resp += x.respondidas; ok += Math.round((x.cumplimiento_pct || 0) * x.respondidas / 100); });
+  const val = firm.filter(x => x.validado_en).length;
+  const crit = incs.filter(x => x.prioridad === "critica"), critN = crit.filter(x => x.notificado !== "ninguno").length;
+  const cobAvg = cob.length ? Math.round(cob.reduce((a, x) => a + Number(x.cobertura_pct), 0) / cob.length) : null;
+  const perHole = {}; incs.forEach(x => { if (x.hoyo) { const p = perHole[x.hoyo] = perHole[x.hoyo] || {n:0, c:0}; p.n++; if (x.prioridad !== "ordinaria") p.c++; } });
+  const porValidar = firm.filter(x => !x.validado_en).length;
+  const staff = Object.values(S.perfiles).filter(p => p.activo);
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia de Operaciones</div><h1>Panel de control</h1><p class="sub">${esc(fechaCorta(g.desde))} – ${esc(fechaCorta(g.hasta))} · ${plural(reps.length,"reporte")} · ${plural(incs.length,"incidencia")} · ${porValidar} por validar</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="gRefresh" type="button">Actualizar</button><button class="btn" id="gXlsx" type="button">Exportar a Excel</button></div></div>
+    <div class="filters panel" style="padding:12px">
+      <label class="f">Desde<input type="date" id="gDesde" value="${g.desde}"></label><label class="f">Hasta<input type="date" id="gHasta" value="${g.hasta}"></label>
+      <label class="f">Colaborador<select id="gMarshal"><option value="todos">Todos</option>${staff.map(p => `<option value="${p.id}" ${g.marshal===p.id?"selected":""}>${esc(p.nombre)}</option>`).join("")}</select></label>
+      <label class="f">Turno<select id="gTurno"><option value="todos">Ambos</option>${Object.entries(TURNO_CORTO).map(([k,l]) => `<option value="${k}" ${g.turno===k?"selected":""}>${l}</option>`).join("")}</select></label></div>
+    <div class="kpis">
+      ${kpi("Cumplimiento del checklist", resp ? Math.round(100*ok/resp) : null, "%", "Sí + N/A justificadas, sobre lo respondido", cls(resp ? Math.round(100*ok/resp) : null, 95, 85))}
+      ${kpi("Cobertura de hoyos", cobAvg, "%", "Promedio diario de los 18 hoyos · meta 100%", cls(cobAvg))}
+      ${kpi("Turnos validados", firm.length ? Math.round(100*val/firm.length) : null, "%", `${val} de ${firm.length} firmados · meta 100%`, cls(firm.length ? Math.round(100*val/firm.length) : null))}
+      ${kpi("Críticas comunicadas", crit.length ? Math.round(100*critN/crit.length) : null, "%", `${plural(crit.length,"crítica")} · ${crit.filter(x => x.estado==="abierta").length} abiertas`, cls(crit.length ? Math.round(100*critN/crit.length) : null))}
+      ${kpi("Intervenciones de ritmo", incs.filter(x => x.categoria==="ritmo_juego").length, "", `${incs.filter(x => x.etapa==="escalamiento").length} escaladas a Gerencia`, "")}
+      ${kpi("Protección del campo", incs.filter(x => x.categoria==="campo_carritos" || x.categoria==="agronomia_riego").length, "", "Carritos, césped y riego", "")}
+      ${kpi("Atención a miembros", incs.filter(x => x.categoria==="atencion_miembros").length, "", "Quejas, solicitudes y reconocimientos", "")}
+      ${kpi("Incidencias abiertas", incs.filter(x => x.estado==="abierta").length, "", "Del periodo, sin cerrar", incs.some(x => x.estado==="abierta") ? "warn" : "ok")}
+    </div>
+    <div class="grid2">
+      <div class="stack"><h2>Reportes de turno</h2>
+        ${reps.length ? `<div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Turno</th><th>Marshal</th><th>Hoyos</th><th>Cumpl.</th><th>No</th><th>Estado</th></tr></thead><tbody>
+        ${reps.map(x => `<tr class="click" data-r="${x.id}"><td class="num">${esc(fechaCorta(x.fecha))}</td><td>${TURNO_CORTO[x.turno]}</td><td>${esc(x.marshal)}</td><td class="num">${x.hoyos_cubiertos}/18</td>
+          <td class="num">${x.estado === "firmado" ? (x.cumplimiento_pct ?? 0) + "%" : `${x.respondidas}/${S.items.length}`}</td><td class="num">${x.no}</td>
+          <td>${x.estado !== "firmado" ? `<span class="pill p-draft">En curso</span>` : x.validado_en ? `<span class="pill p-ok">Validado</span>` : `<span class="pill p-gold">Por validar</span>`}</td></tr>`).join("")}
+        </tbody></table></div>` : `<div class="empty"><strong>Sin reportes en este periodo</strong>Los checklists que llenen los Marshals en “Mi turno” aparecen aquí para su validación.</div>`}
+      </div>
+      <div class="stack"><h2>Incidencias por hoyo</h2>
+        <div class="panel"><div class="heat">${Array.from({length:18}, (_, i) => { const p = perHole[i+1]; return `<div class="cell ${p ? (p.c ? "l2" : "l1") : ""}"><b>${p ? p.n : "·"}</b>${i+1}</div>`; }).join("")}</div>
+        <p class="hint" style="margin:10px 0 0">Incidencias del periodo por hoyo. Rojo: al menos una crítica o alta.</p></div>
+      </div>
+    </div>`;
+  $("#gDesde").onchange = e => { g.desde = e.target.value || g.desde; cargarGerencia(); };
+  $("#gHasta").onchange = e => { g.hasta = e.target.value || g.hasta; cargarGerencia(); };
+  $("#gMarshal").onchange = e => { g.marshal = e.target.value; cargarGerencia(); };
+  $("#gTurno").onchange = e => { g.turno = e.target.value; cargarGerencia(); };
+  $("#gRefresh").onclick = cargarGerencia; $("#gXlsx").onclick = exportarExcel;
+  v.querySelectorAll("tr[data-r]").forEach(tr => tr.onclick = () => abrirReporte(tr.dataset.r));
+}
+async function abrirReporte(id){
+  openSheet(`<div class="loading">Cargando reporte…</div>`);
+  const [r, x, v, i] = await Promise.all([
+    sb.from("reportes_turno").select("*").eq("id", id).single(),
+    sb.from("respuestas_checklist").select("*").eq("reporte_id", id),
+    sb.from("validaciones").select("*").eq("reporte_id", id).maybeSingle(),
+    sb.from("incidencias").select("*, incidencia_fotos(id,storage_path)").eq("reporte_id", id).order("creado_en"),
+  ]);
+  if (r.error) { closeSheet(); toast(errMsg(r.error)); return; }
+  const d = r.data, resp = Object.fromEntries((x.data || []).map(a => [a.item_id, a])), val = v.data, incs = i.data || [], s = stats(resp);
+  await firmarFotos(incs);
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(TURNOS[d.turno])}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(nm(d.marshal_id))} · ${esc(fechaLarga(d.fecha))}</h2></div><button class="btn ghost x" data-x type="button">Cerrar</button></div>
+    <div class="kv"><div><b>Hoyos</b>${(d.hoyos || []).join(", ") || "—"}</div><div><b>Vehículo</b>${esc(d.vehiculo || "—")}</div><div><b>Radio</b>${esc(d.radio || "—")}</div>
+      <div><b>Cumplimiento</b>${s.cumpl}% · ${s.si} Sí · ${s.no} No · ${s.na} N/A</div><div><b>Firma del Marshal</b>${d.firmado_en ? hora(d.firmado_en) : "Sin firmar"}</div><div><b>Validación</b>${val ? `${esc(nm(val.validado_por))} · ${hora(val.validado_en)}` : "Pendiente"}</div></div>
+    ${d.observaciones ? `<div><b class="hint">Observaciones</b><p style="margin:4px 0 0">${esc(d.observaciones)}</p></div>` : ""}
+    ${d.pendientes ? `<div><b class="hint">Pendientes para el siguiente turno</b><p style="margin:4px 0 0">${esc(d.pendientes)}</p></div>` : ""}
+    ${incs.length ? `<div class="inc-list">${incs.map(incCard).join("")}</div>` : ""}
+    <details ${s.no ? "open" : ""}><summary style="cursor:pointer;font-weight:700">Respuestas del checklist (${s.answered}/${s.total})${s.no ? ` · ${s.no} con “No”` : ""}</summary><div style="margin-top:8px">
+      ${S.areas.map(a => `<div class="eyebrow" style="margin-top:10px">${a.codigo} · ${esc(a.nombre)}</div>` + a.items.map(it => { const q = resp[it.id]; return `<div class="ans-row"><span class="s ${q ? q.valor : ""}">${q ? VAL[q.valor] : "—"}</span><span class="tx">${esc(it.texto)}${q && q.nota ? `<em>${esc(q.nota)}</em>` : ""}</span><span class="mono hint">${q ? hora(q.respondido_en) : ""}</span></div>`; }).join("")).join("")}</div></details>
+    ${val && val.observaciones ? `<div class="callout gold"><b>Observaciones de Gerencia:</b> ${esc(val.observaciones)}</div>` : ""}
+    ${d.estado === "firmado" ? `<div class="stack" style="gap:8px"><label class="f">Observaciones de Gerencia<textarea id="vObs">${esc(val ? val.observaciones || "" : "")}</textarea></label>
+       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn" id="vPdf" type="button">Imprimir / PDF</button>${val ? `<button class="btn danger" id="vUndo" type="button">Retirar validación</button>` : ""}<button class="btn primary" id="vOk" type="button">${val ? "Actualizar validación" : "Validar turno"}</button></div></div>`
+      : `<div class="callout">El Marshal aún no ha firmado este turno.</div>`}`);
+  bindIncCards($("#overlayRoot"));
+  const ok = $("#vOk");
+  if (ok) ok.onclick = async () => {
+    ok.disabled = true;
+    const { error } = await sb.from("validaciones").upsert({reporte_id:id, validado_por:S.me.id, validado_en:new Date().toISOString(), observaciones:$("#vObs").value.trim() || null});
+    if (error) { toast(errMsg(error)); ok.disabled = false; return; }
+    closeSheet(); toast("Turno validado"); cargarGerencia();
+  };
+  const un = $("#vUndo");
+  if (un) un.onclick = async () => { const { error } = await sb.from("validaciones").delete().eq("reporte_id", id); if (error) { toast(errMsg(error)); return; } closeSheet(); toast("Validación retirada"); cargarGerencia(); };
+  const pdf = $("#vPdf"); if (pdf) pdf.onclick = () => imprimirReporte(d, resp, val, incs);
+}
+function imprimirReporte(d, resp, val, incs){
+  const s = stats(resp);
+  $("#printArea").innerHTML = `<div class="phead"><img src="logo.png" alt=""><div><div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase">Reporte diario de Marshal</div><h1 style="font-family:var(--f-display);font-weight:400">${esc(fechaLarga(d.fecha))} · ${esc(TURNOS[d.turno])}</h1></div></div>
+    <table><tbody><tr><th>Marshal</th><td>${esc(nm(d.marshal_id))}</td><th>Hoyos</th><td>${(d.hoyos || []).join(", ")}</td></tr>
+    <tr><th>Vehículo</th><td>${esc(d.vehiculo || "")}</td><th>Radio</th><td>${esc(d.radio || "")}</td></tr>
+    <tr><th>Cumplimiento</th><td>${s.cumpl}% (${s.si} Sí · ${s.no} No · ${s.na} N/A)</td><th>Firmado</th><td>${d.firmado_en ? new Date(d.firmado_en).toLocaleString("es-PA") : ""}</td></tr>
+    <tr><th>Validado por</th><td>${val ? esc(nm(val.validado_por)) : "Pendiente"}</td><th>Validado</th><td>${val ? new Date(val.validado_en).toLocaleString("es-PA") : ""}</td></tr></tbody></table>
+    <h2 style="margin-top:12px">Checklist</h2>
+    <table><thead><tr><th>Área</th><th>Actividad</th><th>Resp.</th><th>Hora</th><th>Observación</th></tr></thead><tbody>
+    ${S.areas.flatMap(a => a.items.map(it => { const q = resp[it.id]; return `<tr><td>${a.codigo}</td><td>${esc(it.texto)}</td><td>${q ? VAL[q.valor] : "—"}</td><td>${q ? hora(q.respondido_en) : ""}</td><td>${esc(q && q.nota || "")}</td></tr>`; })).join("")}</tbody></table>
+    ${incs.length ? `<h2 style="margin-top:12px">Incidencias</h2><table><thead><tr><th>Hora</th><th>Ubicación</th><th>Prioridad</th><th>Descripción</th><th>Acción</th><th>Estado</th></tr></thead><tbody>${incs.map(i => `<tr><td>${hora(i.creado_en)}</td><td>${esc(ubic(i))}</td><td>${PRIO[i.prioridad].l}</td><td>${esc(i.descripcion)}</td><td>${esc(i.accion || "")}</td><td>${i.estado === "cerrada" ? "Cerrada" : "Abierta"}</td></tr>`).join("")}</tbody></table>` : ""}
+    <p><b>Observaciones:</b> ${esc(d.observaciones || "—")}</p><p><b>Pendientes para el siguiente turno:</b> ${esc(d.pendientes || "—")}</p>
+    <p><b>Observaciones de Gerencia:</b> ${esc(val && val.observaciones || "—")}</p>
+    <div class="sig"><div>Firma del Marshal</div><div>Validación del Gerente de Operaciones</div></div>`;
+  window.print();
+}
+function cargarScript(src){ return new Promise((res, rej) => { if (window.XLSX) return res(); const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.append(s); }); }
+async function exportarExcel(){
+  const b = $("#gXlsx"); b.disabled = true; b.textContent = "Preparando…";
+  try {
+    await cargarScript(XLSX_URL);
+    const {reps, incs} = S.gerData, g = S.ger;
+    const ids = reps.map(r => r.id);
+    const extra = ids.length ? (await sb.from("reportes_turno").select("id,vehiculo,radio,hoyos,observaciones,pendientes").in("id", ids)).data || [] : [];
+    const ex = Object.fromEntries(extra.map(x => [x.id, x]));
+    const vals = ids.length ? (await sb.from("validaciones").select("*").in("reporte_id", ids)).data || [] : [];
+    const vm = Object.fromEntries(vals.map(x => [x.reporte_id, x]));
+    const h1 = reps.map(r => ({"Fecha":r.fecha, "Turno":TURNO_CORTO[r.turno], "Marshal":r.marshal, "Hoyos":(ex[r.id]?.hoyos || []).join(" "), "Vehículo":ex[r.id]?.vehiculo || "", "Radio":ex[r.id]?.radio || "",
+      "Sí":r.si, "No":r.no, "N/A":r.na, "Cumplimiento %":r.cumplimiento_pct, "Estado":r.estado === "firmado" ? "Firmado" : "En curso", "Firmado":r.firmado_en ? new Date(r.firmado_en).toLocaleString("es-PA") : "",
+      "Validado por":vm[r.id] ? nm(vm[r.id].validado_por) : "", "Validado":vm[r.id] ? new Date(vm[r.id].validado_en).toLocaleString("es-PA") : "",
+      "Observaciones":ex[r.id]?.observaciones || "", "Pendientes":ex[r.id]?.pendientes || "", "Observaciones de Gerencia":vm[r.id]?.observaciones || ""}));
+    const h2 = incs.map(i => ({"Fecha":i.fecha, "Hora":hora(i.creado_en), "Turno":TURNO_CORTO[i.turno] || "", "Ubicación":ubic(i), "Categoría":CATS[i.categoria], "Etapa":i.etapa ? ETAPAS[i.etapa] : "", "Prioridad":PRIO[i.prioridad].l,
+      "Descripción":i.descripcion, "Acción":i.accion || "", "Notificado":NOTIF[i.notificado], "Estado":i.estado === "cerrada" ? "Cerrada" : "Abierta", "Cerrada":i.cerrado_en ? new Date(i.cerrado_en).toLocaleString("es-PA") : "", "Registrada por":nm(i.autor_id)}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(h1.length ? h1 : [{"Sin datos":""}]), "Reportes de turno");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(h2.length ? h2 : [{"Sin datos":""}]), "Incidencias");
+    XLSX.writeFile(wb, `SMGC_Marshals_${g.desde}_a_${g.hasta}.xlsx`);
+  } catch(e){ toast("No se pudo generar el Excel. " + errMsg(e)); }
+  b.disabled = false; b.textContent = "Exportar a Excel";
+}
+
+/* ===================== Equipo (alta de Marshals) ===================== */
+async function renderEquipo(){
+  const v = $("#v-equipo"); if (!S.esGer) return;
+  const { data } = await sb.from("perfiles").select("id,nombre,usuario,rol,activo").order("activo", {ascending:false}).order("nombre");
+  if (data) S.perfiles = Object.fromEntries(data.map(p => [p.id, p]));
+  const list = data || [];
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia</div><h1>Equipo</h1><p class="sub">${plural(list.filter(p => p.activo).length,"cuenta activa","cuentas activas")}. Cree aquí el usuario de cada Marshal y entréguele su contraseña temporal.</p></div></div>
+    <div class="grid2">
+      <div class="stack">
+        ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>
+          ${list.map(p => `<tr><td>${esc(p.nombre)}${p.id === S.me.id ? " <span class='hint'>(usted)</span>" : ""}</td><td class="num">${esc(p.usuario || "correo")}</td>
+            <td><select data-rol="${p.id}" ${p.id === S.me.id ? "disabled" : ""}>${Object.entries(ROLES).filter(([k]) => k !== "admin" || p.rol === "admin").map(([k,l]) => `<option value="${k}" ${p.rol===k?"selected":""}>${l}</option>`).join("")}</select></td>
+            <td>${p.activo ? `<span class="pill p-ok">Activa</span>` : `<span class="pill p-draft">Desactivada</span>`}</td>
+            <td style="white-space:nowrap">${p.id === S.me.id ? "" : `<button class="btn small" data-reset="${p.id}" type="button">Nueva contraseña</button> <button class="btn small ${p.activo ? "danger" : ""}" data-act="${p.id}" data-on="${!p.activo}" type="button">${p.activo ? "Desactivar" : "Activar"}</button>`}</td></tr>`).join("")}
+        </tbody></table></div>` : ""}
+      </div>
+      <div class="panel"><h2>Nuevo integrante</h2>
+        <div class="stack" style="gap:10px">
+          <label class="f">Nombre completo<input type="text" id="eNombre" autocomplete="off" placeholder="Ej. Juan Pérez"></label>
+          <label class="f">Usuario para entrar<input type="text" id="eUser" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Ej. jperez"></label>
+          <label class="f">Contraseña temporal<input type="text" id="ePass" autocomplete="off" value="${tempPass()}"></label>
+          <label class="f">Rol<select id="eRol"><option value="marshal">Marshal</option><option value="gerente_operaciones">Gerente de Operaciones</option><option value="gerente_golf">Gerente de Op. de Golf</option></select></label>
+          <div class="err" id="eErr"></div>
+          <button class="btn primary" id="eCrear" type="button">Crear cuenta</button>
+          <div id="eCred"></div>
+        </div>
+      </div>
+    </div>`;
+  $("#eNombre").oninput = e => { const u = $("#eUser"); if (u.dataset.touched) return; const p = e.target.value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").split(/\s+/).filter(Boolean); const ap = p.length >= 3 ? p[p.length-2] : p[p.length-1]; u.value = p.length > 1 ? (p[0][0] + ap).replace(/[^a-z0-9]/g, "") : (p[0] || "").replace(/[^a-z0-9]/g, ""); };
+  $("#eUser").oninput = e => e.target.dataset.touched = "1";
+  $("#eCrear").onclick = async () => {
+    const nombre = $("#eNombre").value.trim(), usuario = $("#eUser").value.trim().toLowerCase(), password = $("#ePass").value.trim(), rol = $("#eRol").value;
+    $("#eErr").textContent = ""; $("#eCrear").disabled = true;
+    try {
+      await fnStaff({accion:"crear", nombre, usuario, password, rol});
+      await renderEquipo();
+      $("#eCred").innerHTML = credCard(nombre, usuario, password);
+      toast("Cuenta creada");
+    } catch(x){ $("#eErr").textContent = errMsg(x); $("#eCrear").disabled = false; }
+  };
+  v.querySelectorAll("[data-rol]").forEach(s => s.onchange = async () => { const { error } = await sb.from("perfiles").update({rol:s.value}).eq("id", s.dataset.rol); if (error) toast(errMsg(error)); else toast("Rol actualizado"); });
+  v.querySelectorAll("[data-act]").forEach(b => b.onclick = async () => { const { error } = await sb.from("perfiles").update({activo: b.dataset.on === "true"}).eq("id", b.dataset.act); if (error) toast(errMsg(error)); else { toast(b.dataset.on === "true" ? "Cuenta activada" : "Cuenta desactivada"); renderEquipo(); } });
+  v.querySelectorAll("[data-reset]").forEach(b => b.onclick = async () => {
+    const p = S.perfiles[b.dataset.reset], pass = tempPass();
+    b.disabled = true;
+    try { await fnStaff({accion:"restablecer", id:p.id, password:pass}); openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Contraseña restablecida</h2><button class="btn ghost x" data-x type="button">Listo</button></div>${credCard(p.nombre, p.usuario || "(su correo)", pass)}`); }
+    catch(x){ toast(errMsg(x)); }
+    b.disabled = false;
+  });
+}
+function credCard(nombre, usuario, pass){
+  return `<div class="cred"><b>${esc(nombre)}</b><div>Dirección: <span class="mono">${esc(location.origin + location.pathname)}</span></div><div>Usuario: <span class="mono">${esc(usuario)}</span></div><div>Contraseña temporal: <span class="mono">${esc(pass)}</span></div>
+    <div class="hint">Entréguele estos datos en persona. Al entrar, puede cambiar su contraseña desde el menú ☰.</div></div>`;
+}
+
+/* ===================== Protocolo ===================== */
+function renderProtocolo(){
+  $("#v-protocolo").innerHTML = `<div><div class="eyebrow">Manual operativo</div><h1>Protocolos del Marshal</h1><p class="sub" style="max-width:65ch">El Marshal de Santa María Golf Club se anticipa a los problemas, protege el campo, cuida el ritmo de juego y asiste a los miembros. No impone sanciones sin autorización del Gerente de Operaciones.</p></div>
+  <div class="grid2 even">
+    <div class="panel"><h2>Juego lento · cuatro etapas</h2><div class="stack" style="gap:12px">
+      ${[["Detección","Verifique la posición del grupo y confirme que el retraso es real frente al grupo precedente."],["Comunicación","Acérquese con cortesía, explique la situación y ofrezca asistencia."],["Seguimiento","Revise de nuevo el avance del grupo y registre el resultado."],["Escalamiento","Si el retraso persiste, comuníquelo al Gerente de Operaciones y al Starter para que se apliquen las políticas del club."]].map(([t, d], i) => `<div style="display:flex;gap:12px"><span class="mono" style="color:var(--gold);font-weight:500">${i+1}</span><div><b>${t}</b><div class="hint" style="font-size:14px">${d}</div></div></div>`).join("")}
+      <p class="hint" style="margin:0">Registre cada etapa como incidencia de “Ritmo de juego” indicando la etapa.</p></div></div>
+    <div class="panel"><h2>Prioridad de incidencias</h2><div class="stack" style="gap:12px">
+      <div><span class="pill p-crit">Crítica</span><p style="margin:6px 0 0">Tormenta eléctrica, accidentes, personas en peligro o situaciones inseguras. Aviso inmediato por radio y activación del protocolo.</p></div>
+      <div><span class="pill p-alta">Alta</span><p style="margin:6px 0 0">Daños severos al campo, problemas importantes de riego, congestiones o incumplimientos reiterados. Aviso inmediato al Gerente y seguimiento.</p></div>
+      <div><span class="pill p-ord">Ordinaria</span><p style="margin:6px 0 0">Señalización deteriorada, basura, mantenimiento menor o comentarios de miembros. Se registra y canaliza.</p></div></div></div>
+  </div>
+  <div class="panel"><h2>Las siete áreas del checklist</h2><div class="stack" style="gap:6px">${S.areas.map(a => `<div><b class="mono" style="color:var(--gold)">${a.codigo}</b> · ${esc(a.nombre)} <span class="hint">(${plural(a.items.length,"actividad","actividades")})</span></div>`).join("")}</div></div>
+  <div class="panel"><h2>Turnos y responsables</h2><div class="kv">
+    <div><b>Apertura</b>5:00 a. m. – 1:00 p. m.</div><div><b>Cierre</b>11:00 a. m. – 7:00 p. m.</div><div><b>Valida los reportes</b>Gerente de Operaciones</div><div><b>Supervisión general</b>Gerente de Operaciones de Golf</div><div><b>Orden de salida</b>Starter</div><div><b>Reparaciones</b>Mantenimiento</div></div></div>`;
+}
+
+/* ===================== Hoja modal ===================== */
+function openSheet(html){
+  $("#overlayRoot").innerHTML = `<div class="overlay" id="ov"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  $("#ov").addEventListener("click", e => { if (e.target.id === "ov" || e.target.closest("[data-x]")) closeSheet(); });
+  document.body.style.overflow = "hidden";
+}
+function closeSheet(){ $("#overlayRoot").innerHTML = ""; document.body.style.overflow = ""; }
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#ov")) closeSheet(); });
+window.addEventListener("pagehide", () => { if (S.me) lsSet(pendKey(), (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length) ? S.pend : null); });
+
+boot();
+</script>
+</body>
+</html>
