@@ -1,4 +1,4 @@
-# Control operativo · Santa María Golf Club
+# SMGC · Control operativo de Santa María Golf Club
 
 - **Marshals:** checklist por turno, incidencias con fotos, entrega de turno, panel de Gerencia.
 - **Capitanes:** palos de alquiler (entrega con firma del huésped y correos de confirmación) y bolsas de miembros por casilla.
