@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17211B">
+<meta name="robots" content="noindex, nofollow">
+<title>Aplicaciones · SMGC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#F3F2EC; --surface:#FFFFFF; --ink:#17211B; --muted:#56605A; --line:#DAD8CF; --line2:#ECEAE3;
+  --green:#1D6B3C; --green-d:#14502C; --green-soft:#E3EFE6; --green-bright:#4FB06D;
+  --orange:#B4500A; --orange-d:#6B2F05; --orange-soft:#FBEBDD;
+  --red:#A3261B; --red-d:#6E160F; --red-soft:#F6DCD8;
+  --dark:#17211B; --dark2:#24342A; --dark3:#2F4637; --on-dark-muted:#C3CEC6;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Archivo,system-ui,sans-serif;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--green)}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+header.top{background:var(--dark);color:#F3F2EC;position:sticky;top:0;z-index:10}
+.top-in{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px}
+.brand{font-weight:800;font-size:16px;letter-spacing:.02em}
+.brand span{color:var(--on-dark-muted);font-weight:600}
+nav.tabs{display:flex;flex-wrap:wrap;gap:4px;font-size:14px;font-weight:600}
+nav.tabs a{color:var(--on-dark-muted);text-decoration:none;padding:9px 12px;border-radius:6px;min-height:40px;display:flex;align-items:center}
+nav.tabs a.on{background:var(--dark3);color:#fff}
+.who{margin-left:auto;font-size:13px;color:var(--on-dark-muted);display:flex;gap:10px;align-items:center}
+.who button{background:transparent;border:1px solid var(--dark3);color:#F3F2EC;border-radius:6px;padding:6px 10px;cursor:pointer}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 60px;display:flex;flex-direction:column;gap:16px}
+h1{margin:0;font-size:26px;font-weight:800;line-height:1.15}
+h2{margin:0;font-size:16px;font-weight:700}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card.dark{background:var(--dark);color:#F3F2EC;border-color:var(--dark)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.grow{flex:999 1 520px;min-width:0}
+.side{flex:1 1 300px;min-width:0}
+.between{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.btn{min-height:44px;padding:0 16px;border-radius:9px;border:1px solid #C9C7BE;background:#fff;font-weight:700;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;color:var(--ink)}
+.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+.btn.bright{background:var(--green-bright);border-color:var(--green-bright);color:#0F1A13}
+.btn.warn{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.block{width:100%;min-height:54px;font-size:17px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{min-height:36px;padding:0 10px;font-size:13px}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--muted)}
+label.f input,label.f select,label.f textarea{min-height:44px;border:1px solid #C9C7BE;border-radius:8px;padding:0 12px;font-size:16px;color:var(--ink);background:#fff;font-weight:400}
+label.f textarea{padding:10px 12px;min-height:70px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.seg{display:flex;flex-wrap:wrap;gap:4px;background:var(--bg);padding:4px;border-radius:8px}
+.seg button{min-height:38px;padding:0 12px;border-radius:6px;border:none;background:transparent;font-weight:600;font-size:14px;cursor:pointer}
+.seg button.on{background:var(--dark);color:#fff}
+.holes{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.hole{min-height:58px;border-radius:8px;padding:6px 8px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;text-align:left;background:#fff;border:2px solid var(--line);cursor:pointer}
+.hole b{font-size:15px}
+.hole span{font-family:var(--mono);font-size:12px}
+.hole.on{background:var(--green);border-color:var(--green);color:#fff}
+.hole:disabled{background:var(--bg);color:#8A928C;border:1px dashed #C9C7BE;cursor:not-allowed}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+.tbl td{padding:10px 6px;border-bottom:1px solid var(--line2);vertical-align:middle}
+.tbl .r{text-align:right}
+.scroll{overflow-x:auto}
+.badge{display:inline-block;padding:4px 8px;border-radius:5px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-ok{background:var(--green-soft);color:var(--green-d)}
+.b-warn{background:var(--orange-soft);color:var(--orange-d)}
+.b-alert{background:var(--red-soft);color:var(--red-d)}
+.b-neutral{background:var(--bg);color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{border-radius:12px;padding:14px 16px;background:#fff;border:1px solid var(--line)}
+.kpi .v{font-family:var(--mono);font-size:32px;font-weight:600;line-height:1.1}
+.kpi .l{font-size:13px;color:var(--muted)}
+.kpi.dark{background:var(--dark);color:#F3F2EC;border-color:var(--dark)}
+.kpi.dark .l{color:var(--on-dark-muted)}
+.kpi.warn{background:var(--orange-soft);border-color:#F0CFAF;color:var(--orange-d)}
+.kpi.warn .l{color:var(--orange-d)}
+.kpi.alert{background:var(--red-soft);border-color:#E8B5AE;color:var(--red-d)}
+.kpi.alert .l{color:var(--red-d)}
+.area-btn{display:flex;align-items:center;gap:14px;width:100%;min-height:68px;padding:10px 14px;border-radius:10px;cursor:pointer;background:#fff;border:2px solid var(--line);text-align:left}
+.area-btn.on{background:var(--green-soft);border-color:var(--green)}
+.chk{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid #8A928C;background:#fff}
+.area-btn.on .chk{background:var(--green);border-color:var(--green)}
+.yn{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.yn button{min-width:54px;min-height:44px;border:none;font-weight:700;background:#fff;color:var(--muted);cursor:pointer}
+.yn button.y.on{background:var(--green);color:#fff}
+.yn button.n.on{background:var(--orange);color:#fff}
+.reasons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.reasons button{min-height:46px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:#fff;border:2px solid var(--line);padding:4px 8px}
+.reasons button.on{background:var(--dark);color:#fff;border-color:var(--dark)}
+.bar{position:relative;height:14px;background:var(--line2);border-radius:4px}
+.bar > i{position:absolute;left:0;top:0;height:14px;border-radius:4px;display:block}
+.bar > em{position:absolute;top:-4px;height:22px;width:2px;background:var(--ink)}
+.invgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.mini{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:6px}
+.mini div{aspect-ratio:1/1;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.mini div span{font-family:var(--mono);font-size:14px}
+.note{border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.4}
+.note.warn{background:var(--orange-soft);color:var(--orange-d)}
+.note.alert{background:var(--red-soft);color:var(--red-d)}
+.note.ok{background:var(--green-soft);color:var(--green-d)}
+.empty{padding:20px;text-align:center;color:var(--muted);font-size:14px}
+.list-item{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line2)}
+.list-item:first-child{border-top:none}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--dark);color:#fff;padding:12px 16px;border-radius:10px;font-size:14px;z-index:50;max-width:92vw;box-shadow:0 6px 24px rgba(0,0,0,.2)}
+.toast.err{background:var(--red)}
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login .card{width:100%;max-width:380px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 10px;font-size:13px;font-weight:600}
+.chip button{border:none;background:transparent;cursor:pointer;width:28px;height:28px;border-radius:50%;font-size:16px;line-height:1}
+.tank{display:grid;grid-template-columns:1.5fr repeat(var(--cols),1fr);gap:6px 8px;font-size:14px;align-items:baseline}
+.tank .h{font-size:12px;color:var(--muted);font-weight:600}
+.tank .n{text-align:right;font-family:var(--mono)}
+.opbar{background:var(--dark);color:#F3F2EC;padding:18px 16px;border-radius:12px;display:flex;flex-direction:column;gap:8px}
+.pill{background:var(--dark2);border-radius:6px;padding:6px 10px;font-size:13px;font-weight:600}
+.progress{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.progress i{display:block;height:10px;background:var(--green)}
+@media (max-width:600px){h1{font-size:22px}.mini{grid-template-columns:repeat(6,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div id="app"><div class="login"><div class="empty">Cargando…</div></div></div>
+<script>
+(function () {
+'use strict';
+var SUPABASE_URL = 'https://qabbgxoqcxthzcxcoapm.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_gHzudWhVIQuZbJdmG20B7Q_6cxFAeJq';
+var USER_DOMAIN = 'aplicaciones.smcapibara.com';
+// Supabase pide contraseñas de 6+ caracteres: el PIN de 4 dígitos se envuelve aquí
+function pinPassword(pin) { return 'smgc-apl-' + String(pin).trim(); }
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storageKey: 'smgc-apl-auth' } });
+
+var S = { session: null, perfil: null, cat: null, draft: null, cierre: null, view: null };
+var MOTIVOS = [['lluvia','Lluvia'],['viento','Viento'],['equipo','Falla del equipo'],['producto','Falta de producto'],['juego','Juego en el hoyo'],['tiempo','Falta de tiempo'],['otro','Otro']];
+var TIPOS = ['fertilizante','herbicida','fungicida','insecticida','surfactante','regulador','otro'];
+var MEDIDAS = ['green','tee_box','tee_complex','fairway','rough'];
+
+// ---------- utilidades ----------
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function n(v, d) { if (v == null || isNaN(v)) return '—'; return Number(v).toLocaleString('en-US', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+function hoy() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function addDays(iso, k) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + k); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function fecha(iso) { if (!iso) return ''; var d = new Date(iso.length > 10 ? iso : iso + 'T12:00:00'); return d.toLocaleDateString('es-PA', { weekday: 'short', day: 'numeric', month: 'short' }); }
+function diasEntre(a, b) { return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000); }
+function num(o) { return '#' + String(o).padStart(4, '0'); }
+function toast(msg, err) { var t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, err ? 5000 : 2600); }
+function fail(e) { console.error(e); toast((e && (e.message || e.error_description)) || 'Algo salió mal', true); }
+async function q(p) { var r = await p; if (r.error) throw r.error; return r.data; }
+function byId(arr, id) { for (var i = 0; i < arr.length; i++) if (String(arr[i].id) === String(id)) return arr[i]; return null; }
+function unidadNombre(id) { var u = byId(S.cat.unidades, id); return u ? u.nombre : id; }
+function zonaNombre(id) { var z = byId(S.cat.zonas, id); return z ? z.nombre : id; }
+function areaNombre(a) { var u = byId(S.cat.unidades, a.unidad_id); var z = zonaNombre(a.zona_id); return u && u.tipo === 'hoyo' ? z + ' ' + u.id : z + ' · ' + (u ? u.nombre : a.unidad_id); }
+function m2De(u, z) { for (var i = 0; i < S.cat.areas.length; i++) { var a = S.cat.areas[i]; if (a.unidad_id === u && a.zona_id === z) return Number(a.m2); } return null; }
+function perfilNombre(id) { for (var i = 0; i < S.cat.perfiles.length; i++) if (S.cat.perfiles[i].user_id === id) return S.cat.perfiles[i].nombre; return id === S.perfil.user_id ? S.perfil.nombre : '—'; }
+function resumenAreas(areas) {
+  var g = {}; areas.forEach(function (a) { (g[a.zona_id] = g[a.zona_id] || []).push(a); });
+  return Object.keys(g).map(function (z) {
+    var items = g[z].map(function (a) { var u = byId(S.cat.unidades, a.unidad_id); return u && u.tipo === 'hoyo' ? u.id : (u ? u.nombre : a.unidad_id); });
+    return zonaNombre(z) + ' ' + items.join(', ');
+  }).join(' · ');
+}
+function prod(id) { return byId(S.cat.productos, id); }
+function invUnidad(p) { return p.unidad_inventario === 'galon' ? 'gal' : p.unidad_inventario === 'saco' ? 'sacos' : p.unidad_inventario; }
+function cumplBadge(ok, tot) { if (!tot) return '<span class="badge b-neutral">—</span>'; return '<span class="badge ' + (ok === tot ? 'b-ok' : 'b-warn') + ' mono">' + ok + '/' + tot + '</span>'; }
+
+// cálculo de mezcla para una lista de áreas (solo medidas) y productos
+function calcular(areas, productos, calLha, capL) {
+  var m2 = 0; areas.forEach(function (a) { if (a.m2) m2 += Number(a.m2); });
+  var ha = m2 / 10000; var cal = Number(calLha) || 0; var cap = Number(capL) || 0;
+  var agua = ha * cal;
+  var llenos = cap > 0 ? Math.floor(agua / cap + 1e-9) : 0;
+  var resto = cap > 0 ? Math.max(0, agua - llenos * cap) : 0;
+  if (resto < 1) resto = 0;
+  var tanques = [];
+  for (var i = 0; i < llenos; i++) tanques.push(cap);
+  if (resto > 0) tanques.push(resto);
+  var lineas = productos.filter(function (x) { return x.producto_id && Number(x.dosis_por_ha) > 0; }).map(function (x) {
+    var p = prod(x.producto_id); var d = Number(x.dosis_por_ha);
+    return { p: p, dosis: d, total: ha * d, porTanque: tanques.map(function (t) { return cal > 0 ? (t / cal) * d : 0; }) };
+  });
+  return { m2: m2, ha: ha, agua: agua, tanques: tanques, llenos: llenos, resto: resto, lineas: lineas };
+}
+
+// ---------- carga ----------
+async function cargarCatalogos() {
+  var r = await Promise.all([
+    q(sb.from('smgc_apl_unidades').select('*').order('orden')),
+    q(sb.from('smgc_apl_zonas').select('*').order('orden')),
+    q(sb.from('smgc_apl_areas').select('*')),
+    q(sb.from('smgc_apl_sprayers').select('*').order('nombre')),
+    q(sb.from('smgc_apl_boquillas').select('*').order('nombre')),
+    q(sb.from('smgc_apl_productos').select('*').order('nombre')),
+    q(sb.from('smgc_apl_perfiles').select('*').order('nombre'))
+  ]);
+  S.cat = { unidades: r[0], zonas: r[1], areas: r[2], sprayers: r[3], boquillas: r[4], productos: r[5], perfiles: r[6] };
+}
+async function inventario() { return q(sb.from('smgc_apl_inventario').select('*').order('nombre')); }
+var ORDEN_SEL = '*, areas:smgc_apl_orden_areas(*), productos:smgc_apl_orden_productos(*)';
+
+// ---------- arranque y sesión ----------
+async function init() {
+  var r = await sb.auth.getSession();
+  S.session = r.data.session;
+  sb.auth.onAuthStateChange(function (_e, s) { S.session = s; });
+  if (!S.session) return renderLogin();
+  await entrar();
+}
+async function entrar() {
+  try {
+    var uid = S.session.user.id;
+    var p = await q(sb.from('smgc_apl_perfiles').select('*').eq('user_id', uid).maybeSingle());
+    if (!p || !p.activo) { await sb.auth.signOut(); return renderLogin('Este usuario no tiene acceso a Aplicaciones.'); }
+    S.perfil = p;
+    await cargarCatalogos();
+    if (!location.hash || location.hash === '#/') location.hash = inicio();
+    route();
+  } catch (e) { fail(e); renderLogin(); }
+}
+function inicio() { return S.perfil.rol === 'operador' ? '#/hoy' : S.perfil.rol === 'superintendente' ? '#/ordenes' : '#/cumplimiento'; }
+
+function renderLogin(msg) {
+  document.getElementById('app').innerHTML =
+    '<div class="login"><form class="card" id="loginForm" autocomplete="on">' +
+    '<div><div class="small muted" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase">Santa María Golf Club</div><h1>Aplicaciones</h1></div>' +
+    (msg ? '<div class="note alert">' + esc(msg) + '</div>' : '') +
+    '<label class="f">Usuario<input name="u" autocapitalize="none" autocorrect="off" autocomplete="username" required></label>' +
+    '<label class="f">PIN de 4 dígitos<input name="p" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="current-password" required></label>' +
+    '<button class="btn primary block" type="submit">Entrar</button>' +
+    '<div class="small muted">¿Olvidaste tu PIN? Pídeselo al administrador.</div></form></div>';
+  document.getElementById('loginForm').addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var f = ev.target; var btn = f.querySelector('button'); btn.disabled = true;
+    var u = f.u.value.trim().toLowerCase(); var email = u.indexOf('@') >= 0 ? u : u + '@' + USER_DOMAIN;
+    var r = await sb.auth.signInWithPassword({ email: email, password: pinPassword(f.p.value) });
+    if (r.error) { btn.disabled = false; return renderLogin('Usuario o PIN incorrecto.'); }
+    S.session = r.data.session; await entrar();
+  });
+}
+
+// ---------- estructura ----------
+var NAV = {
+  superintendente: [['#/ordenes', 'Órdenes'], ['#/nueva', 'Nueva orden'], ['#/cumplimiento', 'Cumplimiento'], ['#/inventario', 'Inventario'], ['#/historial', 'Historial'], ['#/catalogos', 'Catálogos']],
+  operador: [['#/hoy', 'Mis órdenes'], ['#/conteo', 'Conteo de inventario']],
+  consulta: [['#/cumplimiento', 'Cumplimiento'], ['#/inventario', 'Inventario'], ['#/historial', 'Historial']]
+};
+function shell(html) {
+  var h = location.hash.split('/').slice(0, 2).join('/');
+  var nav = NAV[S.perfil.rol].map(function (x) { return '<a href="' + x[0] + '" class="' + (h === x[0] ? 'on' : '') + '">' + x[1] + '</a>'; }).join('');
+  document.getElementById('app').innerHTML =
+    '<header class="top"><div class="top-in"><div class="brand">Aplicaciones <span>· SMGC</span></div><nav class="tabs">' + nav + '</nav>' +
+    '<div class="who">' + esc(S.perfil.nombre) + '<button data-act="salir">Salir</button></div></div></header><main id="main">' + html + '</main>';
+}
+function loading() { shell('<div class="empty">Cargando…</div>'); }
+
+async function route() {
+  if (!S.perfil) return;
+  var parts = location.hash.replace(/^#\//, '').split('/');
+  var v = parts[0], id = parts[1];
+  var rol = S.perfil.rol;
+  var allowed = NAV[rol].map(function (x) { return x[0].slice(2); });
+  if (rol === 'superintendente') allowed.push('orden');
+  if (rol === 'operador') allowed.push('orden', 'cierre');
+  if (rol === 'consulta') allowed.push('orden');
+  if (allowed.indexOf(v) < 0) { location.hash = inicio(); return; }
+  S.view = v; loading();
+  try {
+    if (v === 'hoy') await vHoy();
+    else if (v === 'orden') await vOrden(id);
+    else if (v === 'cierre') await vCierre(id);
+    else if (v === 'conteo') await vConteo();
+    else if (v === 'ordenes') await vOrdenes();
+    else if (v === 'nueva') await vNueva(id);
+    else if (v === 'cumplimiento') await vCumplimiento(id);
+    else if (v === 'inventario') await vInventario();
+    else if (v === 'historial') await vHistorial();
+    else if (v === 'catalogos') await vCatalogos();
+  } catch (e) { fail(e); shell('<div class="note alert">No se pudo cargar. ' + esc(e.message || '') + '</div>'); }
+}
+window.addEventListener('hashchange', route);
+
+// ---------- OPERADOR: mis órdenes ----------
+async function vHoy() {
+  var abiertas = await q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).eq('operador_id', S.perfil.user_id).eq('estado', 'enviada').order('fecha').order('id'));
+  var cerradas = await q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).eq('operador_id', S.perfil.user_id).eq('estado', 'cerrada').order('fecha', { ascending: false }).limit(5));
+  var html = '<h1>Mis órdenes</h1>';
+  if (!abiertas.length) html += '<div class="card"><div class="empty">No tienes órdenes abiertas. Cuando el Dr. Leiva te asigne una, aparece aquí.</div></div>';
+  abiertas.forEach(function (o) {
+    var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
+    html += '<a href="#/orden/' + o.id + '" class="card" style="text-decoration:none;color:inherit">' +
+      '<div class="between"><span class="small muted">' + fecha(o.fecha) + ' · Orden ' + num(o.id) + '</span>' + cumplBadge(ok, o.areas.length) + '</div>' +
+      '<div style="font-size:20px;font-weight:800">' + esc(resumenAreas(o.areas)) + '</div>' +
+      '<div class="small muted">' + esc((byId(S.cat.sprayers, o.sprayer_id) || {}).nombre || 'Sin sprayer') + ' · ' + o.productos.length + ' productos</div></a>';
+  });
+  if (cerradas.length) {
+    html += '<div class="card"><h2>Cerradas recientemente</h2>' + cerradas.map(function (o) {
+      var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
+      return '<div class="list-item"><div><b>' + esc(resumenAreas(o.areas)) + '</b><div class="small muted">' + fecha(o.fecha) + ' · ' + num(o.id) + '</div></div>' + cumplBadge(ok, o.areas.length) + '</div>';
+    }).join('') + '</div>';
+  }
+  shell(html);
+}
+
+// ---------- detalle de orden (operador ejecuta / otros ven) ----------
+async function cargarOrden(id) { return q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).eq('id', id).single()); }
+function htmlMezcla(o, calc) {
+  if (!calc.lineas.length) return '<div class="small muted">Sin productos.</div>';
+  var cols = calc.tanques.length || 1;
+  var h = '<div class="tank" style="--cols:' + cols + '"><div class="h">Producto</div>';
+  if (calc.tanques.length) calc.tanques.forEach(function (t, i) { h += '<div class="h n">Tanque ' + (i + 1) + '<br>' + n(t) + ' L</div>'; });
+  else h += '<div class="h n">Total</div>';
+  calc.lineas.forEach(function (l) {
+    h += '<div style="border-top:1px solid var(--line2);padding-top:6px">' + esc(l.p ? l.p.nombre : '?') + '<div class="small muted mono">' + n(l.dosis, 2) + ' ' + (l.p ? l.p.unidad_dosis : '') + '/ha</div></div>';
+    if (calc.tanques.length) l.porTanque.forEach(function (x) { h += '<div class="n" style="border-top:1px solid var(--line2);padding-top:6px">' + n(x, 2) + ' ' + (l.p ? l.p.unidad_dosis : '') + '</div>'; });
+    else h += '<div class="n" style="border-top:1px solid var(--line2);padding-top:6px">' + n(l.total, 2) + ' ' + (l.p ? l.p.unidad_dosis : '') + '</div>';
+  });
+  return h + '</div>';
+}
+async function vOrden(id) {
+  var o = await cargarOrden(id);
+  var sp = byId(S.cat.sprayers, o.sprayer_id), bq = byId(S.cat.boquillas, o.boquilla_id);
+  var medidas = o.areas.filter(function (a) { return a.m2; });
+  var calc = calcular(medidas, o.productos, o.calibracion_l_ha, sp && sp.capacidad_l);
+  var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
+  var esMia = S.perfil.rol === 'operador' && o.operador_id === S.perfil.user_id && o.estado === 'enviada';
+  var html = '<div class="opbar"><div class="between"><span class="small" style="color:var(--on-dark-muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">' + fecha(o.fecha) + '</span><span class="mono small" style="color:var(--on-dark-muted)">Orden ' + num(o.id) + '</span></div>' +
+    '<div style="font-size:24px;font-weight:800;line-height:1.15">' + esc(resumenAreas(o.areas)) + '</div>' +
+    '<div class="small" style="color:#D5DDD7">Operador: ' + esc(perfilNombre(o.operador_id)) + ' · ' + estadoOrden(o) + '</div>' +
+    '<div class="row" style="gap:8px">' + (sp ? '<span class="pill">' + esc(sp.nombre) + (sp.capacidad_l ? ' · ' + n(sp.capacidad_l) + ' L' : '') + '</span>' : '') + (bq ? '<span class="pill">' + esc(bq.nombre) + '</span>' : '') + (o.calibracion_l_ha ? '<span class="pill">' + n(o.calibracion_l_ha) + ' L/ha</span>' : '') + '</div></div>';
+  if (o.notas) html += '<div class="note warn">' + esc(o.notas) + '</div>';
+  html += '<div class="card"><div class="between"><h2>Avance</h2><span class="mono">' + ok + ' de ' + o.areas.length + ' áreas</span></div><div class="progress"><i style="width:' + (o.areas.length ? Math.round(ok / o.areas.length * 100) : 0) + '%"></i></div></div>';
+  html += '<div class="card"><div class="between"><h2>Mezcla por tanque</h2><span class="small muted">' + n(calc.ha, 2) + ' ha · ' + n(calc.agua) + ' L agua</span></div>' + htmlMezcla(o, calc) +
+    (o.areas.length > medidas.length ? '<div class="small muted">Las áreas puntuales no entran en este cálculo; registra lo que uses al cerrar.</div>' : '') +
+    (!sp || !sp.capacidad_l || !o.calibracion_l_ha ? '<div class="small muted">Falta capacidad del sprayer o calibración para dividir en tanques.</div>' : '') + '</div>';
+  html += '<div class="card"><h2>' + (esMia ? 'Áreas · toca al terminar cada una' : 'Áreas') + '</h2>';
+  o.areas.sort(function (a, b) { return a.id - b.id; }).forEach(function (a) {
+    var on = a.estado === 'aplicada';
+    var tag = a.arrastrada_de ? '<span class="badge b-warn">Pendiente anterior</span>' : '';
+    var est = a.estado === 'no_aplicada' ? '<span class="badge b-warn">No aplicada · ' + esc(motivoTxt(a.motivo)) + '</span>' : '';
+    if (esMia) {
+      html += '<button class="area-btn ' + (on ? 'on' : '') + '" data-act="toggleArea" data-id="' + a.id + '" data-estado="' + a.estado + '" aria-pressed="' + on + '">' +
+        '<span class="chk" aria-hidden="true">' + (on ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : '') + '</span>' +
+        '<span style="flex-grow:1"><b style="font-size:18px">' + esc(areaNombre(a)) + '</b><br><span class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</span></span>' + tag + est + '</button>';
+    } else {
+      html += '<div class="list-item"><div><b>' + esc(areaNombre(a)) + '</b> ' + tag + '<div class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</div></div>' +
+        (a.estado === 'aplicada' ? '<span class="badge b-ok">Aplicada</span>' : a.estado === 'no_aplicada' ? est : '<span class="badge b-neutral">Pendiente</span>') + '</div>';
+    }
+  });
+  html += '</div>';
+  if (esMia) html += '<a class="btn primary block" href="#/cierre/' + o.id + '">Cerrar jornada</a>';
+  if (S.perfil.rol === 'superintendente') {
+    html += '<div class="row">' + '<a class="btn" href="#/nueva/' + o.id + '">Duplicar esta orden</a>' +
+      (o.estado === 'enviada' ? '<button class="btn" data-act="cancelarOrden" data-id="' + o.id + '">Cancelar orden</button>' : '') + '</div>';
+  }
+  shell(html);
+}
+function estadoOrden(o) { return { borrador: 'Borrador', enviada: 'En curso', cerrada: 'Cerrada', cancelada: 'Cancelada' }[o.estado] || o.estado; }
+function motivoTxt(m) { for (var i = 0; i < MOTIVOS.length; i++) if (MOTIVOS[i][0] === m) return MOTIVOS[i][1]; return m || ''; }
+
+// ---------- OPERADOR: cierre ----------
+async function vCierre(id) {
+  var o = await cargarOrden(id);
+  if (o.estado !== 'enviada') { location.hash = '#/orden/' + id; return; }
+  if (!S.cierre || S.cierre.id !== o.id) {
+    S.cierre = { id: o.id, o: o, areas: {}, puntual: {} };
+    // lo que el operador ya marcó durante el día viene en Sí; el resto debe responderlo
+    o.areas.forEach(function (a) { S.cierre.areas[a.id] = { estado: a.estado === 'pendiente' ? null : a.estado, motivo: a.motivo || null }; });
+  }
+  renderCierre();
+}
+function renderCierre() {
+  var c = S.cierre, o = c.o;
+  var tot = o.areas.length, ok = 0, falta = [];
+  var sinResp = 0;
+  o.areas.forEach(function (a) { var s = c.areas[a.id]; if (s.estado === 'aplicada') ok++; else if (s.estado === 'no_aplicada') falta.push(a); else sinResp++; });
+  var pct = tot ? Math.round(ok / tot * 100) : 0;
+  var html = '<div class="between"><h1>Cierre de jornada</h1><a class="btn sm" href="#/orden/' + o.id + '">Volver</a></div>' +
+    '<div class="opbar" style="flex-direction:row;align-items:center;gap:16px"><div class="mono" style="font-size:42px;font-weight:600">' + pct + '%</div><div><b>' + ok + ' de ' + tot + ' áreas cumplidas</b><div class="small" style="color:var(--on-dark-muted)">Orden ' + num(o.id) + ' · ' + fecha(o.fecha) + '</div></div></div>';
+  html += '<div class="card"><h2>¿Qué completaste?</h2>';
+  o.areas.forEach(function (a) {
+    var s = c.areas[a.id];
+    html += '<div class="list-item"><div><b style="font-size:17px">' + esc(areaNombre(a)) + '</b><div class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</div></div>' +
+      '<div class="yn"><button class="y ' + (s.estado === 'aplicada' ? 'on' : '') + '" data-act="cierreSet" data-id="' + a.id + '" data-v="aplicada" aria-pressed="' + (s.estado === 'aplicada') + '">Sí</button>' +
+      '<button class="n ' + (s.estado === 'no_aplicada' ? 'on' : '') + '" data-act="cierreSet" data-id="' + a.id + '" data-v="no_aplicada" aria-pressed="' + (s.estado === 'no_aplicada') + '">No</button></div></div>';
+    if (s.estado === 'no_aplicada') {
+      html += '<div style="padding-bottom:10px"><div class="small" style="font-weight:700;margin-bottom:8px">¿Por qué no se aplicó ' + esc(areaNombre(a)) + '?</div><div class="reasons">' +
+        MOTIVOS.map(function (m) { return '<button class="' + (s.motivo === m[0] ? 'on' : '') + '" data-act="cierreMotivo" data-id="' + a.id + '" data-v="' + m[0] + '" aria-pressed="' + (s.motivo === m[0]) + '">' + m[1] + '</button>'; }).join('') + '</div></div>';
+    }
+  });
+  html += '</div>';
+  var puntuales = o.areas.filter(function (a) { return !a.m2 && c.areas[a.id].estado === 'aplicada'; });
+  if (puntuales.length && o.productos.length) {
+    html += '<div class="card"><h2>Producto usado en áreas puntuales</h2><div class="small muted">Anota lo que realmente usaste en cada una.</div>';
+    puntuales.forEach(function (a) {
+      html += '<div style="font-weight:700;margin-top:6px">' + esc(areaNombre(a)) + '</div><div class="fgrid">';
+      o.productos.forEach(function (op) {
+        var p = prod(op.producto_id); var key = a.id + '_' + op.producto_id; var v = c.puntual[key] || '';
+        html += '<label class="f">' + esc(p ? p.nombre : '?') + ' (' + (p ? p.unidad_dosis : '') + ')<input type="number" inputmode="decimal" step="0.01" min="0" data-inp="puntual" data-key="' + key + '" value="' + esc(v) + '"></label>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  if (falta.length) html += '<div class="note warn">Lo que no se aplicó queda como pendiente para la próxima orden del superintendente.</div>';
+  html += '<div class="small muted">Al confirmar se descuenta del inventario solo lo aplicado.</div>';
+  html += '<button class="btn primary block" data-act="confirmarCierre"' + (sinResp ? ' disabled' : '') + '>' + (sinResp ? 'Responde Sí o No en ' + sinResp + (sinResp === 1 ? ' área' : ' áreas') : 'Confirmar cierre') + '</button>';
+  shell(html);
+}
+async function confirmarCierre(btn) {
+  var c = S.cierre, o = c.o;
+  for (var i = 0; i < o.areas.length; i++) { var s = c.areas[o.areas[i].id]; if (!s.estado) { toast('Responde Sí o No en ' + areaNombre(o.areas[i]), true); return; } if (s.estado === 'no_aplicada' && !s.motivo) { toast('Elige el motivo de ' + areaNombre(o.areas[i]), true); return; } }
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    for (var j = 0; j < o.areas.length; j++) {
+      var a = o.areas[j], st = c.areas[a.id];
+      await q(sb.rpc('smgc_apl_confirmar_area', { p_id: a.id, p_estado: st.estado, p_motivo: st.estado === 'no_aplicada' ? st.motivo : null, p_nota: null }));
+    }
+    var keys = Object.keys(c.puntual);
+    for (var k = 0; k < keys.length; k++) {
+      var val = Number(c.puntual[keys[k]]); if (!(val > 0)) continue;
+      var pr = keys[k].split('_'); if (c.areas[pr[0]].estado !== 'aplicada') continue;
+      await q(sb.rpc('smgc_apl_registrar_puntual', { p_orden_area: Number(pr[0]), p_producto: Number(pr[1]), p_cantidad_dosis: val }));
+    }
+    await q(sb.rpc('smgc_apl_cerrar_orden', { p_orden: o.id }));
+    S.cierre = null; toast('Jornada cerrada'); location.hash = '#/hoy';
+  } catch (e) { fail(e); btn.disabled = false; btn.textContent = 'Confirmar cierre'; }
+}
+
+// ---------- conteo físico (operador y superintendente) ----------
+async function vConteo() {
+  var inv = await inventario();
+  var html = '<h1>Conteo de inventario</h1><div class="small muted">Elige el producto y escribe lo que hay físicamente en bodega. El sistema ajusta la diferencia.</div>' +
+    '<form class="card" id="conteoForm"><label class="f">Producto<select name="p" required><option value="">Elegir…</option>' +
+    inv.map(function (i) { var p = prod(i.producto_id); return '<option value="' + i.producto_id + '">' + esc(i.nombre) + ' · sistema: ' + n(i.existencia, 2) + ' ' + (p ? invUnidad(p) : '') + '</option>'; }).join('') +
+    '</select></label><label class="f">Cantidad contada<input name="c" type="number" inputmode="decimal" step="0.01" min="0" required></label>' +
+    '<button class="btn primary block" type="submit">Guardar conteo</button></form>';
+  shell(html);
+  document.getElementById('conteoForm').addEventListener('submit', async function (ev) {
+    ev.preventDefault(); var f = ev.target;
+    try { await q(sb.rpc('smgc_apl_registrar_conteo', { p_producto: Number(f.p.value), p_contado: Number(f.c.value) })); toast('Conteo guardado'); route(); } catch (e) { fail(e); }
+  });
+}
+
+// ---------- SUPERINTENDENTE: órdenes ----------
+async function vOrdenes() {
+  var ords = await q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).order('fecha', { ascending: false }).order('id', { ascending: false }).limit(60));
+  var abiertas = ords.filter(function (o) { return o.estado === 'enviada'; });
+  var otras = ords.filter(function (o) { return o.estado !== 'enviada'; });
+  function fila(o) {
+    var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
+    return '<tr><td class="mono"><a href="#/orden/' + o.id + '">' + num(o.id) + '</a></td><td>' + fecha(o.fecha) + '</td><td>' + esc(perfilNombre(o.operador_id)) + '</td><td><b>' + esc(resumenAreas(o.areas)) + '</b></td><td>' + estadoOrden(o) + '</td><td class="r">' + cumplBadge(ok, o.areas.length) + '</td><td class="r"><a class="btn sm" href="#/nueva/' + o.id + '">Duplicar</a></td></tr>';
+  }
+  var th = '<thead><tr><th>Orden</th><th>Fecha</th><th>Operador</th><th>Áreas</th><th>Estado</th><th class="r">Cumplido</th><th></th></tr></thead>';
+  var html = '<div class="between"><h1>Órdenes</h1><a class="btn primary" href="#/nueva">+ Nueva orden</a></div>' +
+    '<div class="card"><h2>En curso</h2>' + (abiertas.length ? '<div class="scroll"><table class="tbl" style="min-width:720px">' + th + '<tbody>' + abiertas.map(fila).join('') + '</tbody></table></div>' : '<div class="empty">No hay órdenes en curso.</div>') + '</div>' +
+    '<div class="card"><h2>Anteriores</h2>' + (otras.length ? '<div class="scroll"><table class="tbl" style="min-width:720px">' + th + '<tbody>' + otras.map(fila).join('') + '</tbody></table></div>' : '<div class="empty">Todavía no hay órdenes.</div>') + '</div>';
+  shell(html);
+}
+
+// ---------- SUPERINTENDENTE: nueva orden ----------
+async function vNueva(dupId) {
+  var pend = await q(sb.from('smgc_apl_pendientes').select('*').order('fecha'));
+  var recientes = await q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).order('id', { ascending: false }).limit(8));
+  var inv = await inventario();
+  var ops = S.cat.perfiles.filter(function (p) { return p.rol === 'operador' && p.activo; });
+  S.draft = { fecha: hoy(), operador_id: ops[0] ? ops[0].user_id : '', sprayer_id: '', boquilla_id: '', cal: '', zona: 'fairway', areas: {}, productos: [{ producto_id: '', dosis_por_ha: '' }], duplicada_de: null, notas: '', pend: pend, recientes: recientes, inv: inv, puntUnidad: '1', puntZona: 'approach' };
+  if (dupId) { var src = recientes.filter(function (o) { return String(o.id) === String(dupId); })[0] || await cargarOrden(dupId); duplicarEnDraft(src); }
+  renderNueva();
+}
+function duplicarEnDraft(o) {
+  var d = S.draft;
+  d.duplicada_de = o.id; d.operador_id = o.operador_id; d.sprayer_id = o.sprayer_id || ''; d.boquilla_id = o.boquilla_id || ''; d.cal = o.calibracion_l_ha || ''; d.notas = o.notas || '';
+  d.areas = {}; o.areas.forEach(function (a) { d.areas[a.unidad_id + '|' + a.zona_id] = { unidad_id: a.unidad_id, zona_id: a.zona_id, arrastrada_de: null }; });
+  d.productos = o.productos.map(function (p) { return { producto_id: p.producto_id, dosis_por_ha: p.dosis_por_ha }; });
+  if (!d.productos.length) d.productos = [{ producto_id: '', dosis_por_ha: '' }];
+  var z = o.areas.filter(function (a) { return MEDIDAS.indexOf(a.zona_id) >= 0; })[0]; if (z) d.zona = z.zona_id;
+}
+function draftAreas() { var d = S.draft; return Object.keys(d.areas).map(function (k) { var a = d.areas[k]; return { unidad_id: a.unidad_id, zona_id: a.zona_id, m2: m2De(a.unidad_id, a.zona_id), arrastrada_de: a.arrastrada_de }; }); }
+function renderNueva() {
+  var d = S.draft;
+  var ops = S.cat.perfiles.filter(function (p) { return p.rol === 'operador' && p.activo; });
+  var sp = byId(S.cat.sprayers, d.sprayer_id);
+  var areas = draftAreas();
+  var calc = calcular(areas.filter(function (a) { return a.m2; }), d.productos, d.cal, sp && sp.capacidad_l);
+  var html = '<div class="between"><h1>Nueva orden</h1><span class="small muted">' + (d.duplicada_de ? 'Duplicada de la orden ' + num(d.duplicada_de) + ' · ajusta lo que cambie' : 'Orden nueva') + '</span></div><div class="row">';
+  html += '<div class="grow" style="display:flex;flex-direction:column;gap:12px">';
+  // duplicar
+  if (d.recientes.length) {
+    html += '<div class="card"><h2>Partir de una orden anterior</h2><div class="row" style="gap:8px">' + d.recientes.map(function (o) {
+      var on = String(d.duplicada_de) === String(o.id);
+      return '<button class="btn sm" style="flex-direction:column;align-items:flex-start;min-height:48px;padding:6px 12px;' + (on ? 'background:var(--green-soft);border:2px solid var(--green);color:var(--green-d)' : '') + '" data-act="dup" data-id="' + o.id + '"><span class="mono" style="font-size:12px;font-weight:500">' + num(o.id) + ' · ' + fecha(o.fecha) + '</span><span>' + esc(resumenAreas(o.areas) || 'Sin áreas') + '</span></button>';
+    }).join('') + '</div></div>';
+  }
+  // pendientes
+  if (d.pend.length) {
+    html += '<div class="card"><h2>Pendientes de órdenes anteriores</h2>' + d.pend.map(function (p) {
+      var k = p.unidad_id + '|' + p.zona_id; var inc = d.areas[k] && String(d.areas[k].arrastrada_de) === String(p.orden_area_id);
+      return '<div class="list-item"><div><b>' + esc(areaNombre(p)) + '</b><div class="small muted">Orden ' + num(p.orden_id) + ' · ' + fecha(p.fecha) + ' · ' + esc(motivoTxt(p.motivo)) + '</div></div><button class="btn sm ' + (inc ? 'primary' : '') + '" data-act="pend" data-id="' + p.orden_area_id + '">' + (inc ? 'Incluido' : 'Incluir') + '</button></div>';
+    }).join('') + '</div>';
+  }
+  // datos
+  html += '<div class="card"><div class="fgrid">' +
+    '<label class="f">Fecha<input type="date" data-inp="fecha" value="' + esc(d.fecha) + '"></label>' +
+    '<label class="f">Operador<select data-inp="operador_id">' + (ops.length ? '' : '<option value="">No hay operadores</option>') + ops.map(function (p) { return '<option value="' + p.user_id + '"' + (p.user_id === d.operador_id ? ' selected' : '') + '>' + esc(p.nombre) + '</option>'; }).join('') + '</select></label>' +
+    '<label class="f">Sprayer<select data-inp="sprayer_id"><option value="">Elegir…</option>' + S.cat.sprayers.filter(function (s) { return s.activo; }).map(function (s) { return '<option value="' + s.id + '"' + (String(s.id) === String(d.sprayer_id) ? ' selected' : '') + '>' + esc(s.nombre) + (s.capacidad_l ? ' · ' + n(s.capacidad_l) + ' L' : '') + '</option>'; }).join('') + '</select></label>' +
+    '<label class="f">Boquilla<select data-inp="boquilla_id"><option value="">Elegir…</option>' + S.cat.boquillas.filter(function (b) { return b.activo && (!b.sprayer_id || !d.sprayer_id || String(b.sprayer_id) === String(d.sprayer_id)); }).map(function (b) { return '<option value="' + b.id + '"' + (String(b.id) === String(d.boquilla_id) ? ' selected' : '') + '>' + esc(b.nombre) + (b.calibracion_l_ha ? ' · ' + n(b.calibracion_l_ha) + ' L/ha' : '') + '</option>'; }).join('') + '</select></label>' +
+    '<label class="f">Calibración (L/ha)<input type="number" inputmode="decimal" min="0" step="1" data-inp="cal" value="' + esc(d.cal) + '"></label>' +
+    '</div></div>';
+  // áreas
+  html += '<div class="card"><div class="between"><h2>Áreas a aplicar</h2><div class="seg" role="group" aria-label="Zona">' +
+    MEDIDAS.map(function (z) { return '<button class="' + (d.zona === z ? 'on' : '') + '" data-act="zona" data-v="' + z + '" aria-pressed="' + (d.zona === z) + '">' + esc(zonaNombre(z)) + '</button>'; }).join('') + '</div></div><div class="holes">' +
+    S.cat.unidades.map(function (u) {
+      var m = m2De(u.id, d.zona); var k = u.id + '|' + d.zona; var on = !!d.areas[k];
+      return '<button class="hole ' + (on ? 'on' : '') + '" data-act="hole" data-u="' + u.id + '"' + (m ? '' : ' disabled') + ' aria-pressed="' + on + '"><b>' + esc(u.tipo === 'hoyo' ? 'Hoyo ' + u.id : u.nombre) + '</b><span>' + (m ? n(m) + ' m²' : '—') + '</span></button>';
+    }).join('') + '</div>';
+  html += '<div class="small muted" style="font-weight:700">Aplicación puntual (sin medida)</div><div class="row" style="gap:8px;align-items:flex-end">' +
+    '<label class="f" style="flex:1 1 140px">Lugar<select data-inp="puntUnidad">' + S.cat.unidades.map(function (u) { return '<option value="' + u.id + '"' + (u.id === d.puntUnidad ? ' selected' : '') + '>' + esc(u.nombre) + '</option>'; }).join('') + '</select></label>' +
+    '<label class="f" style="flex:1 1 160px">Zona<select data-inp="puntZona">' + S.cat.zonas.filter(function (z) { return !z.medida; }).map(function (z) { return '<option value="' + z.id + '"' + (z.id === d.puntZona ? ' selected' : '') + '>' + esc(z.nombre) + '</option>'; }).join('') + '</select></label>' +
+    '<button class="btn" data-act="addPunt">Agregar</button></div>';
+  if (areas.length) html += '<div class="chips">' + areas.map(function (a) { return '<span class="chip">' + esc(areaNombre(a)) + (a.arrastrada_de ? ' · pendiente' : '') + '<button data-act="rmArea" data-k="' + a.unidad_id + '|' + a.zona_id + '" aria-label="Quitar ' + esc(areaNombre(a)) + '">×</button></span>'; }).join('') + '</div>';
+  html += '</div>';
+  // productos
+  html += '<div class="card"><div class="between"><h2>Productos y dosis</h2><button class="btn sm" data-act="addProd">+ Producto</button></div>';
+  if (!S.cat.productos.length) html += '<div class="note warn">Todavía no hay productos. Agrégalos en Catálogos.</div>';
+  d.productos.forEach(function (x, i) {
+    var p = prod(x.producto_id);
+    html += '<div class="row" style="gap:8px;align-items:flex-end"><label class="f" style="flex:3 1 200px">Producto<select data-inp="prod" data-i="' + i + '"><option value="">Elegir…</option>' +
+      S.cat.productos.filter(function (p) { return p.activo; }).map(function (p) { return '<option value="' + p.id + '"' + (String(p.id) === String(x.producto_id) ? ' selected' : '') + '>' + esc(p.nombre) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f" style="flex:1 1 110px">Dosis (' + (p ? p.unidad_dosis : 'kg o L') + '/ha)<input type="number" inputmode="decimal" step="0.001" min="0" data-inp="dosis" data-i="' + i + '" value="' + esc(x.dosis_por_ha) + '"></label>' +
+      '<button class="btn sm" data-act="rmProd" data-i="' + i + '" aria-label="Quitar producto" style="min-height:44px">×</button></div>';
+  });
+  html += '</div><div class="card"><label class="f">Notas para el operador<textarea data-inp="notas">' + esc(d.notas) + '</textarea></label></div></div>';
+  // resumen
+  html += '<aside class="side card dark" style="position:sticky;top:76px"><h2>Cálculo de la orden</h2>' +
+    '<div><div class="small" style="color:var(--on-dark-muted)">' + (areas.length ? areas.length + (areas.length === 1 ? ' área' : ' áreas') : 'Sin áreas') + '</div><div class="mono" style="font-size:32px;font-weight:600">' + n(calc.ha, 2) + ' ha</div><div class="mono small" style="color:var(--on-dark-muted)">' + n(calc.m2) + ' m²</div></div>' +
+    '<div class="fgrid" style="grid-template-columns:1fr 1fr"><div style="background:var(--dark2);border-radius:8px;padding:10px"><div class="small" style="color:var(--on-dark-muted)">Agua</div><div class="mono" style="font-size:18px">' + n(calc.agua) + ' L</div></div>' +
+    '<div style="background:var(--dark2);border-radius:8px;padding:10px"><div class="small" style="color:var(--on-dark-muted)">Tanques</div><div class="mono" style="font-size:18px">' + (calc.tanques.length ? calc.llenos + (calc.resto ? ' + ' + n(calc.resto) + ' L' : '') : '—') + '</div></div></div>';
+  var alertas = [];
+  html += '<div style="display:flex;flex-direction:column;gap:8px"><div class="small" style="color:var(--on-dark-muted);font-weight:600">Producto total</div>' + (calc.lineas.length ? calc.lineas.map(function (l) {
+    var it = d.inv.filter(function (i) { return l.p && i.producto_id === l.p.id; })[0];
+    if (it && l.p) { var desp = Number(it.existencia) - l.total / Number(l.p.factor_conversion); if (it.minimo != null && desp < Number(it.minimo)) alertas.push(l.p.nombre + ' queda en ' + n(Math.max(desp, 0), 2) + ' ' + invUnidad(l.p) + ' (mínimo ' + n(it.minimo, 2) + ')'); }
+    return '<div class="between" style="border-top:1px solid var(--dark3);padding-top:8px"><span>' + esc(l.p ? l.p.nombre : '?') + '</span><span class="mono">' + n(l.total, 2) + ' ' + (l.p ? l.p.unidad_dosis : '') + '</span></div>';
+  }).join('') : '<div class="small" style="color:var(--on-dark-muted)">Agrega productos y dosis.</div>') + '</div>';
+  alertas.forEach(function (a) { html += '<div class="note alert">' + esc(a) + '. Se generará alerta de recompra.</div>'; });
+  if (calc.lineas.length && (!sp || !sp.capacidad_l || !d.cal)) html += '<div class="small" style="color:var(--on-dark-muted)">Elige sprayer y calibración para dividir en tanques.</div>';
+  var opNom = (byId(S.cat.perfiles.map(function (p) { return { id: p.user_id, nombre: p.nombre }; }), d.operador_id) || {}).nombre;
+  html += '<button class="btn bright block" data-act="enviarOrden">' + (opNom ? 'Enviar orden a ' + esc(opNom) : 'Enviar orden') + '</button></aside></div>';
+  shell(html);
+}
+async function enviarOrden(btn) {
+  var d = S.draft; var areas = draftAreas();
+  var prods = d.productos.filter(function (x) { return x.producto_id && Number(x.dosis_por_ha) > 0; });
+  if (!d.operador_id) return toast('Elige el operador', true);
+  if (!areas.length) return toast('Agrega al menos un área', true);
+  if (!prods.length) return toast('Agrega al menos un producto con dosis', true);
+  var ids = prods.map(function (x) { return String(x.producto_id); });
+  if (ids.some(function (v, i) { return ids.indexOf(v) !== i; })) return toast('Hay un producto repetido', true);
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  var orden = null;
+  try {
+    orden = await q(sb.from('smgc_apl_ordenes').insert({ fecha: d.fecha, operador_id: d.operador_id, sprayer_id: d.sprayer_id || null, boquilla_id: d.boquilla_id || null, calibracion_l_ha: d.cal || null, duplicada_de: d.duplicada_de, notas: d.notas || null, estado: 'enviada' }).select().single());
+    await q(sb.from('smgc_apl_orden_productos').insert(prods.map(function (x) { return { orden_id: orden.id, producto_id: Number(x.producto_id), dosis_por_ha: Number(x.dosis_por_ha) }; })));
+    await q(sb.from('smgc_apl_orden_areas').insert(areas.map(function (a) { return { orden_id: orden.id, unidad_id: a.unidad_id, zona_id: a.zona_id, arrastrada_de: a.arrastrada_de || null }; })));
+    toast('Orden ' + num(orden.id) + ' enviada'); location.hash = '#/orden/' + orden.id;
+  } catch (e) {
+    if (orden) { try { await sb.from('smgc_apl_ordenes').delete().eq('id', orden.id); } catch (_) {} }
+    fail(e); btn.disabled = false; btn.textContent = 'Enviar orden';
+  }
+}
+
+// ---------- cumplimiento ----------
+async function vCumplimiento(dia) {
+  dia = dia || hoy();
+  var desde = addDays(dia, -6);
+  var ords = await q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).gte('fecha', desde).lte('fecha', dia).neq('estado', 'cancelada').order('id'));
+  var pend = await q(sb.from('smgc_apl_pendientes').select('*').order('fecha'));
+  var inv = await inventario();
+  var aplicadas = await q(sb.from('smgc_apl_orden_areas').select('unidad_id, zona_id, orden:smgc_apl_ordenes!inner(fecha)').eq('estado', 'aplicada').eq('zona_id', S.zonaMapa || 'fairway'));
+  var delDia = ords.filter(function (o) { return o.fecha === dia; });
+  function cuenta(list) { var ok = 0, tot = 0; list.forEach(function (o) { o.areas.forEach(function (a) { if (o.estado === 'cerrada' || a.estado !== 'pendiente') { tot++; if (a.estado === 'aplicada') ok++; } }); }); return [ok, tot]; }
+  var cd = cuenta(delDia), cs = cuenta(ords);
+  var alertas = inv.filter(function (i) { return i.estado === 'recomprar'; });
+  var html = '<div class="between"><h1>Cumplimiento · ' + fecha(dia) + '</h1><div class="row" style="gap:6px"><a class="btn sm" href="#/cumplimiento/' + addDays(dia, -1) + '">← Día anterior</a>' + (dia < hoy() ? '<a class="btn sm" href="#/cumplimiento/' + addDays(dia, 1) + '">Siguiente →</a>' : '') + '</div></div>';
+  html += '<div class="kpis">' +
+    '<div class="kpi dark"><div class="l">Este día</div><div class="v">' + (cd[1] ? Math.round(cd[0] / cd[1] * 100) + '%' : '—') + '</div><div class="l">' + cd[0] + ' de ' + cd[1] + ' áreas confirmadas</div></div>' +
+    '<div class="kpi"><div class="l">Últimos 7 días</div><div class="v">' + (cs[1] ? Math.round(cs[0] / cs[1] * 100) + '%' : '—') + '</div><div class="l">' + cs[0] + ' de ' + cs[1] + ' áreas</div></div>' +
+    '<div class="kpi warn"><div class="l">Pendientes sin reprogramar</div><div class="v">' + pend.length + '</div><div class="l">Aparecen al crear la próxima orden</div></div>' +
+    '<a class="kpi alert" href="#/inventario" style="text-decoration:none"><div class="l">Alertas de inventario</div><div class="v">' + alertas.length + '</div><div class="l">' + (alertas.length ? esc(alertas.map(function (a) { return a.nombre; }).join(', ')) : 'Todo en orden') + '</div></a></div>';
+  html += '<div class="row"><div class="card grow"><h2>Órdenes del día</h2>' + (delDia.length ? '<div class="scroll"><table class="tbl" style="min-width:640px"><thead><tr><th>Orden</th><th>Operador</th><th>Sprayer</th><th>Áreas</th><th class="r">Cumplido</th><th>Motivo</th></tr></thead><tbody>' +
+    delDia.map(function (o) {
+      var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
+      var mot = o.areas.filter(function (a) { return a.estado === 'no_aplicada'; }).map(function (a) { return motivoTxt(a.motivo) + ' · ' + areaNombre(a); }).join('; ');
+      return '<tr><td class="mono"><a href="#/orden/' + o.id + '">' + num(o.id) + '</a></td><td>' + esc(perfilNombre(o.operador_id)) + '</td><td>' + esc((byId(S.cat.sprayers, o.sprayer_id) || {}).nombre || '—') + '</td><td><b>' + esc(resumenAreas(o.areas)) + '</b>' + (o.estado === 'enviada' ? ' <span class="badge b-neutral">En curso</span>' : '') + '</td><td class="r">' + cumplBadge(ok, o.areas.length) + '</td><td class="muted">' + esc(mot || '—') + '</td></tr>';
+    }).join('') + '</tbody></table></div>' : '<div class="empty">No hay órdenes este día.</div>') + '</div>';
+  html += '<div class="card side"><h2>Pendientes</h2>' + (pend.length ? pend.map(function (p) {
+    var d = diasEntre(p.fecha, hoy());
+    return '<div class="list-item"><div><b>' + esc(areaNombre(p)) + '</b><div class="small muted">Orden ' + num(p.orden_id) + ' · ' + esc(motivoTxt(p.motivo)) + '</div></div><span class="small" style="font-weight:700;color:' + (d >= 3 ? 'var(--red)' : 'var(--orange-d)') + '">' + (d === 0 ? 'Hoy' : 'Hace ' + d + (d === 1 ? ' día' : ' días')) + '</span></div>';
+  }).join('') : '<div class="empty">Sin pendientes.</div>') + '</div></div>';
+  // por operador
+  var porOp = {};
+  ords.forEach(function (o) { o.areas.forEach(function (a) { if (o.estado === 'cerrada' || a.estado !== 'pendiente') { var r = porOp[o.operador_id] = porOp[o.operador_id] || [0, 0]; r[1]++; if (a.estado === 'aplicada') r[0]++; } }); });
+  var opsK = Object.keys(porOp).sort(function (a, b) { return porOp[b][0] / porOp[b][1] - porOp[a][0] / porOp[a][1]; });
+  html += '<div class="row"><div class="card side"><h2>Por operador · 7 días</h2>' + (opsK.length ? opsK.map(function (k) {
+    var p = Math.round(porOp[k][0] / porOp[k][1] * 100);
+    return '<div style="display:grid;grid-template-columns:110px 1fr 46px;gap:10px;align-items:center;font-size:14px"><div>' + esc(perfilNombre(k)) + '</div><div class="bar"><i style="width:' + p + '%;background:' + (p >= 85 ? 'var(--green)' : 'var(--orange)') + '"></i></div><div class="mono" style="text-align:right">' + p + '%</div></div>';
+  }).join('') : '<div class="empty">Sin datos todavía.</div>') + '</div>';
+  // mapa días desde última aplicación
+  var ult = {}; aplicadas.forEach(function (a) { var f = a.orden && a.orden.fecha; if (f && (!ult[a.unidad_id] || f > ult[a.unidad_id])) ult[a.unidad_id] = f; });
+  var zm = S.zonaMapa || 'fairway';
+  html += '<div class="card grow"><div class="between"><h2>Días desde la última aplicación</h2><div class="seg">' + MEDIDAS.map(function (z) { return '<button class="' + (zm === z ? 'on' : '') + '" data-act="zonaMapa" data-v="' + z + '">' + esc(zonaNombre(z)) + '</button>'; }).join('') + '</div></div>' +
+    '<div class="mini">' + S.cat.unidades.filter(function (u) { return u.tipo === 'hoyo'; }).map(function (u) {
+      var tiene = m2De(u.id, zm); var f = ult[u.id]; var d = f ? diasEntre(f, hoy()) : null;
+      var bg = !tiene ? 'var(--bg)' : d === null ? '#ECEAE3' : d <= 7 ? 'var(--green)' : d <= 14 ? '#8DBE9A' : '#F0CFAF';
+      var fg = !tiene ? '#8A928C' : d !== null && d <= 7 ? '#fff' : 'var(--ink)';
+      return '<div style="background:' + bg + ';color:' + fg + ';' + (!tiene ? 'border:1px dashed #C9C7BE' : '') + '" title="' + (f ? 'Última: ' + fecha(f) : 'Sin registro') + '">H' + u.id + '<span>' + (!tiene ? '—' : d === null ? 's/r' : d) + '</span></div>';
+    }).join('') + '</div><div class="small muted">Verde: 0–7 días · verde claro: 8–14 · naranja: 15 o más · s/r: sin registro.</div></div></div>';
+  shell(html);
+}
+
+// ---------- inventario ----------
+async function vInventario() {
+  var inv = await inventario();
+  var movs = await q(sb.from('smgc_apl_movimientos').select('*').order('created_at', { ascending: false }).limit(40));
+  var esSup = S.perfil.rol === 'superintendente';
+  var alertas = inv.filter(function (i) { return i.estado === 'recomprar'; });
+  var html = '<div class="between"><h1>Inventario en sitio</h1>' + (esSup ? '<div class="row" style="gap:8px"><a class="btn" href="#/conteo">Conteo físico</a><button class="btn primary" data-act="toggleCompra">+ Registrar compra</button></div>' : '') + '</div>';
+  html += '<div class="small muted">Se descuenta solo con cada cierre de jornada.</div>';
+  if (esSup) html += '<form class="card" id="compraForm" hidden><h2>Registrar compra recibida</h2><div class="fgrid"><label class="f">Producto<select name="p" required><option value="">Elegir…</option>' +
+    S.cat.productos.map(function (p) { return '<option value="' + p.id + '">' + esc(p.nombre) + ' (' + invUnidad(p) + ')</option>'; }).join('') + '</select></label><label class="f">Cantidad recibida<input name="c" type="number" step="0.01" min="0.01" inputmode="decimal" required></label><label class="f">Nota<input name="nota" placeholder="Proveedor, factura…"></label></div><button class="btn primary" type="submit">Guardar compra</button></form>';
+  alertas.forEach(function (a) { html += '<div class="note alert"><b>' + esc(a.nombre) + ' bajo el mínimo:</b> quedan ' + n(a.existencia, 2) + ' de un mínimo de ' + n(a.minimo, 2) + '. Hay que recomprar.</div>'; });
+  if (!inv.length) html += '<div class="card"><div class="empty">Todavía no hay productos. ' + (esSup ? 'Agrégalos en <a href="#/catalogos">Catálogos</a>.' : '') + '</div></div>';
+  html += '<div class="invgrid">' + inv.map(function (i) {
+    var p = prod(i.producto_id); var u = p ? invUnidad(p) : '';
+    var cap = Number(i.capacidad) || Math.max(Number(i.existencia), Number(i.minimo) || 0, 1);
+    var pct = Math.max(0, Math.min(100, Number(i.existencia) / cap * 100));
+    var col = i.estado === 'recomprar' ? 'var(--red)' : i.estado === 'vigilar' ? 'var(--orange)' : 'var(--green)';
+    var bd = i.estado === 'recomprar' ? 'b-alert' : i.estado === 'vigilar' ? 'b-warn' : 'b-ok';
+    var lbl = i.estado === 'recomprar' ? 'Recomprar' : i.estado === 'vigilar' ? 'Vigilar' : 'OK';
+    return '<div class="card" style="' + (i.estado === 'recomprar' ? 'border:2px solid var(--red)' : '') + '"><div class="between"><div><b>' + esc(i.nombre) + '</b><div class="small muted">' + esc(i.tipo) + '</div></div><span class="badge ' + bd + '">' + lbl + '</span></div>' +
+      '<div><span class="mono" style="font-size:26px;font-weight:600">' + n(i.existencia, 2) + ' ' + u + '</span>' + (i.capacidad ? ' <span class="small muted">de ' + n(i.capacidad, 2) + '</span>' : '') + '</div>' +
+      '<div class="bar"><i style="width:' + pct.toFixed(1) + '%;background:' + col + '"></i>' + (i.minimo != null ? '<em style="left:' + Math.min(100, Number(i.minimo) / cap * 100).toFixed(1) + '%" aria-hidden="true"></em>' : '') + '</div>' +
+      '<div class="small muted">' + (i.minimo != null ? 'Mínimo ' + n(i.minimo, 2) + ' ' + u : 'Sin mínimo definido') + '</div></div>';
+  }).join('') + '</div>';
+  var tipoTxt = { inicial: 'Inventario inicial', compra: 'Compra recibida', aplicacion: 'Aplicación', ajuste_conteo: 'Conteo físico · ajuste' };
+  html += '<div class="card"><h2>Movimientos recientes</h2>' + (movs.length ? '<div class="scroll"><table class="tbl" style="min-width:620px"><thead><tr><th>Fecha</th><th>Movimiento</th><th>Producto</th><th class="r">Cantidad</th><th>Registró</th></tr></thead><tbody>' +
+    movs.map(function (m) {
+      var p = prod(m.producto_id); var c = Number(m.cantidad);
+      return '<tr><td class="muted">' + fecha(m.created_at) + '</td><td>' + esc(tipoTxt[m.tipo] || m.tipo) + (m.orden_id ? ' · <a href="#/orden/' + m.orden_id + '">' + num(m.orden_id) + '</a>' : '') + '</td><td><b>' + esc(p ? p.nombre : '?') + '</b></td><td class="r mono" style="color:' + (c < 0 ? 'var(--red)' : 'var(--green-d)') + '">' + (c > 0 ? '+' : '−') + n(Math.abs(c), 2) + ' ' + (p ? invUnidad(p) : '') + '</td><td>' + esc(perfilNombre(m.registrado_por)) + '</td></tr>';
+    }).join('') + '</tbody></table></div>' : '<div class="empty">Sin movimientos todavía.</div>') + '</div>';
+  shell(html);
+  var cf = document.getElementById('compraForm');
+  if (cf) cf.addEventListener('submit', async function (ev) {
+    ev.preventDefault(); var f = ev.target;
+    try { await q(sb.from('smgc_apl_movimientos').insert({ producto_id: Number(f.p.value), tipo: 'compra', cantidad: Number(f.c.value), nota: f.nota.value || null })); toast('Compra registrada'); route(); } catch (e) { fail(e); }
+  });
+}
+
+// ---------- historial ----------
+async function vHistorial() {
+  var fu = S.histU || '', fz = S.histZ || '';
+  var qy = sb.from('smgc_apl_orden_areas').select('*, orden:smgc_apl_ordenes!inner(id, fecha, estado, operador_id, sprayer_id, productos:smgc_apl_orden_productos(producto_id, dosis_por_ha))').order('id', { ascending: false }).limit(150);
+  if (fu) qy = qy.eq('unidad_id', fu);
+  if (fz) qy = qy.eq('zona_id', fz);
+  var rows = await q(qy);
+  var html = '<h1>Historial de aplicaciones</h1><div class="card"><div class="fgrid">' +
+    '<label class="f">Lugar<select data-inp="histU"><option value="">Todos</option>' + S.cat.unidades.map(function (u) { return '<option value="' + u.id + '"' + (u.id === fu ? ' selected' : '') + '>' + esc(u.nombre) + '</option>'; }).join('') + '</select></label>' +
+    '<label class="f">Zona<select data-inp="histZ"><option value="">Todas</option>' + S.cat.zonas.map(function (z) { return '<option value="' + z.id + '"' + (z.id === fz ? ' selected' : '') + '>' + esc(z.nombre) + '</option>'; }).join('') + '</select></label></div></div>';
+  html += '<div class="card">' + (rows.length ? '<div class="scroll"><table class="tbl" style="min-width:720px"><thead><tr><th>Fecha</th><th>Área</th><th>Productos</th><th>Operador</th><th>Sprayer</th><th>Estado</th></tr></thead><tbody>' +
+    rows.sort(function (a, b) { return a.orden.fecha < b.orden.fecha ? 1 : a.orden.fecha > b.orden.fecha ? -1 : b.id - a.id; }).map(function (r) {
+      var ps = (r.orden.productos || []).map(function (x) { var p = prod(x.producto_id); return (p ? p.nombre : '?') + ' ' + n(x.dosis_por_ha, 2) + (p ? ' ' + p.unidad_dosis : '') + '/ha'; }).join('<br>');
+      var est = r.estado === 'aplicada' ? '<span class="badge b-ok">Aplicada</span>' : r.estado === 'no_aplicada' ? '<span class="badge b-warn">No · ' + esc(motivoTxt(r.motivo)) + '</span>' : '<span class="badge b-neutral">' + (r.orden.estado === 'cancelada' ? 'Cancelada' : 'Pendiente') + '</span>';
+      return '<tr><td><a href="#/orden/' + r.orden.id + '">' + fecha(r.orden.fecha) + '</a></td><td><b>' + esc(areaNombre(r)) + '</b></td><td class="small">' + ps + '</td><td>' + esc(perfilNombre(r.orden.operador_id)) + '</td><td>' + esc((byId(S.cat.sprayers, r.orden.sprayer_id) || {}).nombre || '—') + '</td><td>' + est + '</td></tr>';
+    }).join('') + '</tbody></table></div>' : '<div class="empty">No hay aplicaciones con ese filtro.</div>') + '</div>';
+  shell(html);
+}
+
+// ---------- catálogos ----------
+async function vCatalogos() {
+  await cargarCatalogos();
+  var inv = await inventario();
+  var html = '<h1>Catálogos</h1>';
+  // sprayers
+  html += '<div class="card"><h2>Sprayers</h2><table class="tbl"><thead><tr><th>Nombre</th><th class="r">Capacidad (L)</th><th>Activo</th><th></th></tr></thead><tbody>' +
+    S.cat.sprayers.map(function (s) { return '<tr><td><input class="cat" data-t="sprayers" data-id="' + s.id + '" data-f="nombre" value="' + esc(s.nombre) + '" aria-label="Nombre" style="min-height:40px;border:1px solid var(--line);border-radius:6px;padding:0 8px;width:100%"></td><td class="r"><input class="cat" data-t="sprayers" data-id="' + s.id + '" data-f="capacidad_l" type="number" value="' + esc(s.capacidad_l) + '" aria-label="Capacidad" style="min-height:40px;border:1px solid var(--line);border-radius:6px;padding:0 8px;width:110px;text-align:right"></td><td><input type="checkbox" class="cat" data-t="sprayers" data-id="' + s.id + '" data-f="activo"' + (s.activo ? ' checked' : '') + ' aria-label="Activo" style="width:22px;height:22px"></td><td></td></tr>'; }).join('') +
+    '</tbody></table><form class="row" data-form="sprayer" style="gap:8px;align-items:flex-end"><label class="f" style="flex:2 1 160px">Nuevo sprayer<input name="nombre" required placeholder="Sprayer 1"></label><label class="f" style="flex:1 1 120px">Capacidad (L)<input name="capacidad_l" type="number" min="0" step="1"></label><button class="btn primary" type="submit">Agregar</button></form></div>';
+  // boquillas
+  html += '<div class="card"><h2>Boquillas y calibración</h2><table class="tbl"><thead><tr><th>Nombre</th><th>Sprayer</th><th class="r">L/ha</th><th>Activa</th></tr></thead><tbody>' +
+    S.cat.boquillas.map(function (b) { return '<tr><td><input class="cat" data-t="boquillas" data-id="' + b.id + '" data-f="nombre" value="' + esc(b.nombre) + '" aria-label="Nombre" style="min-height:40px;border:1px solid var(--line);border-radius:6px;padding:0 8px;width:100%"></td><td><select class="cat" data-t="boquillas" data-id="' + b.id + '" data-f="sprayer_id" aria-label="Sprayer" style="min-height:40px;border:1px solid var(--line);border-radius:6px"><option value="">Cualquiera</option>' + S.cat.sprayers.map(function (s) { return '<option value="' + s.id + '"' + (String(s.id) === String(b.sprayer_id) ? ' selected' : '') + '>' + esc(s.nombre) + '</option>'; }).join('') + '</select></td><td class="r"><input class="cat" data-t="boquillas" data-id="' + b.id + '" data-f="calibracion_l_ha" type="number" value="' + esc(b.calibracion_l_ha) + '" aria-label="Calibración" style="min-height:40px;border:1px solid var(--line);border-radius:6px;padding:0 8px;width:100px;text-align:right"></td><td><input type="checkbox" class="cat" data-t="boquillas" data-id="' + b.id + '" data-f="activo"' + (b.activo ? ' checked' : '') + ' aria-label="Activa" style="width:22px;height:22px"></td></tr>'; }).join('') +
+    '</tbody></table><form class="row" data-form="boquilla" style="gap:8px;align-items:flex-end"><label class="f" style="flex:2 1 160px">Nueva boquilla<input name="nombre" required placeholder="XR 8004"></label><label class="f" style="flex:1 1 140px">Sprayer<select name="sprayer_id"><option value="">Cualquiera</option>' + S.cat.sprayers.map(function (s) { return '<option value="' + s.id + '">' + esc(s.nombre) + '</option>'; }).join('') + '</select></label><label class="f" style="flex:1 1 110px">L/ha<input name="calibracion_l_ha" type="number" min="0" step="1"></label><button class="btn primary" type="submit">Agregar</button></form></div>';
+  // productos
+  html += '<div class="card"><h2>Productos</h2><div class="small muted">Dosis en kg o L por hectárea. Si compras en sacos o galones, indica cuántos kg o L trae cada uno.</div><div class="scroll"><table class="tbl" style="min-width:860px"><thead><tr><th>Nombre</th><th>Tipo</th><th>Dosis en</th><th>Inventario en</th><th class="r">kg/L por unidad</th><th class="r">Capacidad</th><th class="r">Mínimo</th><th class="r">En sitio</th><th>Activo</th></tr></thead><tbody>' +
+    S.cat.productos.map(function (p) {
+      var it = inv.filter(function (i) { return i.producto_id === p.id; })[0];
+      var inp = function (f, type, w) { return '<input class="cat" data-t="productos" data-id="' + p.id + '" data-f="' + f + '"' + (type ? ' type="' + type + '" step="any"' : '') + ' value="' + esc(p[f]) + '" aria-label="' + f + '" style="min-height:40px;border:1px solid var(--line);border-radius:6px;padding:0 8px;width:' + w + ';' + (type ? 'text-align:right' : '') + '">'; };
+      var sel = function (f, opts) { return '<select class="cat" data-t="productos" data-id="' + p.id + '" data-f="' + f + '" aria-label="' + f + '" style="min-height:40px;border:1px solid var(--line);border-radius:6px">' + opts.map(function (o) { return '<option' + (o === p[f] ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>'; };
+      return '<tr><td>' + inp('nombre', '', '100%') + '</td><td>' + sel('tipo', TIPOS) + '</td><td>' + sel('unidad_dosis', ['kg', 'L']) + '</td><td>' + sel('unidad_inventario', ['kg', 'L', 'saco', 'galon']) + '</td><td class="r">' + inp('factor_conversion', 'number', '90px') + '</td><td class="r">' + inp('capacidad', 'number', '90px') + '</td><td class="r">' + inp('minimo', 'number', '90px') + '</td><td class="r mono">' + (it ? n(it.existencia, 2) : '—') + '</td><td><input type="checkbox" class="cat" data-t="productos" data-id="' + p.id + '" data-f="activo"' + (p.activo ? ' checked' : '') + ' aria-label="Activo" style="width:22px;height:22px"></td></tr>';
+    }).join('') + '</tbody></table></div>' +
+    '<form data-form="producto" style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line2);padding-top:12px"><h2>Nuevo producto</h2><div class="fgrid">' +
+    '<label class="f">Nombre<input name="nombre" required></label>' +
+    '<label class="f">Tipo<select name="tipo">' + TIPOS.map(function (t) { return '<option>' + t + '</option>'; }).join('') + '</select></label>' +
+    '<label class="f">Dosis en<select name="unidad_dosis"><option>kg</option><option>L</option></select></label>' +
+    '<label class="f">Inventario en<select name="unidad_inventario"><option>kg</option><option>L</option><option>saco</option><option>galon</option></select></label>' +
+    '<label class="f">kg o L por unidad<input name="factor_conversion" type="number" step="any" min="0.0001" value="1"></label>' +
+    '<label class="f">Capacidad en bodega<input name="capacidad" type="number" step="any" min="0"></label>' +
+    '<label class="f">Mínimo (alerta)<input name="minimo" type="number" step="any" min="0"></label>' +
+    '<label class="f">Existencia actual<input name="inicial" type="number" step="any" min="0"></label>' +
+    '</div><button class="btn primary" type="submit" style="align-self:flex-start">Agregar producto</button></form></div>';
+  // usuarios
+  html += '<div class="card"><h2>Usuarios</h2>' + S.cat.perfiles.map(function (p) { return '<div class="list-item"><div><b>' + esc(p.nombre) + '</b><div class="small muted">' + esc(p.rol) + '</div></div><span class="badge ' + (p.activo ? 'b-ok' : 'b-neutral') + '">' + (p.activo ? 'Activo' : 'Inactivo') + '</span></div>'; }).join('') +
+    '<div class="small muted">Las cuentas nuevas y los cambios de PIN los hace el administrador.</div></div>';
+  html += '<div class="card"><h2>Campo</h2><div class="small muted">' + S.cat.areas.length + ' áreas medidas en ' + S.cat.unidades.length + ' lugares. Las medidas vienen de la tabla del campo; para corregir alguna, pídelo al administrador.</div></div>';
+  shell(html);
+}
+async function guardarCat(el) {
+  var t = 'smgc_apl_' + el.dataset.t, f = el.dataset.f, v;
+  if (el.type === 'checkbox') v = el.checked;
+  else if (el.type === 'number') v = el.value === '' ? null : Number(el.value);
+  else if (f === 'sprayer_id') v = el.value ? Number(el.value) : null;
+  else v = el.value.trim();
+  if (f === 'nombre' && !v) return toast('El nombre no puede quedar vacío', true);
+  if (f === 'factor_conversion' && !(v > 0)) return toast('Debe ser mayor que cero', true);
+  var patch = {}; patch[f] = v;
+  try { await q(sb.from(t).update(patch).eq('id', Number(el.dataset.id))); await cargarCatalogos(); toast('Guardado'); } catch (e) { fail(e); }
+}
+async function enviarForm(form) {
+  var k = form.dataset.form, fd = new FormData(form), o = {};
+  fd.forEach(function (v, key) { o[key] = v; });
+  function nn(v) { return v === '' || v == null ? null : Number(v); }
+  try {
+    if (k === 'sprayer') await q(sb.from('smgc_apl_sprayers').insert({ nombre: o.nombre.trim(), capacidad_l: nn(o.capacidad_l) }));
+    if (k === 'boquilla') await q(sb.from('smgc_apl_boquillas').insert({ nombre: o.nombre.trim(), sprayer_id: nn(o.sprayer_id), calibracion_l_ha: nn(o.calibracion_l_ha) }));
+    if (k === 'producto') {
+      var p = await q(sb.from('smgc_apl_productos').insert({ nombre: o.nombre.trim(), tipo: o.tipo, unidad_dosis: o.unidad_dosis, unidad_inventario: o.unidad_inventario, factor_conversion: nn(o.factor_conversion) || 1, capacidad: nn(o.capacidad), minimo: nn(o.minimo) }).select().single());
+      if (nn(o.inicial) > 0) await q(sb.from('smgc_apl_movimientos').insert({ producto_id: p.id, tipo: 'inicial', cantidad: nn(o.inicial), nota: 'Existencia al crear el producto' }));
+    }
+    toast('Agregado'); route();
+  } catch (e) { fail(e); }
+}
+
+// ---------- eventos ----------
+document.addEventListener('click', async function (e) {
+  var el = e.target.closest('[data-act]'); if (!el) return;
+  var a = el.dataset.act, d = S.draft;
+  try {
+    if (a === 'salir') { await sb.auth.signOut(); S.perfil = null; S.cat = null; location.hash = ''; renderLogin(); }
+    else if (a === 'toggleArea') {
+      el.disabled = true;
+      var nuevo = el.dataset.estado === 'aplicada' ? 'pendiente' : 'aplicada';
+      await q(sb.rpc('smgc_apl_confirmar_area', { p_id: Number(el.dataset.id), p_estado: nuevo, p_motivo: null, p_nota: null }));
+      route();
+    }
+    else if (a === 'cierreSet') { var s = S.cierre.areas[el.dataset.id]; s.estado = el.dataset.v; if (s.estado === 'aplicada') s.motivo = null; renderCierre(); }
+    else if (a === 'cierreMotivo') { S.cierre.areas[el.dataset.id].motivo = el.dataset.v; renderCierre(); }
+    else if (a === 'confirmarCierre') await confirmarCierre(el);
+    else if (a === 'cancelarOrden') { if (confirm('¿Cancelar esta orden? No se descuenta inventario.')) { await q(sb.from('smgc_apl_ordenes').update({ estado: 'cancelada' }).eq('id', Number(el.dataset.id))); toast('Orden cancelada'); route(); } }
+    else if (a === 'dup') { var o = d.recientes.filter(function (x) { return String(x.id) === el.dataset.id; })[0]; duplicarEnDraft(o); renderNueva(); }
+    else if (a === 'pend') {
+      var p = d.pend.filter(function (x) { return String(x.orden_area_id) === el.dataset.id; })[0]; var k = p.unidad_id + '|' + p.zona_id;
+      if (d.areas[k] && String(d.areas[k].arrastrada_de) === String(p.orden_area_id)) delete d.areas[k];
+      else d.areas[k] = { unidad_id: p.unidad_id, zona_id: p.zona_id, arrastrada_de: p.orden_area_id };
+      renderNueva();
+    }
+    else if (a === 'zona') { d.zona = el.dataset.v; renderNueva(); }
+    else if (a === 'hole') { var hk = el.dataset.u + '|' + d.zona; if (d.areas[hk]) delete d.areas[hk]; else d.areas[hk] = { unidad_id: el.dataset.u, zona_id: d.zona, arrastrada_de: null }; renderNueva(); }
+    else if (a === 'addPunt') { var pk = d.puntUnidad + '|' + d.puntZona; d.areas[pk] = d.areas[pk] || { unidad_id: d.puntUnidad, zona_id: d.puntZona, arrastrada_de: null }; renderNueva(); }
+    else if (a === 'rmArea') { delete d.areas[el.dataset.k]; renderNueva(); }
+    else if (a === 'addProd') { d.productos.push({ producto_id: '', dosis_por_ha: '' }); renderNueva(); }
+    else if (a === 'rmProd') { d.productos.splice(Number(el.dataset.i), 1); if (!d.productos.length) d.productos.push({ producto_id: '', dosis_por_ha: '' }); renderNueva(); }
+    else if (a === 'enviarOrden') await enviarOrden(el);
+    else if (a === 'zonaMapa') { S.zonaMapa = el.dataset.v; route(); }
+    else if (a === 'toggleCompra') { var cf = document.getElementById('compraForm'); cf.hidden = !cf.hidden; }
+  } catch (err) { fail(err); el.disabled = false; }
+});
+document.addEventListener('change', function (e) {
+  var el = e.target;
+  if (el.classList && el.classList.contains('cat')) return guardarCat(el);
+  var k = el.dataset && el.dataset.inp; if (!k) return;
+  if (k === 'histU') { S.histU = el.value; return route(); }
+  if (k === 'histZ') { S.histZ = el.value; return route(); }
+  if (k === 'puntual') { S.cierre.puntual[el.dataset.key] = el.value; return; }
+  var d = S.draft; if (!d) return;
+  if (k === 'prod') d.productos[Number(el.dataset.i)].producto_id = el.value;
+  else if (k === 'dosis') d.productos[Number(el.dataset.i)].dosis_por_ha = el.value;
+  else if (k === 'boquilla_id') { d.boquilla_id = el.value; var b = byId(S.cat.boquillas, el.value); if (b && b.calibracion_l_ha) d.cal = b.calibracion_l_ha; }
+  else if (k === 'sprayer_id') { d.sprayer_id = el.value; var bb = byId(S.cat.boquillas, d.boquilla_id); if (bb && bb.sprayer_id && String(bb.sprayer_id) !== String(d.sprayer_id)) d.boquilla_id = ''; }
+  else d[k] = el.value;
+  renderNueva();
+});
+document.addEventListener('submit', function (e) {
+  var f = e.target; if (!f.dataset || !f.dataset.form) return;
+  e.preventDefault(); enviarForm(f);
+});
+
+init();
+})();
+</script>
+</body>
+</html>
