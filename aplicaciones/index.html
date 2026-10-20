@@ -182,16 +182,18 @@ async function q(p) { var r = await p; if (r.error) throw r.error; try { regCod(
 function byId(arr, id) { for (var i = 0; i < arr.length; i++) if (String(arr[i].id) === String(id)) return arr[i]; return null; }
 function unidadNombre(id) { var u = byId(S.cat.unidades, id); return u ? u.nombre : id; }
 function zonaNombre(id) { var z = byId(S.cat.zonas, id); return z ? z.nombre : id; }
-// los greens de práctica 19-20 se nombran como un hoyo más y van siempre primero (orden 0 en el catálogo)
-function numUnidad(u) { return u && u.tipo === 'hoyo' ? u.id : u && u.id === 'putting' ? '19-20' : null; }
+// greens de práctica numerados como en el campo: 19 chipping, 20 putting, 21 driving range, 22 academia.
+// En el catálogo 19 y 20 van antes del hoyo 1 (se aplican primero); 21 y 22 después del 18.
+var GREEN_NUM = { chipping: '19', putting: '20', range: '21', academia: '22' };
+function numUnidad(u, zona) { if (!u) return null; if (u.tipo === 'hoyo') return u.id; return zona === 'green' && GREEN_NUM[u.id] ? GREEN_NUM[u.id] : null; }
 function ordenUnidad(id) { var u = byId(S.cat.unidades, id); return u && u.orden != null ? Number(u.orden) : 999; }
-function areaNombre(a) { var u = byId(S.cat.unidades, a.unidad_id); var z = zonaNombre(a.zona_id); var nu = numUnidad(u); return nu ? z + ' ' + nu : z + ' · ' + (u ? u.nombre : a.unidad_id); }
+function areaNombre(a) { var u = byId(S.cat.unidades, a.unidad_id); var z = zonaNombre(a.zona_id); var nu = numUnidad(u, a.zona_id); return nu ? z + ' ' + nu : z + ' · ' + (u ? u.nombre : a.unidad_id); }
 function m2De(u, z) { for (var i = 0; i < S.cat.areas.length; i++) { var a = S.cat.areas[i]; if (a.unidad_id === u && a.zona_id === z) return Number(a.m2); } return null; }
 function perfilNombre(id) { for (var i = 0; i < S.cat.perfiles.length; i++) if (S.cat.perfiles[i].user_id === id) return S.cat.perfiles[i].nombre; return id === S.perfil.user_id ? S.perfil.nombre : '—'; }
 function resumenAreas(areas) {
   var g = {}; areas.forEach(function (a) { (g[a.zona_id] = g[a.zona_id] || []).push(a); });
   return Object.keys(g).map(function (z) {
-    var items = g[z].slice().sort(function (x, y) { return ordenUnidad(x.unidad_id) - ordenUnidad(y.unidad_id); }).map(function (a) { var u = byId(S.cat.unidades, a.unidad_id); return numUnidad(u) || (u ? u.nombre : a.unidad_id); });
+    var items = g[z].slice().sort(function (x, y) { return ordenUnidad(x.unidad_id) - ordenUnidad(y.unidad_id); }).map(function (a) { var u = byId(S.cat.unidades, a.unidad_id); return numUnidad(u, a.zona_id) || (u ? u.nombre : a.unidad_id); });
     return zonaNombre(z) + ' ' + items.join(', ');
   }).join(' · ');
 }
@@ -667,7 +669,7 @@ function renderNueva() {
     MEDIDAS.map(function (z) { return '<button class="' + (d.zona === z ? 'on' : '') + '" data-act="zona" data-v="' + z + '" aria-pressed="' + (d.zona === z) + '">' + esc(zonaNombre(z)) + '</button>'; }).join('') + '</div></div><div class="holes">' +
     S.cat.unidades.map(function (u) {
       var m = m2De(u.id, d.zona); var k = u.id + '|' + d.zona; var on = !!d.areas[k]; var pos = on ? Object.keys(d.areas).indexOf(k) + 1 : 0;
-      return '<button class="hole ' + (on ? 'on' : '') + '" data-act="hole" data-u="' + u.id + '"' + (m ? '' : ' disabled') + ' aria-pressed="' + on + '" style="position:relative">' + (pos ? '<i class="hole-n">' + pos + '</i>' : '') + '<b>' + esc(u.tipo === 'hoyo' ? 'Hoyo ' + u.id : u.nombre) + '</b><span>' + (m ? n(m) + ' m²' : '—') + '</span></button>';
+      return '<button class="hole ' + (on ? 'on' : '') + '" data-act="hole" data-u="' + u.id + '"' + (m ? '' : ' disabled') + ' aria-pressed="' + on + '" style="position:relative">' + (pos ? '<i class="hole-n">' + pos + '</i>' : '') + '<b>' + esc(u.tipo === 'hoyo' ? 'Hoyo ' + u.id : numUnidad(u, d.zona) ? 'Green ' + numUnidad(u, d.zona) : u.nombre) + '</b>' + (u.tipo !== 'hoyo' && numUnidad(u, d.zona) ? '<span style="font-family:inherit">' + esc(u.nombre) + '</span>' : '') + '<span>' + (m ? n(m) + ' m²' : '—') + '</span></button>';
     }).join('') + '</div>';
   html += '<div class="small muted" style="font-weight:700">Aplicación puntual (sin medida)</div><div class="row" style="gap:8px;align-items:flex-end">' +
     '<label class="f" style="flex:1 1 140px">Lugar<select data-inp="puntUnidad">' + S.cat.unidades.map(function (u) { return '<option value="' + u.id + '"' + (u.id === d.puntUnidad ? ' selected' : '') + '>' + esc(u.nombre) + '</option>'; }).join('') + '</select></label>' +
@@ -781,11 +783,11 @@ async function vCumplimiento(dia) {
   var ult = {}; aplicadas.forEach(function (a) { var f = a.orden && a.orden.fecha; if (f && (!ult[a.unidad_id] || f > ult[a.unidad_id])) ult[a.unidad_id] = f; });
   var zm = S.zonaMapa || 'fairway';
   html += '<div class="card grow"><div class="between"><h2>Días desde la última aplicación</h2><div class="seg">' + MEDIDAS.map(function (z) { return '<button class="' + (zm === z ? 'on' : '') + '" data-act="zonaMapa" data-v="' + z + '">' + esc(zonaNombre(z)) + '</button>'; }).join('') + '</div></div>' +
-    '<div class="mini">' + S.cat.unidades.filter(function (u) { return u.tipo === 'hoyo'; }).map(function (u) {
+    '<div class="mini">' + S.cat.unidades.filter(function (u) { return u.tipo === 'hoyo' || numUnidad(u, zm); }).map(function (u) {
       var tiene = m2De(u.id, zm); var f = ult[u.id]; var d = f ? diasEntre(f, hoy()) : null;
       var bg = !tiene ? 'var(--bg)' : d === null ? '#ECEAE3' : d <= 7 ? 'var(--green)' : d <= 14 ? '#8DBE9A' : '#F0CFAF';
       var fg = !tiene ? '#8A928C' : d !== null && d <= 7 ? '#fff' : 'var(--ink)';
-      return '<div style="background:' + bg + ';color:' + fg + ';' + (!tiene ? 'border:1px dashed #C9C7BE' : '') + '" title="' + (f ? 'Última: ' + fecha(f) : 'Sin registro') + '">H' + u.id + '<span>' + (!tiene ? '—' : d === null ? 's/r' : d) + '</span></div>';
+      return '<div style="background:' + bg + ';color:' + fg + ';' + (!tiene ? 'border:1px dashed #C9C7BE' : '') + '" title="' + (f ? 'Última: ' + fecha(f) : 'Sin registro') + '">' + (u.tipo === 'hoyo' ? 'H' + u.id : 'G' + numUnidad(u, zm)) + '<span>' + (!tiene ? '—' : d === null ? 's/r' : d) + '</span></div>';
     }).join('') + '</div><div class="small muted">Verde: 0–7 días · verde claro: 8–14 · naranja: 15 o más · s/r: sin registro.</div></div></div>';
   shell(html);
 }
