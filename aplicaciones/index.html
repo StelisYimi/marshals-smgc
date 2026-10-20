@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/morphdom@2.7.4/dist/morphdom-umd.min.js"></script>
 <style>
 :root{
   --bg:#F3F2EC; --surface:#FFFFFF; --ink:#17211B; --muted:#56605A; --line:#DAD8CF; --line2:#ECEAE3;
@@ -295,12 +296,25 @@ var NAV = {
 function shell(html) {
   var h = location.hash.split('/').slice(0, 2).join('/');
   var nav = NAV[S.perfil.rol].map(function (x) { return '<a href="' + x[0] + '" class="' + (h === x[0] ? 'on' : '') + '">' + x[1] + '</a>'; }).join('');
-  // al redibujar la misma pantalla se conserva la posición; al cambiar de pantalla se sube arriba
+  // al redibujar la misma pantalla solo se cambia lo que cambió (sin parpadeo, sin perder el toque ni la posición);
+  // al cambiar de pantalla se reemplaza todo y se sube arriba
   var mismo = S.pintada === location.hash, y = window.scrollY;
-  document.getElementById('app').innerHTML =
-    '<header class="top"><div class="top-in"><div class="brand">Aplicaciones <span>· SMGC</span></div><nav class="tabs">' + nav + '</nav>' +
+  var app = document.getElementById('app');
+  var contenido = '<header class="top"><div class="top-in"><div class="brand">Aplicaciones <span>· SMGC</span></div><nav class="tabs">' + nav + '</nav>' +
     '<div class="who">' + esc(S.perfil.nombre) + '<button data-act="salir">Salir</button></div></div></header><main id="main">' + html + '</main>';
-  window.scrollTo(0, mismo ? y : 0);
+  if (mismo && window.morphdom && app.firstChild) {
+    window.morphdom(app, '<div id="app">' + contenido + '</div>', {
+      onBeforeElUpdated: function (desde, hacia) {
+        // no tocar el campo donde la persona está escribiendo
+        if (desde === document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(desde.tagName)) return false;
+        return !desde.isEqualNode(hacia);
+      }
+    });
+    if (Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y);
+  } else {
+    app.innerHTML = contenido;
+    window.scrollTo(0, mismo ? y : 0);
+  }
   S.pintada = location.hash;
 }
 function loading() { shell('<div class="empty">Cargando…</div>'); }
