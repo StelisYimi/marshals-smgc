@@ -199,6 +199,28 @@ function cant(p, v, porHa) {
 // para los marcados, el formulario se escribe en mL u oz y se guarda en L
 function aLitros(p, valor, u) { var x = Number(valor); if (!esMlOz(p) || !(x > 0)) return valor; return u === 'oz' ? x * ML_POR_OZ / 1000 : x / 1000; }
 function deLitros(p, litros, u) { var x = Number(litros); if (!esMlOz(p) || !(x > 0)) return litros; var r = u === 'oz' ? x * 1000 / ML_POR_OZ : x * 1000; return Math.round(r * 100) / 100; }
+// búsqueda de órdenes: cada palabra debe aparecer en título, número, fecha, operador, sprayer, productos o áreas
+function sinTildes(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+function buscarOrdenes(ords, texto) {
+  var tk = sinTildes(texto).replace(/[.,;:]/g, ' ').split(/\s+/).filter(Boolean);
+  if (!tk.length) return { items: ords.slice(0, 8), total: ords.length };
+  // "rough 7", "green 19", "16 oct" se buscan juntos; un número suelto se busca como número completo (7 no encuentra 17)
+  var esc2 = function (t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
+  var terms = [];
+  for (var i = 0; i < tk.length; i++) {
+    var a = tk[i], b = tk[i + 1], na = /^\d+$/.test(a), nb = b != null && /^\d+$/.test(b);
+    if (b != null && na !== nb) { terms.push(new RegExp('(^|[^0-9a-z])' + esc2(a + ' ' + b) + '($|[^0-9a-z])')); i++; }
+    else terms.push(na ? new RegExp('(^|[^0-9])' + a + '($|[^0-9])') : new RegExp(esc2(a)));
+  }
+  var palabras = terms;
+  var r = ords.filter(function (o) {
+    if (!o._txt) o._txt = sinTildes([o.titulo, num(o.id), o.fecha, fecha(o.fecha), perfilNombre(o.operador_id), (byId(S.cat.sprayers, o.sprayer_id) || {}).nombre, o.notas,
+      (o.productos || []).map(function (x) { var p = byId(S.cat.productos, x.producto_id); return p ? p.nombre : ''; }).join(' '),
+      (o.areas || []).map(function (a) { return areaNombre(a) + ' / hoyo ' + a.unidad_id + ' / ' + zonaNombre(a.zona_id) + ' ' + a.unidad_id; }).join(' / ')].join(' | '));
+    return palabras.every(function (w) { return w.test(o._txt); });
+  });
+  return { items: r.slice(0, 20), total: r.length };
+}
 function prod(id) { return byId(S.cat.productos, id); }
 function invUnidad(p) { return p.unidad_inventario === 'galon' ? 'gal' : p.unidad_inventario === 'saco' ? 'sacos' : p.unidad_inventario; }
 function cumplBadge(ok, tot) { if (!tot) return '<span class="badge b-neutral">—</span>'; return '<span class="badge ' + (ok === tot ? 'b-ok' : 'b-warn') + ' mono">' + ok + '/' + tot + '</span>'; }
@@ -537,10 +559,13 @@ async function vOrdenes() {
 // ---------- SUPERINTENDENTE: nueva orden ----------
 async function vNueva(dupId) {
   var pend = await q(sb.from('smgc_apl_pendientes').select('*').order('fecha'));
-  var recientes = await q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).order('id', { ascending: false }).limit(8));
+  // órdenes de los últimos 60 días para poder buscar y duplicar
+  var desde60 = new Date(); desde60.setDate(desde60.getDate() - 60);
+  var desdeTxt = desde60.getFullYear() + '-' + String(desde60.getMonth() + 1).padStart(2, '0') + '-' + String(desde60.getDate()).padStart(2, '0');
+  var recientes = await q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).gte('fecha', desdeTxt).neq('estado', 'cancelada').order('fecha', { ascending: false }).order('id', { ascending: false }).limit(300));
   var inv = await inventario();
   var ops = S.cat.perfiles.filter(function (p) { return p.rol === 'operador' && p.activo; });
-  S.draft = { titulo: '', fecha: hoy(), operador_id: ops[0] ? ops[0].user_id : '', sprayer_id: '', boquilla_id: '', cal: '', agua: '', zona: 'fairway', areas: {}, productos: [{ producto_id: '', cantidad_tanque: '' }], duplicada_de: null, notas: '', pend: pend, recientes: recientes, inv: inv, puntUnidad: '1', puntZona: 'approach' };
+  S.draft = { buscar: '', titulo: '', fecha: hoy(), operador_id: ops[0] ? ops[0].user_id : '', sprayer_id: '', boquilla_id: '', cal: '', agua: '', zona: 'fairway', areas: {}, productos: [{ producto_id: '', cantidad_tanque: '' }], duplicada_de: null, notas: '', pend: pend, recientes: recientes, inv: inv, puntUnidad: '1', puntZona: 'approach' };
   if (dupId) { var src = recientes.filter(function (o) { return String(o.id) === String(dupId); })[0] || await cargarOrden(dupId); duplicarEnDraft(src); }
   renderNueva();
 }
@@ -564,10 +589,14 @@ function renderNueva() {
   html += '<div class="grow" style="display:flex;flex-direction:column;gap:12px">';
   // duplicar
   if (d.recientes.length) {
-    html += '<div class="card"><h2>Partir de una orden anterior</h2><div class="row" style="gap:8px">' + d.recientes.map(function (o) {
+    var lista = buscarOrdenes(d.recientes, d.buscar);
+    html += '<div class="card"><h2>Partir de una orden anterior</h2>' +
+      '<label class="f"><span class="small muted">Busca por título, producto, hoyo, operador, número o fecha (ej. "green", "Moddus", "rough 7", "Ivan", "15 oct")</span><input type="search" data-inp="buscar" value="' + esc(d.buscar) + '" placeholder="Buscar en los últimos 60 días" autocomplete="off"></label>' +
+      '<div class="small muted">' + (d.buscar ? lista.total + (lista.total === 1 ? ' orden encontrada' : ' órdenes encontradas') + (lista.total > lista.items.length ? ' · se muestran ' + lista.items.length : '') : 'Últimas órdenes') + '</div>' +
+      '<div class="row" style="gap:8px">' + (lista.items.length ? lista.items.map(function (o) {
       var on = String(d.duplicada_de) === String(o.id);
-      return '<button class="btn sm" style="flex-direction:column;align-items:flex-start;min-height:48px;padding:6px 12px;text-align:left;' + (on ? 'background:var(--green-soft);border:2px solid var(--green);color:var(--green-d)' : '') + '" data-act="dup" data-id="' + o.id + '"><span class="mono" style="font-size:12px;font-weight:500">' + num(o.id) + ' · ' + fecha(o.fecha) + '</span><span>' + esc(tituloOrden(o)) + '</span></button>';
-    }).join('') + '</div></div>';
+      return '<button class="btn sm" style="flex-direction:column;align-items:flex-start;min-height:48px;padding:6px 12px;text-align:left;' + (on ? 'background:var(--green-soft);border:2px solid var(--green);color:var(--green-d)' : '') + '" data-act="dup" data-id="' + o.id + '"><span class="mono" style="font-size:12px;font-weight:500">' + num(o.id) + ' · ' + fecha(o.fecha) + ' · ' + esc(perfilNombre(o.operador_id)) + '</span><span>' + esc(tituloOrden(o)) + '</span>' + (o.titulo ? '<span class="small muted" style="font-weight:500">' + esc(resumenAreas(o.areas)) + '</span>' : '') + '</button>';
+    }).join('') : '<div class="empty" style="width:100%">No hay órdenes con esa búsqueda.</div>') + '</div></div>';
   }
   // pendientes
   if (d.pend.length) {
@@ -880,6 +909,7 @@ document.addEventListener('click', async function (e) {
 });
 document.addEventListener('input', function (e) {
   var el = e.target; if (el.dataset && (el.dataset.inp === 'titulo' || el.dataset.inp === 'notas') && S.draft) S.draft[el.dataset.inp] = el.value;
+  if (el.dataset && el.dataset.inp === 'buscar' && S.draft) { S.draft.buscar = el.value; renderNueva(); }
 });
 document.addEventListener('change', function (e) {
   var el = e.target;
@@ -889,7 +919,7 @@ document.addEventListener('change', function (e) {
   if (k === 'histZ') { S.histZ = el.value; return route(); }
   if (k === 'puntual') { S.cierre.puntual[el.dataset.key] = el.value; return; }
   var d = S.draft; if (!d) return;
-  if (k === 'titulo' || k === 'notas') { d[k] = el.value; return; }
+  if (k === 'titulo' || k === 'notas' || k === 'buscar') { d[k] = el.value; return; }
   if (k === 'prod') d.productos[Number(el.dataset.i)].producto_id = el.value;
   else if (k === 'cant') { var xc = d.productos[Number(el.dataset.i)]; xc.cantidad_tanque = aLitros(prod(xc.producto_id), el.value, xc.u); }
   else if (k === 'boquilla_id') { d.boquilla_id = el.value; var b = byId(S.cat.boquillas, el.value); if (b && b.calibracion_l_ha) d.cal = b.calibracion_l_ha; }
