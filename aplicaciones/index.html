@@ -182,13 +182,16 @@ async function q(p) { var r = await p; if (r.error) throw r.error; try { regCod(
 function byId(arr, id) { for (var i = 0; i < arr.length; i++) if (String(arr[i].id) === String(id)) return arr[i]; return null; }
 function unidadNombre(id) { var u = byId(S.cat.unidades, id); return u ? u.nombre : id; }
 function zonaNombre(id) { var z = byId(S.cat.zonas, id); return z ? z.nombre : id; }
-function areaNombre(a) { var u = byId(S.cat.unidades, a.unidad_id); var z = zonaNombre(a.zona_id); return u && u.tipo === 'hoyo' ? z + ' ' + u.id : z + ' · ' + (u ? u.nombre : a.unidad_id); }
+// los greens de práctica 19-20 se nombran como un hoyo más y van siempre primero (orden 0 en el catálogo)
+function numUnidad(u) { return u && u.tipo === 'hoyo' ? u.id : u && u.id === 'putting' ? '19-20' : null; }
+function ordenUnidad(id) { var u = byId(S.cat.unidades, id); return u && u.orden != null ? Number(u.orden) : 999; }
+function areaNombre(a) { var u = byId(S.cat.unidades, a.unidad_id); var z = zonaNombre(a.zona_id); var nu = numUnidad(u); return nu ? z + ' ' + nu : z + ' · ' + (u ? u.nombre : a.unidad_id); }
 function m2De(u, z) { for (var i = 0; i < S.cat.areas.length; i++) { var a = S.cat.areas[i]; if (a.unidad_id === u && a.zona_id === z) return Number(a.m2); } return null; }
 function perfilNombre(id) { for (var i = 0; i < S.cat.perfiles.length; i++) if (S.cat.perfiles[i].user_id === id) return S.cat.perfiles[i].nombre; return id === S.perfil.user_id ? S.perfil.nombre : '—'; }
 function resumenAreas(areas) {
   var g = {}; areas.forEach(function (a) { (g[a.zona_id] = g[a.zona_id] || []).push(a); });
   return Object.keys(g).map(function (z) {
-    var items = g[z].map(function (a) { var u = byId(S.cat.unidades, a.unidad_id); return u && u.tipo === 'hoyo' ? u.id : (u ? u.nombre : a.unidad_id); });
+    var items = g[z].slice().sort(function (x, y) { return ordenUnidad(x.unidad_id) - ordenUnidad(y.unidad_id); }).map(function (a) { var u = byId(S.cat.unidades, a.unidad_id); return numUnidad(u) || (u ? u.nombre : a.unidad_id); });
     return zonaNombre(z) + ' ' + items.join(', ');
   }).join(' · ');
 }
