@@ -128,6 +128,12 @@ label.f textarea{padding:10px 12px;min-height:70px}
 .seq li:first-child{border-top:0}
 .seq-t{flex:1 1 auto;min-width:0}
 .seq .btn.sm{min-width:44px;min-height:44px;padding:0}
+.tq-now{border:2px solid var(--green);background:var(--green-soft)}
+.tq{border-top:1px solid var(--line2);padding-top:10px}
+.tq:first-of-type{border-top:0}
+.tq-l{margin:6px 0 0;padding-left:22px}
+.tq-l li{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
+.tq-l li::marker{font-family:var(--mono);color:var(--muted)}
 .rec{border:2px solid var(--green);border-radius:10px;overflow:hidden}
 .rec-h{background:var(--green-soft);color:var(--green-d);padding:8px 12px;font-size:14px}
 .rec-r{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 12px;border-top:1px solid var(--line2)}
@@ -429,28 +435,59 @@ async function vOrden(id) {
   html += '<div class="card"><div class="between"><h2>Mezcla por tanque</h2><span class="small muted">' + n(calc.ha, 2) + ' ha · ' + tanquesTxt(calc) + '</span></div>' + htmlMezcla(o, calc) +
     (o.areas.length > medidas.length ? '<div class="small muted">Las áreas puntuales no entran en este cálculo; registra lo que uses al cerrar.</div>' : '') +
     (calc.aguaT && !o.calibracion_l_ha ? '<div class="small muted">Falta la calibración para saber cuántos tanques hacen falta.</div>' : '') + '</div>';
+  var tqAct = tanqueEnCurso(o), tqTot = tanquesPrevistos(calc), lAct = litrosTanque(calc, tqAct);
+  if (esMia) {
+    html += '<div class="card tq-now"><div class="small" style="font-weight:700;letter-spacing:.04em;text-transform:uppercase">Tanque en curso</div>' +
+      '<div class="between" style="gap:8px"><div><span style="font-size:28px;font-weight:800">Tanque ' + tqAct + '</span>' + (tqTot ? ' <span class="muted">de ' + tqTot + '</span>' : '') + (lAct ? '<div class="small mono">' + n(lAct) + ' L de agua</div>' : '') + '</div>' +
+      (tqAct > 1 ? '<button class="btn sm" data-act="tqCambiar" data-id="' + o.id + '" data-v="' + (tqAct - 1) + '" aria-label="Volver al tanque ' + (tqAct - 1) + '">‹ Tanque ' + (tqAct - 1) + '</button>' : '') + '</div>' +
+      '<div class="small muted">Las áreas que marques ahora quedan registradas con el tanque ' + tqAct + '.</div>' +
+      '<button class="btn primary block" data-act="tqCambiar" data-id="' + o.id + '" data-v="' + (tqAct + 1) + '">Terminé el tanque ' + tqAct + ' · empezar el tanque ' + (tqAct + 1) + '</button></div>';
+  }
   html += '<div class="card"><h2>' + (esMia ? 'Áreas en orden de aplicación · toca al terminar cada una' : 'Áreas en orden de aplicación') + '</h2>';
   porSecuencia(o.areas).forEach(function (a, ix) {
     var paso = '<span class="paso" aria-label="Paso ' + (ix + 1) + '">' + (ix + 1) + '</span>';
     var on = a.estado === 'aplicada';
     var tag = a.arrastrada_de ? '<span class="badge b-warn">Pendiente anterior</span>' : '';
     var est = a.estado === 'no_aplicada' ? '<span class="badge b-warn">No aplicada · ' + esc(motivoTxt(a.motivo)) + '</span>' : '';
+    var tqB = on && a.tanque ? '<span class="badge b-ok mono">T' + a.tanque + '</span>' : '';
     if (esMia) {
-      html += '<button class="area-btn ' + (on ? 'on' : '') + '" data-act="toggleArea" data-id="' + a.id + '" data-estado="' + a.estado + '" aria-pressed="' + on + '">' +
+      html += '<button class="area-btn ' + (on ? 'on' : '') + '" data-act="toggleArea" data-id="' + a.id + '" data-tanque="' + tqAct + '" data-estado="' + a.estado + '" aria-pressed="' + on + '">' +
         '<span class="chk" aria-hidden="true">' + (on ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : '') + '</span>' +
-        paso + '<span style="flex-grow:1"><b style="font-size:18px">' + esc(areaNombre(a)) + '</b><br><span class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</span></span>' + tag + est + '</button>';
+        paso + '<span style="flex-grow:1"><b style="font-size:18px">' + esc(areaNombre(a)) + '</b><br><span class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</span></span>' + tag + est + tqB + '</button>';
     } else {
       html += '<div class="list-item"><div style="display:flex;gap:10px;align-items:center">' + paso + '<div><b>' + esc(areaNombre(a)) + '</b> ' + tag + '<div class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</div></div></div>' +
-        (a.estado === 'aplicada' ? '<span class="badge b-ok">Aplicada</span>' : a.estado === 'no_aplicada' ? est : '<span class="badge b-neutral">Pendiente</span>') + '</div>';
+        (a.estado === 'aplicada' ? '<span class="badge b-ok">Aplicada' + (a.tanque ? ' · T' + a.tanque : '') + '</span>' : a.estado === 'no_aplicada' ? est : '<span class="badge b-neutral">Pendiente</span>') + '</div>';
     }
   });
   html += '</div>';
+  html += htmlResumenTanques(o, calc);
   if (esMia) html += '<a class="btn primary block" href="#/cierre/' + o.id + '">Cerrar jornada</a>';
   if (S.perfil.rol === 'superintendente') {
     html += '<div class="row">' + '<a class="btn" href="#/nueva/' + o.id + '">Duplicar esta orden</a>' +
       (o.estado === 'enviada' ? '<button class="btn" data-act="cancelarOrden" data-id="' + o.id + '">Cancelar orden</button>' : '') + '</div>';
   }
   shell(html);
+}
+// ---------- tanques: con cuál tanque y en qué orden se aplicó cada área ----------
+function tanquesPrevistos(calc) { return calc.aguaT && calc.cal && calc.ha ? calc.llenos + (calc.resto ? 1 : 0) : 0; }
+function litrosTanque(calc, t) { if (!calc.aguaT) return null; return calc.resto && calc.cal && calc.ha && t === calc.llenos + 1 ? calc.resto : calc.aguaT; }
+function tanqueEnCurso(o) { var g = (S.tq || {})[o.id]; if (g) return g; var m = 0; o.areas.forEach(function (a) { if (a.estado === 'aplicada' && a.tanque > m) m = a.tanque; }); return m || 1; }
+function porTanque(o) {
+  var g = {}, sin = [];
+  o.areas.filter(function (a) { return a.estado === 'aplicada'; }).forEach(function (a) { if (a.tanque) (g[a.tanque] = g[a.tanque] || []).push(a); else sin.push(a); });
+  var orden = function (x, y) { return String(x.confirmada_at || '').localeCompare(String(y.confirmada_at || '')) || (x.id - y.id); };
+  return { tanques: Object.keys(g).map(Number).sort(function (a, b) { return a - b; }).map(function (t) { return { t: t, areas: g[t].sort(orden) }; }), sin: sin.sort(orden) };
+}
+function htmlResumenTanques(o, calc) {
+  var r = porTanque(o); if (!r.tanques.length && !r.sin.length) return '';
+  var h = '<div class="card"><div class="between"><h2>Resumen por tanque</h2><span class="small muted">en el orden en que se aplicó</span></div>';
+  r.tanques.forEach(function (g) {
+    var l = litrosTanque(calc, g.t), m2 = 0; g.areas.forEach(function (a) { m2 += Number(a.m2) || 0; });
+    h += '<div class="tq"><div class="between"><b>Tanque ' + g.t + (l ? ' · ' + n(l) + ' L' : '') + '</b><span class="small muted mono">' + g.areas.length + (g.areas.length === 1 ? ' área' : ' áreas') + (m2 ? ' · ' + n(m2) + ' m²' : '') + '</span></div><ol class="tq-l">' +
+      g.areas.map(function (a) { var hr = a.confirmada_at ? new Date(a.confirmada_at).toLocaleTimeString('es-PA', { hour: 'numeric', minute: '2-digit' }) : ''; return '<li><span>' + esc(areaNombre(a)) + '</span><span class="small muted mono">' + hr + '</span></li>'; }).join('') + '</ol></div>';
+  });
+  if (r.sin.length) h += '<div class="tq"><b>Aplicadas sin indicar tanque</b><ol class="tq-l">' + r.sin.map(function (a) { return '<li><span>' + esc(areaNombre(a)) + '</span></li>'; }).join('') + '</ol></div>';
+  return h + '</div>';
 }
 function estadoOrden(o) { return { borrador: 'Borrador', enviada: 'En curso', cerrada: 'Cerrada', cancelada: 'Cancelada' }[o.estado] || o.estado; }
 function motivoTxt(m) { for (var i = 0; i < MOTIVOS.length; i++) if (MOTIVOS[i][0] === m) return MOTIVOS[i][1]; return m || ''; }
@@ -460,9 +497,10 @@ async function vCierre(id) {
   var o = await cargarOrden(id);
   if (o.estado !== 'enviada') { location.hash = '#/orden/' + id; return; }
   if (!S.cierre || S.cierre.id !== o.id) {
-    S.cierre = { id: o.id, o: o, areas: {}, puntual: {} };
+    var spc = byId(S.cat.sprayers, o.sprayer_id); var cc = calcular(o.areas.filter(function (a) { return a.m2; }), o.productos, o.calibracion_l_ha, o.agua_tanque_l, spc && spc.capacidad_l);
+    S.cierre = { id: o.id, o: o, areas: {}, puntual: {}, nTanques: tanquesPrevistos(cc) };
     // lo que el operador ya marcó durante el día viene en Sí; el resto debe responderlo
-    o.areas.forEach(function (a) { S.cierre.areas[a.id] = { estado: a.estado === 'pendiente' ? null : a.estado, motivo: a.motivo || null }; });
+    o.areas.forEach(function (a) { S.cierre.areas[a.id] = { estado: a.estado === 'pendiente' ? null : a.estado, motivo: a.motivo || null, tanque: a.tanque || null }; });
   }
   renderCierre();
 }
@@ -480,6 +518,12 @@ function renderCierre() {
     html += '<div class="list-item"><div><b style="font-size:17px">' + esc(areaNombre(a)) + '</b><div class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</div></div>' +
       '<div class="yn"><button class="y ' + (s.estado === 'aplicada' ? 'on' : '') + '" data-act="cierreSet" data-id="' + a.id + '" data-v="aplicada" aria-pressed="' + (s.estado === 'aplicada') + '">Sí</button>' +
       '<button class="n ' + (s.estado === 'no_aplicada' ? 'on' : '') + '" data-act="cierreSet" data-id="' + a.id + '" data-v="no_aplicada" aria-pressed="' + (s.estado === 'no_aplicada') + '">No</button></div></div>';
+    if (s.estado === 'aplicada') {
+      var maxT = Math.max(c.nTanques || 0, tanqueEnCurso(o), s.tanque || 0, 1);
+      var opts = []; for (var t = 1; t <= maxT + 1; t++) opts.push(t);
+      html += '<div style="padding-bottom:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="small" style="font-weight:700">Tanque:</span>' +
+        opts.map(function (t) { return '<button class="btn sm' + (s.tanque === t ? ' primary' : '') + '" style="min-width:44px" data-act="cierreTanque" data-id="' + a.id + '" data-v="' + t + '" aria-pressed="' + (s.tanque === t) + '">' + t + '</button>'; }).join('') + '</div>';
+    }
     if (s.estado === 'no_aplicada') {
       html += '<div style="padding-bottom:10px"><div class="small" style="font-weight:700;margin-bottom:8px">¿Por qué no se aplicó ' + esc(areaNombre(a)) + '?</div><div class="reasons">' +
         MOTIVOS.map(function (m) { return '<button class="' + (s.motivo === m[0] ? 'on' : '') + '" data-act="cierreMotivo" data-id="' + a.id + '" data-v="' + m[0] + '" aria-pressed="' + (s.motivo === m[0]) + '">' + m[1] + '</button>'; }).join('') + '</div></div>';
@@ -512,6 +556,7 @@ async function confirmarCierre(btn) {
     for (var j = 0; j < o.areas.length; j++) {
       var a = o.areas[j], st = c.areas[a.id];
       await q(sb.rpc('smgc_apl_confirmar_area', { p_id: a.id, p_estado: st.estado, p_motivo: st.estado === 'no_aplicada' ? st.motivo : null, p_nota: null }));
+      if (st.estado === 'aplicada' && (st.tanque || null) !== (a.tanque || null)) await q(sb.rpc('smgc_apl_asignar_tanque', { p_id: a.id, p_tanque: st.tanque || null }));
     }
     var keys = Object.keys(c.puntual);
     for (var k = 0; k < keys.length; k++) {
@@ -874,8 +919,11 @@ document.addEventListener('click', async function (e) {
       el.disabled = true;
       var nuevo = el.dataset.estado === 'aplicada' ? 'pendiente' : 'aplicada';
       await q(sb.rpc('smgc_apl_confirmar_area', { p_id: Number(el.dataset.id), p_estado: nuevo, p_motivo: null, p_nota: null }));
+      if (nuevo === 'aplicada' && el.dataset.tanque) await q(sb.rpc('smgc_apl_asignar_tanque', { p_id: Number(el.dataset.id), p_tanque: Number(el.dataset.tanque) }));
       route();
     }
+    else if (a === 'tqCambiar') { S.tq = S.tq || {}; S.tq[el.dataset.id] = Math.max(1, Number(el.dataset.v)); route(); }
+    else if (a === 'cierreTanque') { var st = S.cierre.areas[el.dataset.id]; st.tanque = st.tanque === Number(el.dataset.v) ? null : Number(el.dataset.v); renderCierre(); }
     else if (a === 'cierreSet') { var s = S.cierre.areas[el.dataset.id]; s.estado = el.dataset.v; if (s.estado === 'aplicada') s.motivo = null; renderCierre(); }
     else if (a === 'cierreMotivo') { S.cierre.areas[el.dataset.id].motivo = el.dataset.v; renderCierre(); }
     else if (a === 'confirmarCierre') await confirmarCierre(el);
