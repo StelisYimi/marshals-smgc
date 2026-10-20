@@ -243,6 +243,7 @@ async function entrar() {
 function inicio() { return S.perfil.rol === 'operador' ? '#/hoy' : S.perfil.rol === 'superintendente' ? '#/ordenes' : '#/cumplimiento'; }
 
 function renderLogin(msg) {
+  S.pintada = null;
   document.getElementById('app').innerHTML =
     '<div class="login"><form class="card" id="loginForm" autocomplete="on">' +
     '<div><div class="small muted" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase">Santa María Golf Club</div><h1>Aplicaciones</h1></div>' +
@@ -270,9 +271,13 @@ var NAV = {
 function shell(html) {
   var h = location.hash.split('/').slice(0, 2).join('/');
   var nav = NAV[S.perfil.rol].map(function (x) { return '<a href="' + x[0] + '" class="' + (h === x[0] ? 'on' : '') + '">' + x[1] + '</a>'; }).join('');
+  // al redibujar la misma pantalla se conserva la posición; al cambiar de pantalla se sube arriba
+  var mismo = S.pintada === location.hash, y = window.scrollY;
   document.getElementById('app').innerHTML =
     '<header class="top"><div class="top-in"><div class="brand">Aplicaciones <span>· SMGC</span></div><nav class="tabs">' + nav + '</nav>' +
     '<div class="who">' + esc(S.perfil.nombre) + '<button data-act="salir">Salir</button></div></div></header><main id="main">' + html + '</main>';
+  window.scrollTo(0, mismo ? y : 0);
+  S.pintada = location.hash;
 }
 function loading() { shell('<div class="empty">Cargando…</div>'); }
 
@@ -286,7 +291,7 @@ async function route() {
   if (rol === 'operador') allowed.push('orden', 'cierre');
   if (rol === 'consulta') allowed.push('orden');
   if (allowed.indexOf(v) < 0) { location.hash = inicio(); return; }
-  S.view = v; loading();
+  S.view = v; if (S.pintada !== location.hash) loading();
   try {
     if (v === 'hoy') await vHoy();
     else if (v === 'orden') await vOrden(id);
