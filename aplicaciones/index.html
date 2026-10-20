@@ -182,9 +182,9 @@ async function q(p) { var r = await p; if (r.error) throw r.error; try { regCod(
 function byId(arr, id) { for (var i = 0; i < arr.length; i++) if (String(arr[i].id) === String(id)) return arr[i]; return null; }
 function unidadNombre(id) { var u = byId(S.cat.unidades, id); return u ? u.nombre : id; }
 function zonaNombre(id) { var z = byId(S.cat.zonas, id); return z ? z.nombre : id; }
-// greens de práctica numerados como en el campo: 19 chipping, 20 putting, 21 driving range, 22 academia.
+// greens de práctica numerados como en el campo: 19 chipping, 20 putting, 21 driving range, 22 academia, 23.
 // En el catálogo 19 y 20 van antes del hoyo 1 (se aplican primero); 21 y 22 después del 18.
-var GREEN_NUM = { chipping: '19', putting: '20', range: '21', academia: '22' };
+var GREEN_NUM = { chipping: '19', putting: '20', range: '21', academia: '22', g23: '23' };
 function numUnidad(u, zona) { if (!u) return null; if (u.tipo === 'hoyo') return u.id; return zona === 'green' && GREEN_NUM[u.id] ? GREEN_NUM[u.id] : null; }
 function ordenUnidad(id) { var u = byId(S.cat.unidades, id); return u && u.orden != null ? Number(u.orden) : 999; }
 function areaNombre(a) { var u = byId(S.cat.unidades, a.unidad_id); var z = zonaNombre(a.zona_id); var nu = numUnidad(u, a.zona_id); return nu ? z + ' ' + nu : z + ' · ' + (u ? u.nombre : a.unidad_id); }
