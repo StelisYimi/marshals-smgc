@@ -119,6 +119,14 @@ label.f textarea{padding:10px 12px;min-height:70px}
 .tank{display:grid;grid-template-columns:1.5fr repeat(var(--cols),1fr);gap:6px 8px;font-size:14px;align-items:baseline}
 .tank .h{font-size:12px;color:var(--muted);font-weight:600}
 .tank .n{text-align:right;font-family:var(--mono)}
+.paso{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 6px;border-radius:15px;background:var(--ink);color:#fff;font-family:var(--mono);font-weight:600;font-size:15px}
+.area-btn.on .paso{background:var(--green-d)}
+.hole-n{position:absolute;top:4px;right:6px;font-style:normal;font-family:var(--mono);font-size:12px;font-weight:700;background:#fff;color:var(--green-d);border-radius:9px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px}
+.seq{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.seq li{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line2)}
+.seq li:first-child{border-top:0}
+.seq-t{flex:1 1 auto;min-width:0}
+.seq .btn.sm{min-width:44px;min-height:44px;padding:0}
 .rec{border:2px solid var(--green);border-radius:10px;overflow:hidden}
 .rec-h{background:var(--green-soft);color:var(--green-d);padding:8px 12px;font-size:14px}
 .rec-r{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 12px;border-top:1px solid var(--line2)}
@@ -342,7 +350,8 @@ async function vHoy() {
 }
 
 // ---------- detalle de orden (operador ejecuta / otros ven) ----------
-async function cargarOrden(id) { return q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).eq('id', id).single()); }
+function porSecuencia(areas) { return (areas || []).sort(function (a, b) { return ((a.secuencia || 9999) - (b.secuencia || 9999)) || (a.id - b.id); }); }
+async function cargarOrden(id) { var o = await q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).eq('id', id).single()); if (o) porSecuencia(o.areas); return o; }
 function htmlMezcla(o, calc) {
   if (!calc.lineas.length) return '<div class="small muted">Sin productos.</div>';
   var u = function (l) { return l.p ? l.p.unidad_dosis : ''; };
@@ -380,17 +389,18 @@ async function vOrden(id) {
   html += '<div class="card"><div class="between"><h2>Mezcla por tanque</h2><span class="small muted">' + n(calc.ha, 2) + ' ha · ' + tanquesTxt(calc) + '</span></div>' + htmlMezcla(o, calc) +
     (o.areas.length > medidas.length ? '<div class="small muted">Las áreas puntuales no entran en este cálculo; registra lo que uses al cerrar.</div>' : '') +
     (calc.aguaT && !o.calibracion_l_ha ? '<div class="small muted">Falta la calibración para saber cuántos tanques hacen falta.</div>' : '') + '</div>';
-  html += '<div class="card"><h2>' + (esMia ? 'Áreas · toca al terminar cada una' : 'Áreas') + '</h2>';
-  o.areas.sort(function (a, b) { return a.id - b.id; }).forEach(function (a) {
+  html += '<div class="card"><h2>' + (esMia ? 'Áreas en orden de aplicación · toca al terminar cada una' : 'Áreas en orden de aplicación') + '</h2>';
+  porSecuencia(o.areas).forEach(function (a, ix) {
+    var paso = '<span class="paso" aria-label="Paso ' + (ix + 1) + '">' + (ix + 1) + '</span>';
     var on = a.estado === 'aplicada';
     var tag = a.arrastrada_de ? '<span class="badge b-warn">Pendiente anterior</span>' : '';
     var est = a.estado === 'no_aplicada' ? '<span class="badge b-warn">No aplicada · ' + esc(motivoTxt(a.motivo)) + '</span>' : '';
     if (esMia) {
       html += '<button class="area-btn ' + (on ? 'on' : '') + '" data-act="toggleArea" data-id="' + a.id + '" data-estado="' + a.estado + '" aria-pressed="' + on + '">' +
         '<span class="chk" aria-hidden="true">' + (on ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : '') + '</span>' +
-        '<span style="flex-grow:1"><b style="font-size:18px">' + esc(areaNombre(a)) + '</b><br><span class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</span></span>' + tag + est + '</button>';
+        paso + '<span style="flex-grow:1"><b style="font-size:18px">' + esc(areaNombre(a)) + '</b><br><span class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</span></span>' + tag + est + '</button>';
     } else {
-      html += '<div class="list-item"><div><b>' + esc(areaNombre(a)) + '</b> ' + tag + '<div class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</div></div>' +
+      html += '<div class="list-item"><div style="display:flex;gap:10px;align-items:center">' + paso + '<div><b>' + esc(areaNombre(a)) + '</b> ' + tag + '<div class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</div></div></div>' +
         (a.estado === 'aplicada' ? '<span class="badge b-ok">Aplicada</span>' : a.estado === 'no_aplicada' ? est : '<span class="badge b-neutral">Pendiente</span>') + '</div>';
     }
   });
@@ -425,7 +435,7 @@ function renderCierre() {
   var html = '<div class="between"><h1>Cierre de jornada</h1><a class="btn sm" href="#/orden/' + o.id + '">Volver</a></div>' +
     '<div class="opbar" style="flex-direction:row;align-items:center;gap:16px"><div class="mono" style="font-size:42px;font-weight:600">' + pct + '%</div><div><b>' + ok + ' de ' + tot + ' áreas cumplidas</b><div class="small" style="color:var(--on-dark-muted)">Orden ' + num(o.id) + ' · ' + fecha(o.fecha) + '</div></div></div>';
   html += '<div class="card"><h2>¿Qué completaste?</h2>';
-  o.areas.forEach(function (a) {
+  porSecuencia(o.areas).forEach(function (a) {
     var s = c.areas[a.id];
     html += '<div class="list-item"><div><b style="font-size:17px">' + esc(areaNombre(a)) + '</b><div class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</div></div>' +
       '<div class="yn"><button class="y ' + (s.estado === 'aplicada' ? 'on' : '') + '" data-act="cierreSet" data-id="' + a.id + '" data-v="aplicada" aria-pressed="' + (s.estado === 'aplicada') + '">Sí</button>' +
@@ -519,7 +529,7 @@ async function vNueva(dupId) {
 function duplicarEnDraft(o) {
   var d = S.draft;
   d.duplicada_de = o.id; d.titulo = o.titulo || ''; d.operador_id = o.operador_id; d.sprayer_id = o.sprayer_id || ''; d.boquilla_id = o.boquilla_id || ''; d.cal = o.calibracion_l_ha || ''; d.notas = o.notas || '';
-  d.areas = {}; o.areas.forEach(function (a) { d.areas[a.unidad_id + '|' + a.zona_id] = { unidad_id: a.unidad_id, zona_id: a.zona_id, arrastrada_de: null }; });
+  d.areas = {}; porSecuencia(o.areas.slice()).forEach(function (a) { d.areas[a.unidad_id + '|' + a.zona_id] = { unidad_id: a.unidad_id, zona_id: a.zona_id, arrastrada_de: null }; });
   var spo = byId(S.cat.sprayers, o.sprayer_id); d.agua = o.agua_tanque_l || (spo && spo.capacidad_l) || '';
   d.productos = o.productos.map(function (p) { var pt = porTanqueDe(p, Number(o.calibracion_l_ha) || 0, Number(d.agua) || 0); return { producto_id: p.producto_id, cantidad_tanque: pt ? Math.round(pt * 1000) / 1000 : '' }; });
   if (!d.productos.length) d.productos = [{ producto_id: '', cantidad_tanque: '' }];
@@ -561,15 +571,25 @@ function renderNueva() {
   html += '<div class="card"><div class="between"><h2>Áreas a aplicar</h2><div class="seg" role="group" aria-label="Zona">' +
     MEDIDAS.map(function (z) { return '<button class="' + (d.zona === z ? 'on' : '') + '" data-act="zona" data-v="' + z + '" aria-pressed="' + (d.zona === z) + '">' + esc(zonaNombre(z)) + '</button>'; }).join('') + '</div></div><div class="holes">' +
     S.cat.unidades.map(function (u) {
-      var m = m2De(u.id, d.zona); var k = u.id + '|' + d.zona; var on = !!d.areas[k];
-      return '<button class="hole ' + (on ? 'on' : '') + '" data-act="hole" data-u="' + u.id + '"' + (m ? '' : ' disabled') + ' aria-pressed="' + on + '"><b>' + esc(u.tipo === 'hoyo' ? 'Hoyo ' + u.id : u.nombre) + '</b><span>' + (m ? n(m) + ' m²' : '—') + '</span></button>';
+      var m = m2De(u.id, d.zona); var k = u.id + '|' + d.zona; var on = !!d.areas[k]; var pos = on ? Object.keys(d.areas).indexOf(k) + 1 : 0;
+      return '<button class="hole ' + (on ? 'on' : '') + '" data-act="hole" data-u="' + u.id + '"' + (m ? '' : ' disabled') + ' aria-pressed="' + on + '" style="position:relative">' + (pos ? '<i class="hole-n">' + pos + '</i>' : '') + '<b>' + esc(u.tipo === 'hoyo' ? 'Hoyo ' + u.id : u.nombre) + '</b><span>' + (m ? n(m) + ' m²' : '—') + '</span></button>';
     }).join('') + '</div>';
   html += '<div class="small muted" style="font-weight:700">Aplicación puntual (sin medida)</div><div class="row" style="gap:8px;align-items:flex-end">' +
     '<label class="f" style="flex:1 1 140px">Lugar<select data-inp="puntUnidad">' + S.cat.unidades.map(function (u) { return '<option value="' + u.id + '"' + (u.id === d.puntUnidad ? ' selected' : '') + '>' + esc(u.nombre) + '</option>'; }).join('') + '</select></label>' +
     '<label class="f" style="flex:1 1 160px">Zona<select data-inp="puntZona">' + S.cat.zonas.filter(function (z) { return !z.medida; }).map(function (z) { return '<option value="' + z.id + '"' + (z.id === d.puntZona ? ' selected' : '') + '>' + esc(z.nombre) + '</option>'; }).join('') + '</select></label>' +
     '<button class="btn" data-act="addPunt">Agregar</button></div>';
-  if (areas.length) html += '<div class="chips">' + areas.map(function (a) { return '<span class="chip">' + esc(areaNombre(a)) + (a.arrastrada_de ? ' · pendiente' : '') + '<button data-act="rmArea" data-k="' + a.unidad_id + '|' + a.zona_id + '" aria-label="Quitar ' + esc(areaNombre(a)) + '">×</button></span>'; }).join('') + '</div>';
   html += '</div>';
+  // orden de aplicación
+  if (areas.length) {
+    html += '<div class="card"><div class="between" style="flex-wrap:wrap;gap:8px"><h2>Orden de aplicación</h2><div class="row" style="gap:6px"><button class="btn sm" data-act="seqOrdenar">Ordenar por hoyo</button><button class="btn sm" data-act="seqInvertir">Invertir</button></div></div>' +
+      '<div class="small muted">El operador verá las áreas en este orden. Se numeran según las vas tocando arriba; usa las flechas para moverlas.</div><ol class="seq">' +
+      areas.map(function (a, i) { var k = a.unidad_id + '|' + a.zona_id;
+        return '<li><span class="paso">' + (i + 1) + '</span><span class="seq-t"><b>' + esc(areaNombre(a)) + '</b>' + (a.arrastrada_de ? ' <span class="badge b-warn">Pendiente</span>' : '') + '<br><span class="small muted mono">' + (a.m2 ? n(a.m2) + ' m²' : 'Puntual') + '</span></span>' +
+          '<button class="btn sm" data-act="seqMover" data-k="' + esc(k) + '" data-d="-1"' + (i === 0 ? ' disabled' : '') + ' aria-label="Subir ' + esc(areaNombre(a)) + '">↑</button>' +
+          '<button class="btn sm" data-act="seqMover" data-k="' + esc(k) + '" data-d="1"' + (i === areas.length - 1 ? ' disabled' : '') + ' aria-label="Bajar ' + esc(areaNombre(a)) + '">↓</button>' +
+          '<button class="btn sm" data-act="rmArea" data-k="' + esc(k) + '" aria-label="Quitar ' + esc(areaNombre(a)) + '">×</button></li>';
+      }).join('') + '</ol></div>';
+  }
   // productos
   html += '<div class="card"><div class="between"><h2>Receta por tanque</h2><button class="btn sm" data-act="addProd">+ Producto</button></div><div class="small muted">Escribe la cantidad total de cada producto que va en un tanque' + (d.agua ? ' de ' + n(d.agua) + ' L' : '') + '. La mezcla se repite en cada tanque.</div>';
   if (!S.cat.productos.length) html += '<div class="note warn">Todavía no hay productos. Agrégalos en Catálogos.</div>';
@@ -618,7 +638,7 @@ async function enviarOrden(btn) {
   try {
     orden = await q(sb.from('smgc_apl_ordenes').insert({ titulo: String(d.titulo).trim(), fecha: d.fecha, operador_id: d.operador_id, sprayer_id: d.sprayer_id || null, boquilla_id: d.boquilla_id || null, calibracion_l_ha: cal, agua_tanque_l: aguaT, duplicada_de: d.duplicada_de, notas: d.notas || null, estado: 'enviada' }).select().single());
     await q(sb.from('smgc_apl_orden_productos').insert(prods.map(function (x) { return { orden_id: orden.id, producto_id: Number(x.producto_id), cantidad_tanque: Number(x.cantidad_tanque), dosis_por_ha: Math.round(Number(x.cantidad_tanque) * cal / aguaT * 10000) / 10000 }; })));
-    await q(sb.from('smgc_apl_orden_areas').insert(areas.map(function (a) { return { orden_id: orden.id, unidad_id: a.unidad_id, zona_id: a.zona_id, arrastrada_de: a.arrastrada_de || null }; })));
+    await q(sb.from('smgc_apl_orden_areas').insert(areas.map(function (a, i) { return { orden_id: orden.id, unidad_id: a.unidad_id, zona_id: a.zona_id, arrastrada_de: a.arrastrada_de || null, secuencia: i + 1 }; })));
     toast('Orden ' + num(orden.id) + ' enviada'); location.hash = '#/orden/' + orden.id;
   } catch (e) {
     if (orden) { try { await sb.from('smgc_apl_ordenes').delete().eq('id', orden.id); } catch (_) {} }
@@ -823,6 +843,14 @@ document.addEventListener('click', async function (e) {
     else if (a === 'zona') { d.zona = el.dataset.v; renderNueva(); }
     else if (a === 'hole') { var hk = el.dataset.u + '|' + d.zona; if (d.areas[hk]) delete d.areas[hk]; else d.areas[hk] = { unidad_id: el.dataset.u, zona_id: d.zona, arrastrada_de: null }; renderNueva(); }
     else if (a === 'addPunt') { var pk = d.puntUnidad + '|' + d.puntZona; d.areas[pk] = d.areas[pk] || { unidad_id: d.puntUnidad, zona_id: d.puntZona, arrastrada_de: null }; renderNueva(); }
+    else if (a === 'seqMover' || a === 'seqOrdenar' || a === 'seqInvertir') {
+      var ks = Object.keys(d.areas);
+      if (a === 'seqMover') { var ix = ks.indexOf(el.dataset.k), j = ix + Number(el.dataset.d); if (ix >= 0 && j >= 0 && j < ks.length) { var tmp = ks[ix]; ks[ix] = ks[j]; ks[j] = tmp; } }
+      else if (a === 'seqInvertir') ks.reverse();
+      else { var ordU = S.cat.unidades.map(function (u) { return String(u.id); }), ordZ = S.cat.zonas.map(function (z) { return z.id; });
+        ks.sort(function (x, y) { var X = x.split('|'), Y = y.split('|'); return (ordU.indexOf(X[0]) - ordU.indexOf(Y[0])) || (ordZ.indexOf(X[1]) - ordZ.indexOf(Y[1])); }); }
+      var nu = {}; ks.forEach(function (k2) { nu[k2] = d.areas[k2]; }); d.areas = nu; renderNueva();
+    }
     else if (a === 'rmArea') { delete d.areas[el.dataset.k]; renderNueva(); }
     else if (a === 'unidadCant') { d.productos[Number(el.dataset.i)].u = el.dataset.v; renderNueva(); }
     else if (a === 'addProd') { d.productos.push({ producto_id: '', cantidad_tanque: '' }); renderNueva(); }
