@@ -165,10 +165,13 @@ function hoy() { var d = new Date(); return d.getFullYear() + '-' + String(d.get
 function addDays(iso, k) { var d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + k); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function fecha(iso) { if (!iso) return ''; var d = new Date(iso.length > 10 ? iso : iso + 'T12:00:00'); return d.toLocaleDateString('es-PA', { weekday: 'short', day: 'numeric', month: 'short' }); }
 function diasEntre(a, b) { return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000); }
-function num(o) { return '#' + String(o).padStart(4, '0'); }
+// número de orden con fecha (AP-AAMMDD-NN); se recuerda de cada orden que llega del servidor
+var CODIGOS = {};
+function regCod(d) { (Array.isArray(d) ? d : d ? [d] : []).forEach(function (r) { if (r && r.codigo && r.id != null) CODIGOS[r.id] = r.codigo; if (r && r.orden) regCod(r.orden); }); }
+function num(o) { return CODIGOS[o] || ('#' + String(o).padStart(4, '0')); }
 function toast(msg, err) { var t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, err ? 5000 : 2600); }
 function fail(e) { console.error(e); toast((e && (e.message || e.error_description)) || 'Algo salió mal', true); }
-async function q(p) { var r = await p; if (r.error) throw r.error; return r.data; }
+async function q(p) { var r = await p; if (r.error) throw r.error; try { regCod(r.data); } catch (_) {} return r.data; }
 function byId(arr, id) { for (var i = 0; i < arr.length; i++) if (String(arr[i].id) === String(id)) return arr[i]; return null; }
 function unidadNombre(id) { var u = byId(S.cat.unidades, id); return u ? u.nombre : id; }
 function zonaNombre(id) { var z = byId(S.cat.zonas, id); return z ? z.nombre : id; }
@@ -234,7 +237,8 @@ async function cargarCatalogos() {
     q(sb.from('smgc_apl_sprayers').select('*').order('nombre')),
     q(sb.from('smgc_apl_boquillas').select('*').order('nombre')),
     q(sb.from('smgc_apl_productos').select('*').order('nombre')),
-    q(sb.from('smgc_apl_perfiles').select('*').order('nombre'))
+    q(sb.from('smgc_apl_perfiles').select('*').order('nombre')),
+    q(sb.from('smgc_apl_ordenes').select('id, codigo'))
   ]);
   S.cat = { unidades: r[0], zonas: r[1], areas: r[2], sprayers: r[3], boquillas: r[4], productos: r[5], perfiles: r[6] };
 }
