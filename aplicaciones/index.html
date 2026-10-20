@@ -174,6 +174,7 @@ function resumenAreas(areas) {
     return zonaNombre(z) + ' ' + items.join(', ');
   }).join(' · ');
 }
+function tituloOrden(o) { return (o.titulo && String(o.titulo).trim()) || resumenAreas(o.areas) || 'Orden ' + num(o.id); }
 function prod(id) { return byId(S.cat.productos, id); }
 function invUnidad(p) { return p.unidad_inventario === 'galon' ? 'gal' : p.unidad_inventario === 'saco' ? 'sacos' : p.unidad_inventario; }
 function cumplBadge(ok, tot) { if (!tot) return '<span class="badge b-neutral">—</span>'; return '<span class="badge ' + (ok === tot ? 'b-ok' : 'b-warn') + ' mono">' + ok + '/' + tot + '</span>'; }
@@ -311,13 +312,13 @@ async function vHoy() {
     var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
     html += '<a href="#/orden/' + o.id + '" class="card" style="text-decoration:none;color:inherit">' +
       '<div class="between"><span class="small muted">' + fecha(o.fecha) + ' · Orden ' + num(o.id) + '</span>' + cumplBadge(ok, o.areas.length) + '</div>' +
-      '<div style="font-size:20px;font-weight:800">' + esc(resumenAreas(o.areas)) + '</div>' +
+      '<div style="font-size:20px;font-weight:800;line-height:1.2">' + esc(tituloOrden(o)) + '</div>' + (o.titulo ? '<div class="small" style="font-weight:600">' + esc(resumenAreas(o.areas)) + '</div>' : '') +
       '<div class="small muted">' + esc((byId(S.cat.sprayers, o.sprayer_id) || {}).nombre || 'Sin sprayer') + ' · ' + o.productos.length + ' productos</div></a>';
   });
   if (cerradas.length) {
     html += '<div class="card"><h2>Cerradas recientemente</h2>' + cerradas.map(function (o) {
       var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
-      return '<div class="list-item"><div><b>' + esc(resumenAreas(o.areas)) + '</b><div class="small muted">' + fecha(o.fecha) + ' · ' + num(o.id) + '</div></div>' + cumplBadge(ok, o.areas.length) + '</div>';
+      return '<div class="list-item"><div><b>' + esc(tituloOrden(o)) + '</b><div class="small muted">' + (o.titulo ? esc(resumenAreas(o.areas)) + ' · ' : '') + fecha(o.fecha) + ' · ' + num(o.id) + '</div></div>' + cumplBadge(ok, o.areas.length) + '</div>';
     }).join('') + '</div>';
   }
   shell(html);
@@ -354,7 +355,7 @@ async function vOrden(id) {
   var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
   var esMia = S.perfil.rol === 'operador' && o.operador_id === S.perfil.user_id && o.estado === 'enviada';
   var html = '<div class="opbar"><div class="between"><span class="small" style="color:var(--on-dark-muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">' + fecha(o.fecha) + '</span><span class="mono small" style="color:var(--on-dark-muted)">Orden ' + num(o.id) + '</span></div>' +
-    '<div style="font-size:24px;font-weight:800;line-height:1.15">' + esc(resumenAreas(o.areas)) + '</div>' +
+    '<div style="font-size:24px;font-weight:800;line-height:1.15">' + esc(tituloOrden(o)) + '</div>' + (o.titulo ? '<div style="font-size:15px;font-weight:600;color:#D5DDD7">' + esc(resumenAreas(o.areas)) + '</div>' : '') +
     '<div class="small" style="color:#D5DDD7">Operador: ' + esc(perfilNombre(o.operador_id)) + ' · ' + estadoOrden(o) + '</div>' +
     '<div class="row" style="gap:8px">' + (sp ? '<span class="pill">' + esc(sp.nombre) + (sp.capacidad_l ? ' · ' + n(sp.capacidad_l) + ' L' : '') + '</span>' : '') + (bq ? '<span class="pill">' + esc(bq.nombre) + '</span>' : '') + (o.calibracion_l_ha ? '<span class="pill">' + n(o.calibracion_l_ha) + ' L/ha</span>' : '') + '</div></div>';
   if (o.notas) html += '<div class="note warn">' + esc(o.notas) + '</div>';
@@ -478,9 +479,9 @@ async function vOrdenes() {
   var otras = ords.filter(function (o) { return o.estado !== 'enviada'; });
   function fila(o) {
     var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
-    return '<tr><td class="mono"><a href="#/orden/' + o.id + '">' + num(o.id) + '</a></td><td>' + fecha(o.fecha) + '</td><td>' + esc(perfilNombre(o.operador_id)) + '</td><td><b>' + esc(resumenAreas(o.areas)) + '</b></td><td>' + estadoOrden(o) + '</td><td class="r">' + cumplBadge(ok, o.areas.length) + '</td><td class="r"><a class="btn sm" href="#/nueva/' + o.id + '">Duplicar</a></td></tr>';
+    return '<tr><td class="mono"><a href="#/orden/' + o.id + '">' + num(o.id) + '</a></td><td>' + fecha(o.fecha) + '</td><td>' + esc(perfilNombre(o.operador_id)) + '</td><td><b>' + esc(tituloOrden(o)) + '</b>' + (o.titulo ? '<div class="small muted">' + esc(resumenAreas(o.areas)) + '</div>' : '') + '</td><td>' + estadoOrden(o) + '</td><td class="r">' + cumplBadge(ok, o.areas.length) + '</td><td class="r"><a class="btn sm" href="#/nueva/' + o.id + '">Duplicar</a></td></tr>';
   }
-  var th = '<thead><tr><th>Orden</th><th>Fecha</th><th>Operador</th><th>Áreas</th><th>Estado</th><th class="r">Cumplido</th><th></th></tr></thead>';
+  var th = '<thead><tr><th>Orden</th><th>Fecha</th><th>Operador</th><th>Aplicación</th><th>Estado</th><th class="r">Cumplido</th><th></th></tr></thead>';
   var html = '<div class="between"><h1>Órdenes</h1><a class="btn primary" href="#/nueva">+ Nueva orden</a></div>' +
     '<div class="card"><h2>En curso</h2>' + (abiertas.length ? '<div class="scroll"><table class="tbl" style="min-width:720px">' + th + '<tbody>' + abiertas.map(fila).join('') + '</tbody></table></div>' : '<div class="empty">No hay órdenes en curso.</div>') + '</div>' +
     '<div class="card"><h2>Anteriores</h2>' + (otras.length ? '<div class="scroll"><table class="tbl" style="min-width:720px">' + th + '<tbody>' + otras.map(fila).join('') + '</tbody></table></div>' : '<div class="empty">Todavía no hay órdenes.</div>') + '</div>';
@@ -493,13 +494,13 @@ async function vNueva(dupId) {
   var recientes = await q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).order('id', { ascending: false }).limit(8));
   var inv = await inventario();
   var ops = S.cat.perfiles.filter(function (p) { return p.rol === 'operador' && p.activo; });
-  S.draft = { fecha: hoy(), operador_id: ops[0] ? ops[0].user_id : '', sprayer_id: '', boquilla_id: '', cal: '', agua: '', zona: 'fairway', areas: {}, productos: [{ producto_id: '', cantidad_tanque: '' }], duplicada_de: null, notas: '', pend: pend, recientes: recientes, inv: inv, puntUnidad: '1', puntZona: 'approach' };
+  S.draft = { titulo: '', fecha: hoy(), operador_id: ops[0] ? ops[0].user_id : '', sprayer_id: '', boquilla_id: '', cal: '', agua: '', zona: 'fairway', areas: {}, productos: [{ producto_id: '', cantidad_tanque: '' }], duplicada_de: null, notas: '', pend: pend, recientes: recientes, inv: inv, puntUnidad: '1', puntZona: 'approach' };
   if (dupId) { var src = recientes.filter(function (o) { return String(o.id) === String(dupId); })[0] || await cargarOrden(dupId); duplicarEnDraft(src); }
   renderNueva();
 }
 function duplicarEnDraft(o) {
   var d = S.draft;
-  d.duplicada_de = o.id; d.operador_id = o.operador_id; d.sprayer_id = o.sprayer_id || ''; d.boquilla_id = o.boquilla_id || ''; d.cal = o.calibracion_l_ha || ''; d.notas = o.notas || '';
+  d.duplicada_de = o.id; d.titulo = o.titulo || ''; d.operador_id = o.operador_id; d.sprayer_id = o.sprayer_id || ''; d.boquilla_id = o.boquilla_id || ''; d.cal = o.calibracion_l_ha || ''; d.notas = o.notas || '';
   d.areas = {}; o.areas.forEach(function (a) { d.areas[a.unidad_id + '|' + a.zona_id] = { unidad_id: a.unidad_id, zona_id: a.zona_id, arrastrada_de: null }; });
   var spo = byId(S.cat.sprayers, o.sprayer_id); d.agua = o.agua_tanque_l || (spo && spo.capacidad_l) || '';
   d.productos = o.productos.map(function (p) { var pt = porTanqueDe(p, Number(o.calibracion_l_ha) || 0, Number(d.agua) || 0); return { producto_id: p.producto_id, cantidad_tanque: pt ? Math.round(pt * 1000) / 1000 : '' }; });
@@ -519,7 +520,7 @@ function renderNueva() {
   if (d.recientes.length) {
     html += '<div class="card"><h2>Partir de una orden anterior</h2><div class="row" style="gap:8px">' + d.recientes.map(function (o) {
       var on = String(d.duplicada_de) === String(o.id);
-      return '<button class="btn sm" style="flex-direction:column;align-items:flex-start;min-height:48px;padding:6px 12px;' + (on ? 'background:var(--green-soft);border:2px solid var(--green);color:var(--green-d)' : '') + '" data-act="dup" data-id="' + o.id + '"><span class="mono" style="font-size:12px;font-weight:500">' + num(o.id) + ' · ' + fecha(o.fecha) + '</span><span>' + esc(resumenAreas(o.areas) || 'Sin áreas') + '</span></button>';
+      return '<button class="btn sm" style="flex-direction:column;align-items:flex-start;min-height:48px;padding:6px 12px;text-align:left;' + (on ? 'background:var(--green-soft);border:2px solid var(--green);color:var(--green-d)' : '') + '" data-act="dup" data-id="' + o.id + '"><span class="mono" style="font-size:12px;font-weight:500">' + num(o.id) + ' · ' + fecha(o.fecha) + '</span><span>' + esc(tituloOrden(o)) + '</span></button>';
     }).join('') + '</div></div>';
   }
   // pendientes
@@ -530,7 +531,7 @@ function renderNueva() {
     }).join('') + '</div>';
   }
   // datos
-  html += '<div class="card"><div class="fgrid">' +
+  html += '<div class="card"><label class="f"><span>Título de la aplicación</span><input type="text" data-inp="titulo" maxlength="120" value="' + esc(d.titulo) + '" placeholder="Ej. Foliar y Fungicida en Fairways con MP5800G" style="font-size:18px;font-weight:700"></label><div class="fgrid">' +
     '<label class="f">Fecha<input type="date" data-inp="fecha" value="' + esc(d.fecha) + '"></label>' +
     '<label class="f">Operador<select data-inp="operador_id">' + (ops.length ? '' : '<option value="">No hay operadores</option>') + ops.map(function (p) { return '<option value="' + p.user_id + '"' + (p.user_id === d.operador_id ? ' selected' : '') + '>' + esc(p.nombre) + '</option>'; }).join('') + '</select></label>' +
     '<label class="f">Sprayer<select data-inp="sprayer_id"><option value="">Elegir…</option>' + S.cat.sprayers.filter(function (s) { return s.activo; }).map(function (s) { return '<option value="' + s.id + '"' + (String(s.id) === String(d.sprayer_id) ? ' selected' : '') + '>' + esc(s.nombre) + (s.capacidad_l ? ' · ' + n(s.capacidad_l) + ' L' : '') + '</option>'; }).join('') + '</select></label>' +
@@ -585,6 +586,7 @@ async function enviarOrden(btn) {
   var d = S.draft; var areas = draftAreas();
   var prods = d.productos.filter(function (x) { return x.producto_id && Number(x.cantidad_tanque) > 0; });
   var cal = Number(d.cal) || 0, aguaT = Number(d.agua) || 0;
+  if (!String(d.titulo || '').trim()) return toast('Escribe el título de la aplicación', true);
   if (!d.operador_id) return toast('Elige el operador', true);
   if (!areas.length) return toast('Agrega al menos un área', true);
   if (!prods.length) return toast('Agrega al menos un producto con su cantidad por tanque', true);
@@ -595,7 +597,7 @@ async function enviarOrden(btn) {
   btn.disabled = true; btn.textContent = 'Enviando…';
   var orden = null;
   try {
-    orden = await q(sb.from('smgc_apl_ordenes').insert({ fecha: d.fecha, operador_id: d.operador_id, sprayer_id: d.sprayer_id || null, boquilla_id: d.boquilla_id || null, calibracion_l_ha: cal, agua_tanque_l: aguaT, duplicada_de: d.duplicada_de, notas: d.notas || null, estado: 'enviada' }).select().single());
+    orden = await q(sb.from('smgc_apl_ordenes').insert({ titulo: String(d.titulo).trim(), fecha: d.fecha, operador_id: d.operador_id, sprayer_id: d.sprayer_id || null, boquilla_id: d.boquilla_id || null, calibracion_l_ha: cal, agua_tanque_l: aguaT, duplicada_de: d.duplicada_de, notas: d.notas || null, estado: 'enviada' }).select().single());
     await q(sb.from('smgc_apl_orden_productos').insert(prods.map(function (x) { return { orden_id: orden.id, producto_id: Number(x.producto_id), cantidad_tanque: Number(x.cantidad_tanque), dosis_por_ha: Math.round(Number(x.cantidad_tanque) * cal / aguaT * 10000) / 10000 }; })));
     await q(sb.from('smgc_apl_orden_areas').insert(areas.map(function (a) { return { orden_id: orden.id, unidad_id: a.unidad_id, zona_id: a.zona_id, arrastrada_de: a.arrastrada_de || null }; })));
     toast('Orden ' + num(orden.id) + ' enviada'); location.hash = '#/orden/' + orden.id;
@@ -623,11 +625,11 @@ async function vCumplimiento(dia) {
     '<div class="kpi"><div class="l">Últimos 7 días</div><div class="v">' + (cs[1] ? Math.round(cs[0] / cs[1] * 100) + '%' : '—') + '</div><div class="l">' + cs[0] + ' de ' + cs[1] + ' áreas</div></div>' +
     '<div class="kpi warn"><div class="l">Pendientes sin reprogramar</div><div class="v">' + pend.length + '</div><div class="l">Aparecen al crear la próxima orden</div></div>' +
     '<a class="kpi alert" href="#/inventario" style="text-decoration:none"><div class="l">Alertas de inventario</div><div class="v">' + alertas.length + '</div><div class="l">' + (alertas.length ? esc(alertas.map(function (a) { return a.nombre; }).join(', ')) : 'Todo en orden') + '</div></a></div>';
-  html += '<div class="row"><div class="card grow"><h2>Órdenes del día</h2>' + (delDia.length ? '<div class="scroll"><table class="tbl" style="min-width:640px"><thead><tr><th>Orden</th><th>Operador</th><th>Sprayer</th><th>Áreas</th><th class="r">Cumplido</th><th>Motivo</th></tr></thead><tbody>' +
+  html += '<div class="row"><div class="card grow"><h2>Órdenes del día</h2>' + (delDia.length ? '<div class="scroll"><table class="tbl" style="min-width:640px"><thead><tr><th>Orden</th><th>Operador</th><th>Sprayer</th><th>Aplicación</th><th class="r">Cumplido</th><th>Motivo</th></tr></thead><tbody>' +
     delDia.map(function (o) {
       var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
       var mot = o.areas.filter(function (a) { return a.estado === 'no_aplicada'; }).map(function (a) { return motivoTxt(a.motivo) + ' · ' + areaNombre(a); }).join('; ');
-      return '<tr><td class="mono"><a href="#/orden/' + o.id + '">' + num(o.id) + '</a></td><td>' + esc(perfilNombre(o.operador_id)) + '</td><td>' + esc((byId(S.cat.sprayers, o.sprayer_id) || {}).nombre || '—') + '</td><td><b>' + esc(resumenAreas(o.areas)) + '</b>' + (o.estado === 'enviada' ? ' <span class="badge b-neutral">En curso</span>' : '') + '</td><td class="r">' + cumplBadge(ok, o.areas.length) + '</td><td class="muted">' + esc(mot || '—') + '</td></tr>';
+      return '<tr><td class="mono"><a href="#/orden/' + o.id + '">' + num(o.id) + '</a></td><td>' + esc(perfilNombre(o.operador_id)) + '</td><td>' + esc((byId(S.cat.sprayers, o.sprayer_id) || {}).nombre || '—') + '</td><td><b>' + esc(tituloOrden(o)) + '</b>' + (o.titulo ? '<div class="small muted">' + esc(resumenAreas(o.areas)) + '</div>' : '') + (o.estado === 'enviada' ? ' <span class="badge b-neutral">En curso</span>' : '') + '</td><td class="r">' + cumplBadge(ok, o.areas.length) + '</td><td class="muted">' + esc(mot || '—') + '</td></tr>';
     }).join('') + '</tbody></table></div>' : '<div class="empty">No hay órdenes este día.</div>') + '</div>';
   html += '<div class="card side"><h2>Pendientes</h2>' + (pend.length ? pend.map(function (p) {
     var d = diasEntre(p.fecha, hoy());
@@ -695,7 +697,7 @@ async function vInventario() {
 // ---------- historial ----------
 async function vHistorial() {
   var fu = S.histU || '', fz = S.histZ || '';
-  var qy = sb.from('smgc_apl_orden_areas').select('*, orden:smgc_apl_ordenes!inner(id, fecha, estado, operador_id, sprayer_id, calibracion_l_ha, agua_tanque_l, productos:smgc_apl_orden_productos(producto_id, dosis_por_ha, cantidad_tanque))').order('id', { ascending: false }).limit(150);
+  var qy = sb.from('smgc_apl_orden_areas').select('*, orden:smgc_apl_ordenes!inner(id, fecha, titulo, estado, operador_id, sprayer_id, calibracion_l_ha, agua_tanque_l, productos:smgc_apl_orden_productos(producto_id, dosis_por_ha, cantidad_tanque))').order('id', { ascending: false }).limit(150);
   if (fu) qy = qy.eq('unidad_id', fu);
   if (fz) qy = qy.eq('zona_id', fz);
   var rows = await q(qy);
@@ -707,7 +709,7 @@ async function vHistorial() {
       var spH = byId(S.cat.sprayers, r.orden.sprayer_id); var aT = Number(r.orden.agua_tanque_l) || (spH && Number(spH.capacidad_l)) || 0;
       var ps = (r.orden.productos || []).map(function (x) { var p = prod(x.producto_id); var pt = porTanqueDe(x, Number(r.orden.calibracion_l_ha) || 0, aT); return (p ? p.nombre : '?') + ' ' + (pt ? nq(pt) + (p ? ' ' + p.unidad_dosis : '') : n(x.dosis_por_ha, 2) + (p ? ' ' + p.unidad_dosis : '') + '/ha'); }).join('<br>') + (aT ? '<div class="muted">por tanque de ' + n(aT) + ' L</div>' : '');
       var est = r.estado === 'aplicada' ? '<span class="badge b-ok">Aplicada</span>' : r.estado === 'no_aplicada' ? '<span class="badge b-warn">No · ' + esc(motivoTxt(r.motivo)) + '</span>' : '<span class="badge b-neutral">' + (r.orden.estado === 'cancelada' ? 'Cancelada' : 'Pendiente') + '</span>';
-      return '<tr><td><a href="#/orden/' + r.orden.id + '">' + fecha(r.orden.fecha) + '</a></td><td><b>' + esc(areaNombre(r)) + '</b></td><td class="small">' + ps + '</td><td>' + esc(perfilNombre(r.orden.operador_id)) + '</td><td>' + esc((byId(S.cat.sprayers, r.orden.sprayer_id) || {}).nombre || '—') + '</td><td>' + est + '</td></tr>';
+      return '<tr><td><a href="#/orden/' + r.orden.id + '">' + fecha(r.orden.fecha) + '</a>' + (r.orden.titulo ? '<div class="small muted">' + esc(r.orden.titulo) + '</div>' : '') + '</td><td><b>' + esc(areaNombre(r)) + '</b></td><td class="small">' + ps + '</td><td>' + esc(perfilNombre(r.orden.operador_id)) + '</td><td>' + esc((byId(S.cat.sprayers, r.orden.sprayer_id) || {}).nombre || '—') + '</td><td>' + est + '</td></tr>';
     }).join('') + '</tbody></table></div>' : '<div class="empty">No hay aplicaciones con ese filtro.</div>') + '</div>';
   shell(html);
 }
@@ -809,6 +811,9 @@ document.addEventListener('click', async function (e) {
     else if (a === 'toggleCompra') { var cf = document.getElementById('compraForm'); cf.hidden = !cf.hidden; }
   } catch (err) { fail(err); el.disabled = false; }
 });
+document.addEventListener('input', function (e) {
+  var el = e.target; if (el.dataset && (el.dataset.inp === 'titulo' || el.dataset.inp === 'notas') && S.draft) S.draft[el.dataset.inp] = el.value;
+});
 document.addEventListener('change', function (e) {
   var el = e.target;
   if (el.classList && el.classList.contains('cat')) return guardarCat(el);
@@ -817,6 +822,7 @@ document.addEventListener('change', function (e) {
   if (k === 'histZ') { S.histZ = el.value; return route(); }
   if (k === 'puntual') { S.cierre.puntual[el.dataset.key] = el.value; return; }
   var d = S.draft; if (!d) return;
+  if (k === 'titulo' || k === 'notas') { d[k] = el.value; return; }
   if (k === 'prod') d.productos[Number(el.dataset.i)].producto_id = el.value;
   else if (k === 'cant') d.productos[Number(el.dataset.i)].cantidad_tanque = el.value;
   else if (k === 'boquilla_id') { d.boquilla_id = el.value; var b = byId(S.cat.boquillas, el.value); if (b && b.calibracion_l_ha) d.cal = b.calibracion_l_ha; }
