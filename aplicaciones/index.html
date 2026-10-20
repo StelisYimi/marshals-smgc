@@ -175,6 +175,18 @@ function resumenAreas(areas) {
   }).join(' · ');
 }
 function tituloOrden(o) { return (o.titulo && String(o.titulo).trim()) || resumenAreas(o.areas) || 'Orden ' + num(o.id); }
+var ML_POR_OZ = 29.5735;
+function esMlOz(p) { return !!(p && p.mostrar_ml_oz); }
+// cantidad guardada en kg o L → texto para mostrar; los productos marcados salen en mL y oz
+function cant(p, v, porHa) {
+  var suf = porHa ? '/ha' : '';
+  if (v == null || isNaN(v)) return '—';
+  if (esMlOz(p)) { var ml = Number(v) * 1000; return nq(ml < 10 ? Math.round(ml * 10) / 10 : Math.round(ml)) + ' mL' + suf + ' · ' + nq(Math.round(ml / ML_POR_OZ * 10) / 10) + ' oz' + suf; }
+  return nq(v) + ' ' + (p ? p.unidad_dosis : '') + suf;
+}
+// para los marcados, el formulario se escribe en mL u oz y se guarda en L
+function aLitros(p, valor, u) { var x = Number(valor); if (!esMlOz(p) || !(x > 0)) return valor; return u === 'oz' ? x * ML_POR_OZ / 1000 : x / 1000; }
+function deLitros(p, litros, u) { var x = Number(litros); if (!esMlOz(p) || !(x > 0)) return litros; var r = u === 'oz' ? x * 1000 / ML_POR_OZ : x * 1000; return Math.round(r * 100) / 100; }
 function prod(id) { return byId(S.cat.productos, id); }
 function invUnidad(p) { return p.unidad_inventario === 'galon' ? 'gal' : p.unidad_inventario === 'saco' ? 'sacos' : p.unidad_inventario; }
 function cumplBadge(ok, tot) { if (!tot) return '<span class="badge b-neutral">—</span>'; return '<span class="badge ' + (ok === tot ? 'b-ok' : 'b-warn') + ' mono">' + ok + '/' + tot + '</span>'; }
@@ -337,19 +349,19 @@ function htmlMezcla(o, calc) {
   var h = '';
   if (!calc.aguaT) {
     return h + '<div class="note warn">Esta orden no tiene agua por tanque, así que no se puede armar la receta.</div>' + calc.lineas.map(function (l) {
-      return '<div class="between" style="border-top:1px solid var(--line2);padding-top:6px"><span>' + esc(l.p ? l.p.nombre : '?') + '</span><span class="mono">' + n(l.dosis, 2) + ' ' + u(l) + '/ha</span></div>';
+      return '<div class="between" style="border-top:1px solid var(--line2);padding-top:6px"><span>' + esc(l.p ? l.p.nombre : '?') + '</span><span class="mono">' + cant(l.p, l.dosis, true) + '</span></div>';
     }).join('');
   }
   h += '<div class="rec"><div class="rec-h"><span>Echa en cada tanque de <b class="mono">' + n(calc.aguaT) + ' L</b> de agua</span></div>';
   calc.lineas.forEach(function (l) {
-    h += '<div class="rec-r"><span class="rec-p">' + esc(l.p ? l.p.nombre : '?') + '</span><span class="rec-q mono">' + nq(l.porTanque) + ' ' + u(l) + '</span></div>';
+    h += '<div class="rec-r"><span class="rec-p">' + esc(l.p ? l.p.nombre : '?') + '</span><span class="rec-q mono">' + cant(l.p, l.porTanque) + '</span></div>';
   });
   h += '</div>';
   if (calc.ha && calc.cal) {
     h += '<div class="between" style="gap:8px;flex-wrap:wrap"><span><b>Repite esta mezcla:</b> ' + (calc.llenos ? calc.llenos + (calc.llenos === 1 ? ' tanque lleno' : ' tanques llenos') : 'ningún tanque lleno') + '</span><span class="small muted mono">' + n(calc.agua) + ' L de agua en total</span></div>';
-    if (calc.resto) h += '<details class="note"><summary>Último tanque más pequeño: <b class="mono">' + n(calc.resto) + ' L</b> de agua</summary>' + calc.lineas.map(function (l) { return '<div class="between" style="padding-top:4px"><span>' + esc(l.p ? l.p.nombre : '?') + '</span><b class="mono">' + nq(l.resto) + ' ' + u(l) + '</b></div>'; }).join('') + '</details>';
+    if (calc.resto) h += '<details class="note"><summary>Último tanque más pequeño: <b class="mono">' + n(calc.resto) + ' L</b> de agua</summary>' + calc.lineas.map(function (l) { return '<div class="between" style="padding-top:4px"><span>' + esc(l.p ? l.p.nombre : '?') + '</span><b class="mono">' + cant(l.p, l.resto) + '</b></div>'; }).join('') + '</details>';
   }
-  h += '<details class="small muted"><summary>Dosis equivalente por hectárea</summary>' + calc.lineas.map(function (l) { return esc(l.p ? l.p.nombre : '?') + ': <span class="mono">' + n(l.dosis, 2) + ' ' + u(l) + '/ha</span>'; }).join('<br>') + (calc.cal ? '<br>Con calibración de ' + n(calc.cal) + ' L/ha.' : '') + '</details>';
+  h += '<details class="small muted"><summary>Dosis equivalente por hectárea</summary>' + calc.lineas.map(function (l) { return esc(l.p ? l.p.nombre : '?') + ': <span class="mono">' + cant(l.p, l.dosis, true) + '</span>'; }).join('<br>') + (calc.cal ? '<br>Con calibración de ' + n(calc.cal) + ' L/ha.' : '') + '</details>';
   return h;
 }
 async function vOrden(id) {
@@ -431,7 +443,7 @@ function renderCierre() {
       html += '<div style="font-weight:700;margin-top:6px">' + esc(areaNombre(a)) + '</div><div class="fgrid">';
       o.productos.forEach(function (op) {
         var p = prod(op.producto_id); var key = a.id + '_' + op.producto_id; var v = c.puntual[key] || '';
-        html += '<label class="f">' + esc(p ? p.nombre : '?') + ' (' + (p ? p.unidad_dosis : '') + ')<input type="number" inputmode="decimal" step="0.01" min="0" data-inp="puntual" data-key="' + key + '" value="' + esc(v) + '"></label>';
+        html += '<label class="f">' + esc(p ? p.nombre : '?') + ' (' + (esMlOz(p) ? 'mL' : p ? p.unidad_dosis : '') + ')<input type="number" inputmode="decimal" step="any" min="0" data-inp="puntual" data-key="' + key + '" value="' + esc(v) + '"></label>';
       });
       html += '</div>';
     });
@@ -454,6 +466,7 @@ async function confirmarCierre(btn) {
     var keys = Object.keys(c.puntual);
     for (var k = 0; k < keys.length; k++) {
       var val = Number(c.puntual[keys[k]]); if (!(val > 0)) continue;
+      if (esMlOz(prod(Number(keys[k].split('_')[1])))) val = val / 1000;
       var pr = keys[k].split('_'); if (c.areas[pr[0]].estado !== 'aplicada') continue;
       await q(sb.rpc('smgc_apl_registrar_puntual', { p_orden_area: Number(pr[0]), p_producto: Number(pr[1]), p_cantidad_dosis: val }));
     }
@@ -565,8 +578,9 @@ function renderNueva() {
     var eq = Number(x.cantidad_tanque) > 0 && Number(d.cal) > 0 && Number(d.agua) > 0 ? Number(x.cantidad_tanque) * Number(d.cal) / Number(d.agua) : null;
     html += '<div class="row" style="gap:8px;align-items:flex-end"><label class="f" style="flex:3 1 200px">Producto<select data-inp="prod" data-i="' + i + '"><option value="">Elegir…</option>' +
       S.cat.productos.filter(function (p) { return p.activo; }).map(function (p) { return '<option value="' + p.id + '"' + (String(p.id) === String(x.producto_id) ? ' selected' : '') + '>' + esc(p.nombre) + '</option>'; }).join('') + '</select></label>' +
-      '<label class="f" style="flex:1 1 130px">Por tanque (' + (p ? p.unidad_dosis : 'kg o L') + ')<input type="number" inputmode="decimal" step="0.001" min="0" data-inp="cant" data-i="' + i + '" value="' + esc(x.cantidad_tanque) + '"></label>' +
-      '<div class="small muted mono" style="flex:1 0 118px;padding-bottom:12px">' + (eq != null ? '≈ ' + nq(eq) + ' ' + (p ? p.unidad_dosis : '') + '/ha' : '') + '</div>' +
+      '<label class="f" style="flex:1 1 130px">Por tanque (' + (esMlOz(p) ? (x.u === 'oz' ? 'oz' : 'mL') : p ? p.unidad_dosis : 'kg o L') + ')<input type="number" inputmode="decimal" step="any" min="0" data-inp="cant" data-i="' + i + '" value="' + esc(esMlOz(p) ? deLitros(p, x.cantidad_tanque, x.u) : x.cantidad_tanque) + '"></label>' +
+      (esMlOz(p) ? '<div class="seg" role="group" aria-label="Unidad" style="flex:0 0 auto;margin-bottom:2px"><button class="' + (x.u !== 'oz' ? 'on' : '') + '" data-act="unidadCant" data-i="' + i + '" data-v="ml" aria-pressed="' + (x.u !== 'oz') + '">mL</button><button class="' + (x.u === 'oz' ? 'on' : '') + '" data-act="unidadCant" data-i="' + i + '" data-v="oz" aria-pressed="' + (x.u === 'oz') + '">oz</button></div>' : '') +
+      '<div class="small muted mono" style="flex:1 0 118px;padding-bottom:12px">' + (Number(x.cantidad_tanque) > 0 && esMlOz(p) ? '= ' + cant(p, Number(x.cantidad_tanque)) + '<br>' : '') + (eq != null ? '≈ ' + cant(p, eq, true) : '') + '</div>' +
       '<button class="btn sm" data-act="rmProd" data-i="' + i + '" aria-label="Quitar producto" style="min-height:44px">×</button></div>';
   });
   html += '</div><div class="card"><label class="f">Notas para el operador<textarea data-inp="notas">' + esc(d.notas) + '</textarea></label></div></div>';
@@ -576,10 +590,10 @@ function renderNueva() {
     '<div class="fgrid" style="grid-template-columns:1fr 1fr"><div style="background:var(--dark2);border-radius:8px;padding:10px"><div class="small" style="color:var(--on-dark-muted)">Agua</div><div class="mono" style="font-size:18px">' + n(calc.agua) + ' L</div></div>' +
     '<div style="background:var(--dark2);border-radius:8px;padding:10px"><div class="small" style="color:var(--on-dark-muted)">Tanques de ' + (calc.aguaT ? n(calc.aguaT) + ' L' : '—') + '</div><div class="mono" style="font-size:18px">' + (calc.aguaT && calc.cal && calc.ha ? calc.llenos + (calc.resto ? ' + ' + n(calc.resto) + ' L' : '') : '—') + '</div></div></div>';
   var alertas = [];
-  html += '<div style="display:flex;flex-direction:column;gap:8px"><div class="between small" style="color:var(--on-dark-muted);font-weight:600"><span>Producto</span><span>Por tanque · Total</span></div>' + (calc.lineas.length ? calc.lineas.map(function (l) {
+  html += '<div style="display:flex;flex-direction:column;gap:8px"><div class="between small" style="color:var(--on-dark-muted);font-weight:600"><span>Producto</span><span>Por tanque</span></div>' + (calc.lineas.length ? calc.lineas.map(function (l) {
     var it = d.inv.filter(function (i) { return l.p && i.producto_id === l.p.id; })[0];
     if (it && l.p) { var desp = Number(it.existencia) - l.total / Number(l.p.factor_conversion); if (it.minimo != null && desp < Number(it.minimo)) alertas.push(l.p.nombre + ' queda en ' + n(Math.max(desp, 0), 2) + ' ' + invUnidad(l.p) + ' (mínimo ' + n(it.minimo, 2) + ')'); }
-    return '<div class="between" style="border-top:1px solid var(--dark3);padding-top:8px"><span>' + esc(l.p ? l.p.nombre : '?') + '</span><span class="mono">' + nq(l.porTanque) + ' · ' + (calc.ha && calc.cal ? n(l.total, 2) : '—') + ' ' + (l.p ? l.p.unidad_dosis : '') + '</span></div>';
+    return '<div class="between" style="border-top:1px solid var(--dark3);padding-top:8px"><span>' + esc(l.p ? l.p.nombre : '?') + '</span><span class="mono" style="text-align:right">' + cant(l.p, l.porTanque) + '<br><span style="color:var(--on-dark-muted)">Total ' + (calc.ha && calc.cal ? cant(l.p, l.total) : '—') + '</span></span></div>';
   }).join('') : '<div class="small" style="color:var(--on-dark-muted)">Agrega productos con su cantidad por tanque.</div>') + '</div>';
   alertas.forEach(function (a) { html += '<div class="note alert">' + esc(a) + '. Se generará alerta de recompra.</div>'; });
   if (calc.lineas.length && (!calc.aguaT || !d.cal)) html += '<div class="small" style="color:var(--on-dark-muted)">Indica calibración y agua por tanque para calcular cuántos tanques hacen falta.</div>';
@@ -712,7 +726,7 @@ async function vHistorial() {
   html += '<div class="card">' + (rows.length ? '<div class="scroll"><table class="tbl" style="min-width:720px"><thead><tr><th>Fecha</th><th>Área</th><th>Productos</th><th>Operador</th><th>Sprayer</th><th>Estado</th></tr></thead><tbody>' +
     rows.sort(function (a, b) { return a.orden.fecha < b.orden.fecha ? 1 : a.orden.fecha > b.orden.fecha ? -1 : b.id - a.id; }).map(function (r) {
       var spH = byId(S.cat.sprayers, r.orden.sprayer_id); var aT = Number(r.orden.agua_tanque_l) || (spH && Number(spH.capacidad_l)) || 0;
-      var ps = (r.orden.productos || []).map(function (x) { var p = prod(x.producto_id); var pt = porTanqueDe(x, Number(r.orden.calibracion_l_ha) || 0, aT); return (p ? p.nombre : '?') + ' ' + (pt ? nq(pt) + (p ? ' ' + p.unidad_dosis : '') : n(x.dosis_por_ha, 2) + (p ? ' ' + p.unidad_dosis : '') + '/ha'); }).join('<br>') + (aT ? '<div class="muted">por tanque de ' + n(aT) + ' L</div>' : '');
+      var ps = (r.orden.productos || []).map(function (x) { var p = prod(x.producto_id); var pt = porTanqueDe(x, Number(r.orden.calibracion_l_ha) || 0, aT); return (p ? p.nombre : '?') + ' ' + (pt ? cant(p, pt) : cant(p, Number(x.dosis_por_ha), true)); }).join('<br>') + (aT ? '<div class="muted">por tanque de ' + n(aT) + ' L</div>' : '');
       var est = r.estado === 'aplicada' ? '<span class="badge b-ok">Aplicada</span>' : r.estado === 'no_aplicada' ? '<span class="badge b-warn">No · ' + esc(motivoTxt(r.motivo)) + '</span>' : '<span class="badge b-neutral">' + (r.orden.estado === 'cancelada' ? 'Cancelada' : 'Pendiente') + '</span>';
       return '<tr><td><a href="#/orden/' + r.orden.id + '">' + fecha(r.orden.fecha) + '</a>' + (r.orden.titulo ? '<div class="small muted">' + esc(r.orden.titulo) + '</div>' : '') + '</td><td><b>' + esc(areaNombre(r)) + '</b></td><td class="small">' + ps + '</td><td>' + esc(perfilNombre(r.orden.operador_id)) + '</td><td>' + esc((byId(S.cat.sprayers, r.orden.sprayer_id) || {}).nombre || '—') + '</td><td>' + est + '</td></tr>';
     }).join('') + '</tbody></table></div>' : '<div class="empty">No hay aplicaciones con ese filtro.</div>') + '</div>';
@@ -738,12 +752,12 @@ async function vCatalogos() {
       var it = inv.filter(function (i) { return i.producto_id === p.id; })[0];
       var inp = function (f, type, w) { return '<input class="cat" data-t="productos" data-id="' + p.id + '" data-f="' + f + '"' + (type ? ' type="' + type + '" step="any"' : '') + ' value="' + esc(p[f]) + '" aria-label="' + f + '" style="min-height:40px;border:1px solid var(--line);border-radius:6px;padding:0 8px;width:' + w + ';' + (type ? 'text-align:right' : '') + '">'; };
       var sel = function (f, opts) { return '<select class="cat" data-t="productos" data-id="' + p.id + '" data-f="' + f + '" aria-label="' + f + '" style="min-height:40px;border:1px solid var(--line);border-radius:6px">' + opts.map(function (o) { return '<option' + (o === p[f] ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>'; };
-      return '<tr><td>' + inp('nombre', '', '100%') + '</td><td>' + sel('tipo', TIPOS) + '</td><td>' + sel('unidad_dosis', ['kg', 'L']) + '</td><td>' + sel('unidad_inventario', ['kg', 'L', 'saco', 'galon']) + '</td><td class="r">' + inp('factor_conversion', 'number', '90px') + '</td><td class="r">' + inp('capacidad', 'number', '90px') + '</td><td class="r">' + inp('minimo', 'number', '90px') + '</td><td class="r mono">' + (it ? n(it.existencia, 2) : '—') + '</td><td><input type="checkbox" class="cat" data-t="productos" data-id="' + p.id + '" data-f="activo"' + (p.activo ? ' checked' : '') + ' aria-label="Activo" style="width:22px;height:22px"></td></tr>';
+      return '<tr><td>' + inp('nombre', '', '100%') + '</td><td>' + sel('tipo', TIPOS) + '</td><td>' + '<select class="cat" data-t="productos" data-id="' + p.id + '" data-f="unidad_dosis" aria-label="unidad_dosis" style="min-height:40px;border:1px solid var(--line);border-radius:6px">' + [['kg', 'kg'], ['L', 'L'], ['mL', 'mL y oz']].map(function (o) { var on = esMlOz(p) ? o[0] === 'mL' : o[0] === p.unidad_dosis; return '<option value="' + o[0] + '"' + (on ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' + '</td><td>' + sel('unidad_inventario', ['kg', 'L', 'saco', 'galon']) + '</td><td class="r">' + inp('factor_conversion', 'number', '90px') + '</td><td class="r">' + inp('capacidad', 'number', '90px') + '</td><td class="r">' + inp('minimo', 'number', '90px') + '</td><td class="r mono">' + (it ? n(it.existencia, 2) : '—') + '</td><td><input type="checkbox" class="cat" data-t="productos" data-id="' + p.id + '" data-f="activo"' + (p.activo ? ' checked' : '') + ' aria-label="Activo" style="width:22px;height:22px"></td></tr>';
     }).join('') + '</tbody></table></div>' +
     '<form data-form="producto" style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line2);padding-top:12px"><h2>Nuevo producto</h2><div class="fgrid">' +
     '<label class="f">Nombre<input name="nombre" required></label>' +
     '<label class="f">Tipo<select name="tipo">' + TIPOS.map(function (t) { return '<option>' + t + '</option>'; }).join('') + '</select></label>' +
-    '<label class="f">Dosis en<select name="unidad_dosis"><option>kg</option><option>L</option></select></label>' +
+    '<label class="f">Dosis en<select name="unidad_dosis"><option>kg</option><option>L</option><option value="mL">mL y oz</option></select></label>' +
     '<label class="f">Inventario en<select name="unidad_inventario"><option>kg</option><option>L</option><option>saco</option><option>galon</option></select></label>' +
     '<label class="f">kg o L por unidad<input name="factor_conversion" type="number" step="any" min="0.0001" value="1"></label>' +
     '<label class="f">Capacidad en bodega<input name="capacidad" type="number" step="any" min="0"></label>' +
@@ -765,6 +779,7 @@ async function guardarCat(el) {
   if (f === 'nombre' && !v) return toast('El nombre no puede quedar vacío', true);
   if (f === 'factor_conversion' && !(v > 0)) return toast('Debe ser mayor que cero', true);
   var patch = {}; patch[f] = v;
+  if (t === 'smgc_apl_productos' && f === 'unidad_dosis') patch = v === 'mL' ? { unidad_dosis: 'L', mostrar_ml_oz: true } : { unidad_dosis: v, mostrar_ml_oz: false };
   try { await q(sb.from(t).update(patch).eq('id', Number(el.dataset.id))); await cargarCatalogos(); toast('Guardado'); } catch (e) { fail(e); }
 }
 async function enviarForm(form) {
@@ -775,7 +790,7 @@ async function enviarForm(form) {
     if (k === 'sprayer') await q(sb.from('smgc_apl_sprayers').insert({ nombre: o.nombre.trim(), capacidad_l: nn(o.capacidad_l) }));
     if (k === 'boquilla') await q(sb.from('smgc_apl_boquillas').insert({ nombre: o.nombre.trim(), sprayer_id: nn(o.sprayer_id), calibracion_l_ha: nn(o.calibracion_l_ha) }));
     if (k === 'producto') {
-      var p = await q(sb.from('smgc_apl_productos').insert({ nombre: o.nombre.trim(), tipo: o.tipo, unidad_dosis: o.unidad_dosis, unidad_inventario: o.unidad_inventario, factor_conversion: nn(o.factor_conversion) || 1, capacidad: nn(o.capacidad), minimo: nn(o.minimo) }).select().single());
+      var p = await q(sb.from('smgc_apl_productos').insert({ nombre: o.nombre.trim(), tipo: o.tipo, unidad_dosis: o.unidad_dosis === 'mL' ? 'L' : o.unidad_dosis, mostrar_ml_oz: o.unidad_dosis === 'mL', unidad_inventario: o.unidad_inventario, factor_conversion: nn(o.factor_conversion) || 1, capacidad: nn(o.capacidad), minimo: nn(o.minimo) }).select().single());
       if (nn(o.inicial) > 0) await q(sb.from('smgc_apl_movimientos').insert({ producto_id: p.id, tipo: 'inicial', cantidad: nn(o.inicial), nota: 'Existencia al crear el producto' }));
     }
     toast('Agregado'); route();
@@ -809,6 +824,7 @@ document.addEventListener('click', async function (e) {
     else if (a === 'hole') { var hk = el.dataset.u + '|' + d.zona; if (d.areas[hk]) delete d.areas[hk]; else d.areas[hk] = { unidad_id: el.dataset.u, zona_id: d.zona, arrastrada_de: null }; renderNueva(); }
     else if (a === 'addPunt') { var pk = d.puntUnidad + '|' + d.puntZona; d.areas[pk] = d.areas[pk] || { unidad_id: d.puntUnidad, zona_id: d.puntZona, arrastrada_de: null }; renderNueva(); }
     else if (a === 'rmArea') { delete d.areas[el.dataset.k]; renderNueva(); }
+    else if (a === 'unidadCant') { d.productos[Number(el.dataset.i)].u = el.dataset.v; renderNueva(); }
     else if (a === 'addProd') { d.productos.push({ producto_id: '', cantidad_tanque: '' }); renderNueva(); }
     else if (a === 'rmProd') { d.productos.splice(Number(el.dataset.i), 1); if (!d.productos.length) d.productos.push({ producto_id: '', cantidad_tanque: '' }); renderNueva(); }
     else if (a === 'enviarOrden') await enviarOrden(el);
@@ -829,7 +845,7 @@ document.addEventListener('change', function (e) {
   var d = S.draft; if (!d) return;
   if (k === 'titulo' || k === 'notas') { d[k] = el.value; return; }
   if (k === 'prod') d.productos[Number(el.dataset.i)].producto_id = el.value;
-  else if (k === 'cant') d.productos[Number(el.dataset.i)].cantidad_tanque = el.value;
+  else if (k === 'cant') { var xc = d.productos[Number(el.dataset.i)]; xc.cantidad_tanque = aLitros(prod(xc.producto_id), el.value, xc.u); }
   else if (k === 'boquilla_id') { d.boquilla_id = el.value; var b = byId(S.cat.boquillas, el.value); if (b && b.calibracion_l_ha) d.cal = b.calibracion_l_ha; }
   else if (k === 'sprayer_id') { var spAnt = byId(S.cat.sprayers, d.sprayer_id), spNu = byId(S.cat.sprayers, el.value); if (spNu && spNu.capacidad_l && (!d.agua || (spAnt && String(d.agua) === String(spAnt.capacidad_l)))) d.agua = spNu.capacidad_l; d.sprayer_id = el.value; var bb = byId(S.cat.boquillas, d.boquilla_id); if (bb && bb.sprayer_id && String(bb.sprayer_id) !== String(d.sprayer_id)) d.boquilla_id = ''; }
   else d[k] = el.value;
