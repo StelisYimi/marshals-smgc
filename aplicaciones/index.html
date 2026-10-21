@@ -173,6 +173,8 @@ var SUPABASE_URL = 'https://qabbgxoqcxthzcxcoapm.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_gHzudWhVIQuZbJdmG20B7Q_6cxFAeJq';
 var USER_DOMAIN = 'aplicaciones.smcapibara.com';
 // Supabase pide contraseñas de 6+ caracteres: el PIN de 4 dígitos se envuelve aquí
+function pinAzar() { var x; do { x = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); } while (/^(\d)\1{3}$/.test(x) || '0123456789'.indexOf(x) >= 0 || '9876543210'.indexOf(x) >= 0); return x; }
+function slugUsuario(nombre) { return String(nombre || '').trim().split(/\s+/)[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9._-]/g, ''); }
 function pinPassword(pin) { return 'smgc-apl-' + String(pin).trim(); }
 var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, storageKey: 'smgc-apl-auth' } });
 
@@ -982,8 +984,25 @@ async function vCatalogos() {
     '<label class="f">Existencia actual<input name="inicial" type="number" step="any" min="0"></label>' +
     '</div><button class="btn primary" type="submit" style="align-self:flex-start">Agregar producto</button></form></div>';
   // usuarios
-  html += '<div class="card"><h2>Usuarios</h2>' + S.cat.perfiles.map(function (p) { return '<div class="list-item"><div><b>' + esc(p.nombre) + '</b><div class="small muted">' + esc(p.rol) + '</div></div><span class="badge ' + (p.activo ? 'b-ok' : 'b-neutral') + '">' + (p.activo ? 'Activo' : 'Inactivo') + '</span></div>'; }).join('') +
-    '<div class="small muted">Las cuentas nuevas y los cambios de PIN los hace el administrador.</div></div>';
+  var logins = {}; try { (await q(sb.rpc('smgc_apl_usuarios'))).forEach(function (u) { logins[u.user_id] = u.usuario; }); } catch (_) {}
+  var ROLES = { operador: 'Operador', superintendente: 'Superintendente', consulta: 'Solo consulta' };
+  var nu = S.nuevoUsuario;
+  html += '<div class="card" id="usuarios"><h2>Usuarios</h2>' +
+    (nu ? '<div class="note ok" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><b>' + esc(nu.nombre) + '</b> ' + (nu.cambio ? 'tiene PIN nuevo' : 'ya puede entrar') + '<div class="mono" style="margin-top:4px">Usuario: <b>' + esc(nu.usuario) + '</b> · PIN: <b>' + esc(nu.pin) + '</b></div><div class="small muted">Anótalo y entrégaselo. Por seguridad no se vuelve a mostrar.</div></div><button class="btn sm" data-act="nuCerrar">Listo</button></div>' : '') +
+    S.cat.perfiles.slice().sort(function (a, b) { return (b.activo - a.activo) || a.nombre.localeCompare(b.nombre); }).map(function (p) {
+      var yo = p.user_id === S.perfil.user_id;
+      return '<div class="list-item" style="flex-wrap:wrap"><div style="min-width:0"><b' + (p.activo ? '' : ' class="muted"') + '>' + esc(p.nombre) + '</b>' + (yo ? ' <span class="small muted">(tú)</span>' : '') +
+        '<div class="small muted">' + (logins[p.user_id] ? 'Usuario <span class="mono">' + esc(logins[p.user_id]) + '</span> · ' : '') + esc(ROLES[p.rol] || p.rol) + '</div></div>' +
+        '<div class="row" style="gap:6px;align-items:center"><span class="badge ' + (p.activo ? 'b-ok' : 'b-neutral') + '">' + (p.activo ? 'Activo' : 'Inactivo') + '</span>' +
+        '<button class="btn sm" data-act="uPin" data-id="' + p.user_id + '">Cambiar PIN</button>' +
+        (yo ? '' : '<button class="btn sm" data-act="uActivo" data-id="' + p.user_id + '" data-v="' + (p.activo ? '0' : '1') + '">' + (p.activo ? 'Desactivar' : 'Activar') + '</button>') + '</div></div>';
+    }).join('') +
+    '<form data-form="usuario" style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line2);padding-top:12px;margin-top:4px"><h2>Nuevo usuario</h2><div class="fgrid">' +
+    '<label class="f">Nombre<input name="nombre" data-inp="nuNombre" required placeholder="Ej. Carlos Rodríguez" autocomplete="off"></label>' +
+    '<label class="f">Usuario para entrar<input name="usuario" data-inp="nuUsuario" required minlength="3" maxlength="30" autocapitalize="none" autocorrect="off" autocomplete="off" placeholder="carlos"></label>' +
+    '<label class="f">Rol<select name="rol"><option value="operador">Operador</option><option value="consulta">Solo consulta</option><option value="superintendente">Superintendente</option></select></label>' +
+    '<label class="f">PIN de 4 dígitos<input name="pin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" class="mono" value="' + pinAzar() + '" autocomplete="off"></label>' +
+    '</div><div class="small muted">El operador entra con el usuario y el PIN. Si alguien deja de trabajar, desactívalo: no podrá entrar, pero su historial se conserva.</div><button class="btn primary" type="submit" style="align-self:flex-start">Crear usuario</button></form></div>';
   html += '<div class="card"><h2>Campo</h2><div class="small muted">' + S.cat.areas.length + ' áreas medidas en ' + S.cat.unidades.length + ' lugares. Las medidas vienen de la tabla del campo; para corregir alguna, pídelo al administrador.</div></div>';
   shell(html);
 }
@@ -1010,6 +1029,17 @@ async function enviarForm(form) {
       var p = await q(sb.from('smgc_apl_productos').insert({ nombre: o.nombre.trim(), tipo: o.tipo, unidad_dosis: o.unidad_dosis === 'mL' ? 'L' : o.unidad_dosis, mostrar_ml_oz: o.unidad_dosis === 'mL', unidad_inventario: o.unidad_inventario, factor_conversion: nn(o.factor_conversion) || 1, capacidad: nn(o.capacidad), minimo: nn(o.minimo) }).select().single());
       if (nn(o.inicial) > 0) await q(sb.from('smgc_apl_movimientos').insert({ producto_id: p.id, tipo: 'inicial', cantidad: nn(o.inicial), nota: 'Existencia al crear el producto' }));
     }
+    if (k === 'usuario') {
+      var nom = o.nombre.trim(), usu = o.usuario.trim().toLowerCase(), pin = o.pin.trim();
+      if (!/^[0-9]{4}$/.test(pin)) return toast('El PIN debe ser de 4 dígitos', true);
+      var btnU = form.querySelector('button[type=submit]'); btnU.disabled = true;
+      try { await q(sb.rpc('smgc_apl_crear_usuario', { p_usuario: usu, p_nombre: nom, p_rol: o.rol, p_pin: pin })); }
+      catch (eu) { btnU.disabled = false; return toast(eu.message || 'No se pudo crear', true); }
+      S.nuevoUsuario = { nombre: nom, usuario: usu, pin: pin };
+      await cargarCatalogos(); await route();
+      var cu = document.getElementById('usuarios'); if (cu) cu.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
     toast('Agregado'); route();
   } catch (e) { fail(e); }
 }
@@ -1026,6 +1056,22 @@ document.addEventListener('click', async function (e) {
       await q(sb.rpc('smgc_apl_confirmar_area', { p_id: Number(el.dataset.id), p_estado: nuevo, p_motivo: null, p_nota: null }));
       if (nuevo === 'aplicada' && el.dataset.tanque) await q(sb.rpc('smgc_apl_asignar_tanque', { p_id: Number(el.dataset.id), p_tanque: Number(el.dataset.tanque) }));
       route();
+    }
+    else if (a === 'nuCerrar') { S.nuevoUsuario = null; route(); }
+    else if (a === 'uPin') {
+      var pu = S.cat.perfiles.filter(function (x) { return x.user_id === el.dataset.id; })[0];
+      var np = prompt('PIN nuevo de 4 dígitos para ' + pu.nombre + ':', pinAzar()); if (np == null) return;
+      np = np.trim(); if (!/^[0-9]{4}$/.test(np)) return toast('El PIN debe ser de 4 dígitos', true);
+      await q(sb.rpc('smgc_apl_cambiar_pin', { p_user: pu.user_id, p_pin: np }));
+      var lg = {}; try { (await q(sb.rpc('smgc_apl_usuarios'))).forEach(function (u) { lg[u.user_id] = u.usuario; }); } catch (_) {}
+      S.nuevoUsuario = { nombre: pu.nombre, usuario: lg[pu.user_id] || '', pin: np, cambio: true }; await route();
+      var cu2 = document.getElementById('usuarios'); if (cu2) cu2.scrollIntoView({ behavior: 'smooth' });
+    }
+    else if (a === 'uActivo') {
+      var pa = S.cat.perfiles.filter(function (x) { return x.user_id === el.dataset.id; })[0], act = el.dataset.v === '1';
+      if (!act && !confirm('¿Desactivar a ' + pa.nombre + '? Ya no podrá entrar. Su historial se conserva.')) return;
+      await q(sb.from('smgc_apl_perfiles').update({ activo: act }).eq('user_id', pa.user_id));
+      await cargarCatalogos(); toast(act ? 'Usuario activado' : 'Usuario desactivado'); route();
     }
     else if (a === 'tqCambiar') { S.tq = S.tq || {}; S.tq[el.dataset.id] = Math.max(1, Number(el.dataset.v)); route(); }
     else if (a === 'cierreTanque') { var st = S.cierre.areas[el.dataset.id]; st.tanque = st.tanque === Number(el.dataset.v) ? null : Number(el.dataset.v); renderCierre(); }
@@ -1066,12 +1112,15 @@ document.addEventListener('click', async function (e) {
 });
 document.addEventListener('input', function (e) {
   var el = e.target; if (el.dataset && (el.dataset.inp === 'titulo' || el.dataset.inp === 'notas') && S.draft) S.draft[el.dataset.inp] = el.value;
+  if (el.dataset && el.dataset.inp === 'nuUsuario') el.dataset.tocado = el.value ? '1' : '';
+  if (el.dataset && el.dataset.inp === 'nuNombre') { var fu = el.form && el.form.usuario; if (fu && !fu.dataset.tocado) fu.value = slugUsuario(el.value); }
   if (el.dataset && el.dataset.inp === 'buscar' && S.draft) { S.draft.buscar = el.value; renderNueva(); }
 });
 document.addEventListener('change', function (e) {
   var el = e.target;
   if (el.classList && el.classList.contains('cat')) return guardarCat(el);
   var k = el.dataset && el.dataset.inp; if (!k) return;
+  if (k === 'nuNombre' || k === 'nuUsuario') return;
   if (k === 'histU') { S.histU = el.value; return route(); }
   if (k === 'histZ') { S.histZ = el.value; return route(); }
   if (k === 'histT') { S.histT = el.value; return route(); }
