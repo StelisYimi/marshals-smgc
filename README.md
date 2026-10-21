@@ -1,8 +1,68 @@
 # SMGC · Control operativo de Santa María Golf Club
 
-- **Marshals:** checklist por turno, incidencias con fotos, entrega de turno, panel de Gerencia.
-- **Capitanes:** palos de alquiler (entrega con firma del huésped y correos de confirmación) y bolsas de miembros por casilla.
-- **Equipo:** cuentas y roles del staff.
+Plataforma web del departamento de Operación de Golf: la usan Marshals, Capitanes y Gerencia desde el teléfono, y una televisión muestra el horario del personal en tiempo real.
 
-- App: https://stelisyimi.github.io/marshals-smgc/
-- Datos: Supabase (proyecto `smgc-marshals`), protegidos por seguridad a nivel de fila. La clave incluida en `index.html` es la clave pública del proyecto.
+- **App:** https://app.smcapibara.com
+- **Tablero de TV:** `https://app.smcapibara.com/tablero/?k=<enlace>` (Gerencia obtiene el enlace en la app, pestaña **Capitanes → Horario**)
+- **Datos:** Supabase, proyecto `smgc-marshals` (`kqupzmmudvegropbtbwu`)
+
+## Módulos
+
+| Módulo | Qué hace |
+|---|---|
+| **Marshals** | Checklist por turno, incidencias con fotos y prioridad, protocolo de juego lento, entrega de turno, panel de Gerencia con indicadores. |
+| **Capitanes · Mi turno** | Checklist del Capitán (55 actividades en 8 áreas), condiciones de la cancha, puestos del equipo, insumos, firma y validación de Gerencia. |
+| **Capitanes · Salidas** | Salidas del tee sheet del día: hora real de salida, no presentados y % de salidas puntuales (tolerancia 5 min). |
+| **Capitanes · Horario** | Horario semanal del personal: turno, función (letra), almuerzo, descanso, vacaciones y compensatorio. Copiar semana anterior, personal y funciones editables. |
+| **Capitanes · Palos de alquiler** | Entrega con revisión de piezas y firma del huésped, devolución, historial y correos de confirmación. |
+| **Capitanes · Bolsas** | Bolsas de miembros por casilla: entrega y recepción. |
+| **Tablero de TV** | Quién está en cada función ahora, próximas entradas con instrucciones, almuerzos y libres del día. Sin inicio de sesión; se actualiza cada 30 s. |
+| **Equipo** | Gerencia crea cuentas del staff, asigna roles y restablece contraseñas. |
+
+## Estructura del repositorio
+
+```
+index.html                 App completa (una sola página: HTML, estilos y JavaScript)
+tablero/index.html         Pantalla para la Smart TV (escenario 1920×1080 que se escala)
+aplicaciones/index.html    Módulo de aplicaciones de Superintendencia (usa otro proyecto de Supabase)
+manifest.webmanifest, icon-*.png, apple-touch-icon.png, logo.png   Instalación en el teléfono e identidad
+CNAME                      Dominio personalizado app.smcapibara.com
+supabase/
+  migrations/              Base de datos completa, en orden (tablas, permisos, funciones y contenido inicial)
+  functions/staff/         Función del servidor: cuentas del staff (crear, restablecer, primer gerente)
+  functions/correos/       Función del servidor: correos de palos de alquiler vía Resend
+```
+
+## Cómo se publica
+
+- **Páginas:** cada cambio en la rama `main` se publica solo con GitHub Pages en 1 o 2 minutos.
+- **Dominio:** en Cloudflare (cuenta donde está `smcapibara.com`), el registro DNS `app` es un CNAME a `stelisyimi.github.io`, con proxy de Cloudflare y SSL en modo *Full*. El proyecto de Cloudflare Pages `smgc-app` es una copia vieja que ya no se usa.
+- **Base de datos y funciones:** viven en Supabase. Los archivos de `supabase/` son su respaldo y la forma de recrearlas; cambiar un archivo aquí **no** cambia Supabase por sí solo.
+
+## Restaurar o recrear el backend
+
+Con la [CLI de Supabase](https://supabase.com/docs/guides/cli):
+
+```bash
+supabase link --project-ref <proyecto>
+supabase db push                       # aplica supabase/migrations en orden
+supabase functions deploy staff --no-verify-jwt
+supabase functions deploy correos --no-verify-jwt
+supabase secrets set RESEND_API_KEY=<clave de Resend>
+```
+
+Después, en la tabla `config_sistema`, cargar `dominio_usuarios`, `correo_gerente_inicial`, `correo_remitente` y `nombre_club`, y en `index.html` y `tablero/index.html` actualizar la URL del proyecto y la clave pública.
+
+## Seguridad
+
+- La clave que aparece en `index.html` y `tablero/index.html` es la **clave pública** del proyecto. Todo el acceso está protegido con seguridad a nivel de fila: solo el staff activo lee datos, y cada rol escribe solo lo suyo.
+- El tablero de TV solo lee a través de la función `tablero_dia`, que exige un enlace válido de `tablero_claves`. Gerencia puede cambiar el enlace desde la app y el anterior deja de funcionar.
+- Las claves secretas (Resend, clave de servicio) están solo en los *secrets* de Supabase y nunca en este repositorio.
+
+## Roles
+
+| Rol | Acceso |
+|---|---|
+| Marshal | Módulo Marshals |
+| Capitán | Módulo Capitanes; en Horario puede ajustar solo el día de hoy |
+| Gerente de Operaciones / de Golf, Administrador | Ambos módulos, supervisión, validación, horario semanal, cuentas del staff y enlace de la TV |
