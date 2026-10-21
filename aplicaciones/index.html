@@ -133,6 +133,23 @@ label.f textarea{padding:10px 12px;min-height:70px}
 .tq:first-of-type{border-top:0}
 .tq-l{margin:6px 0 0;padding-left:22px}
 .tq-l li{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
+.tchips{display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:middle}
+.tc{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;background:var(--tb);color:var(--tf)}
+.tc::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--tf)}
+.t-foliar{--tb:#E3EFE6;--tf:#14502C}.t-fungicida{--tb:#ECE5F5;--tf:#4B2A7A}.t-herbicida{--tb:#FBEBDD;--tf:#6B2F05}
+.t-insecticida{--tb:#F6DCD8;--tf:#6E160F}.t-humectante{--tb:#DDEBF5;--tf:#1C4A6E}.t-nematicida{--tb:#EFE9D9;--tf:#5A4A1C}
+.tsel{display:flex;flex-wrap:wrap;gap:8px}
+.tsel button{min-height:44px;padding:0 14px;border-radius:999px;border:2px solid var(--line);background:#fff;font-weight:700;font-size:14px;cursor:pointer;color:var(--muted)}
+.tsel button.on{background:var(--tb);border-color:var(--tf);color:var(--tf)}
+.tsel button.on::before{content:'✓ '}
+.tkpi{cursor:pointer;text-align:left;font:inherit;color:inherit;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.tkpi.on{border:2px solid var(--tf);background:var(--tb)}
+.tmat{border-collapse:separate;border-spacing:4px;width:100%}
+.tmat th{font-size:12px;color:var(--muted);font-weight:600;text-align:center;padding:2px}
+.tmat th:first-child{text-align:left}
+.tmat td{text-align:center;font-family:var(--mono);font-size:14px;padding:8px 4px;border-radius:6px;background:var(--bg)}
+.tmat td:first-child{text-align:left;background:transparent;font-family:inherit;padding-left:0}
+.tmat td.d1{background:var(--green-soft);color:var(--green-d)}.tmat td.d2{background:#F4F0DC;color:#5A4A1C}.tmat td.d3{background:var(--orange-soft);color:var(--orange-d)}
 .tq-l li::marker{font-family:var(--mono);color:var(--muted)}
 .rec{border:2px solid var(--green);border-radius:10px;overflow:hidden}
 .rec-h{background:var(--green-soft);color:var(--green-d);padding:8px 12px;font-size:14px}
@@ -161,7 +178,22 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { pers
 
 var S = { session: null, perfil: null, cat: null, draft: null, cierre: null, view: null };
 var MOTIVOS = [['lluvia','Lluvia'],['viento','Viento'],['equipo','Falla del equipo'],['producto','Falta de producto'],['juego','Juego en el hoyo'],['tiempo','Falta de tiempo'],['otro','Otro']];
-var TIPOS = ['fertilizante','herbicida','fungicida','insecticida','surfactante','regulador','otro'];
+var TIPOS = ['fertilizante','herbicida','fungicida','insecticida','nematicida','humectante','surfactante','regulador','otro'];
+// tipos de aplicación (una orden puede tener varios)
+var TIPOS_APL = [['foliar','Foliar'],['fungicida','Fungicida'],['herbicida','Herbicida'],['insecticida','Insecticida'],['humectante','Humectante'],['nematicida','Nematicida']];
+function tipoNombre(t) { for (var i = 0; i < TIPOS_APL.length; i++) if (TIPOS_APL[i][0] === t) return TIPOS_APL[i][1]; return t; }
+function ordenTipos(arr) { var ks = TIPOS_APL.map(function (x) { return x[0]; }); return (arr || []).filter(function (t, i, a) { return ks.indexOf(t) >= 0 && a.indexOf(t) === i; }).sort(function (a, b) { return ks.indexOf(a) - ks.indexOf(b); }); }
+function chipsTipos(arr) { var t = ordenTipos(arr); return t.length ? '<span class="tchips">' + t.map(function (x) { return '<span class="tc t-' + x + '">' + esc(tipoNombre(x)) + '</span>'; }).join('') + '</span>' : ''; }
+// sugerencia según los productos de la mezcla: fertilizante → foliar (salvo herbicida con urea de adyuvante, si el título no dice foliar)
+function tiposSugeridos(prods, titulo) {
+  var t = [];
+  (prods || []).forEach(function (x) { var p = prod(x.producto_id); if (!p) return;
+    var m = p.tipo === 'fertilizante' ? 'foliar' : p.tipo;
+    if (TIPOS_APL.some(function (y) { return y[0] === m; })) t.push(m); });
+  if (/foliar/i.test(titulo || '')) t.push('foliar');
+  else if (t.indexOf('herbicida') >= 0) t = t.filter(function (x) { return x !== 'foliar'; });
+  return ordenTipos(t);
+}
 var MEDIDAS = ['green','tee_box','tee_complex','fairway','rough'];
 
 // ---------- utilidades ----------
@@ -322,9 +354,9 @@ function renderLogin(msg) {
 
 // ---------- estructura ----------
 var NAV = {
-  superintendente: [['#/ordenes', 'Órdenes'], ['#/nueva', 'Nueva orden'], ['#/cumplimiento', 'Cumplimiento'], ['#/inventario', 'Inventario'], ['#/historial', 'Historial'], ['#/catalogos', 'Catálogos']],
+  superintendente: [['#/ordenes', 'Órdenes'], ['#/nueva', 'Nueva orden'], ['#/cumplimiento', 'Cumplimiento'], ['#/tipos', 'Por tipo'], ['#/inventario', 'Inventario'], ['#/historial', 'Historial'], ['#/catalogos', 'Catálogos']],
   operador: [['#/hoy', 'Mis órdenes'], ['#/conteo', 'Conteo de inventario']],
-  consulta: [['#/cumplimiento', 'Cumplimiento'], ['#/inventario', 'Inventario'], ['#/historial', 'Historial']]
+  consulta: [['#/cumplimiento', 'Cumplimiento'], ['#/tipos', 'Por tipo'], ['#/inventario', 'Inventario'], ['#/historial', 'Historial']]
 };
 function shell(html) {
   var h = location.hash.split('/').slice(0, 2).join('/');
@@ -373,6 +405,7 @@ async function route() {
     else if (v === 'cumplimiento') await vCumplimiento(id);
     else if (v === 'inventario') await vInventario();
     else if (v === 'historial') await vHistorial();
+    else if (v === 'tipos') await vTipos();
     else if (v === 'catalogos') await vCatalogos();
   } catch (e) { fail(e); shell('<div class="note alert">No se pudo cargar. ' + esc(e.message || '') + '</div>'); }
 }
@@ -433,6 +466,7 @@ async function vOrden(id) {
   var esMia = S.perfil.rol === 'operador' && o.operador_id === S.perfil.user_id && o.estado === 'enviada';
   var html = '<div class="opbar"><div class="between"><span class="small" style="color:var(--on-dark-muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">' + fecha(o.fecha) + '</span><span class="mono small" style="color:var(--on-dark-muted)">Orden ' + num(o.id) + '</span></div>' +
     '<div style="font-size:24px;font-weight:800;line-height:1.15">' + esc(tituloOrden(o)) + '</div>' + (o.titulo ? '<div style="font-size:15px;font-weight:600;color:#D5DDD7">' + esc(resumenAreas(o.areas)) + '</div>' : '') +
+    (o.tipos && o.tipos.length ? '<div>' + chipsTipos(o.tipos) + '</div>' : '') +
     '<div class="small" style="color:#D5DDD7">Operador: ' + esc(perfilNombre(o.operador_id)) + ' · ' + estadoOrden(o) + '</div>' +
     '<div class="row" style="gap:8px">' + (sp ? '<span class="pill">' + esc(sp.nombre) + (sp.capacidad_l ? ' · ' + n(sp.capacidad_l) + ' L' : '') + '</span>' : '') + (bq ? '<span class="pill">' + esc(bq.nombre) + '</span>' : '') + (o.calibracion_l_ha ? '<span class="pill">' + n(o.calibracion_l_ha) + ' L/ha</span>' : '') + '</div></div>';
   if (o.notas) html += '<div class="note warn">' + esc(o.notas) + '</div>';
@@ -597,7 +631,7 @@ async function vOrdenes() {
   var otras = ords.filter(function (o) { return o.estado !== 'enviada'; });
   function fila(o) {
     var ok = o.areas.filter(function (a) { return a.estado === 'aplicada'; }).length;
-    return '<tr><td class="mono"><a href="#/orden/' + o.id + '">' + num(o.id) + '</a></td><td>' + fecha(o.fecha) + '</td><td>' + esc(perfilNombre(o.operador_id)) + '</td><td><b>' + esc(tituloOrden(o)) + '</b>' + (o.titulo ? '<div class="small muted">' + esc(resumenAreas(o.areas)) + '</div>' : '') + '</td><td>' + estadoOrden(o) + '</td><td class="r">' + cumplBadge(ok, o.areas.length) + '</td><td class="r"><a class="btn sm" href="#/nueva/' + o.id + '">Duplicar</a></td></tr>';
+    return '<tr><td class="mono"><a href="#/orden/' + o.id + '">' + num(o.id) + '</a></td><td>' + fecha(o.fecha) + '</td><td>' + esc(perfilNombre(o.operador_id)) + '</td><td><b>' + esc(tituloOrden(o)) + '</b>' + (o.tipos && o.tipos.length ? '<div style="margin-top:4px">' + chipsTipos(o.tipos) + '</div>' : '') + (o.titulo ? '<div class="small muted">' + esc(resumenAreas(o.areas)) + '</div>' : '') + '</td><td>' + estadoOrden(o) + '</td><td class="r">' + cumplBadge(ok, o.areas.length) + '</td><td class="r"><a class="btn sm" href="#/nueva/' + o.id + '">Duplicar</a></td></tr>';
   }
   var th = '<thead><tr><th>Orden</th><th>Fecha</th><th>Operador</th><th>Aplicación</th><th>Estado</th><th class="r">Cumplido</th><th></th></tr></thead>';
   var html = '<div class="between"><h1>Órdenes</h1><a class="btn primary" href="#/nueva">+ Nueva orden</a></div>' +
@@ -615,7 +649,7 @@ async function vNueva(dupId) {
   var recientes = await q(sb.from('smgc_apl_ordenes').select(ORDEN_SEL).gte('fecha', desdeTxt).neq('estado', 'cancelada').order('fecha', { ascending: false }).order('id', { ascending: false }).limit(300));
   var inv = await inventario();
   var ops = S.cat.perfiles.filter(function (p) { return p.rol === 'operador' && p.activo; });
-  S.draft = { buscar: '', titulo: '', fecha: hoy(), operador_id: ops[0] ? ops[0].user_id : '', sprayer_id: '', boquilla_id: '', cal: '', agua: '', zona: 'fairway', areas: {}, productos: [{ producto_id: '', cantidad_tanque: '' }], duplicada_de: null, notas: '', pend: pend, recientes: recientes, inv: inv, puntUnidad: '1', puntZona: 'approach' };
+  S.draft = { buscar: '', titulo: '', fecha: hoy(), operador_id: ops[0] ? ops[0].user_id : '', sprayer_id: '', boquilla_id: '', cal: '', agua: '', zona: 'fairway', areas: {}, productos: [{ producto_id: '', cantidad_tanque: '' }], duplicada_de: null, notas: '', tipos: [], tiposManual: false, pend: pend, recientes: recientes, inv: inv, puntUnidad: '1', puntZona: 'approach' };
   if (dupId) { var src = recientes.filter(function (o) { return String(o.id) === String(dupId); })[0] || await cargarOrden(dupId); duplicarEnDraft(src); }
   renderNueva();
 }
@@ -627,6 +661,7 @@ function duplicarEnDraft(o) {
   d.productos = o.productos.map(function (p) { var pt = porTanqueDe(p, Number(o.calibracion_l_ha) || 0, Number(d.agua) || 0); return { producto_id: p.producto_id, cantidad_tanque: pt ? Math.round(pt * 1000) / 1000 : '' }; });
   if (!d.productos.length) d.productos = [{ producto_id: '', cantidad_tanque: '' }];
   var z = o.areas.filter(function (a) { return MEDIDAS.indexOf(a.zona_id) >= 0; })[0]; if (z) d.zona = z.zona_id;
+  d.tipos = ordenTipos(o.tipos); d.tiposManual = d.tipos.length > 0;
 }
 function draftAreas() { var d = S.draft; return Object.keys(d.areas).map(function (k) { var a = d.areas[k]; return { unidad_id: a.unidad_id, zona_id: a.zona_id, m2: m2De(a.unidad_id, a.zona_id), arrastrada_de: a.arrastrada_de }; }); }
 function renderNueva() {
@@ -635,6 +670,8 @@ function renderNueva() {
   var sp = byId(S.cat.sprayers, d.sprayer_id);
   var areas = draftAreas();
   var calc = calcular(areas.filter(function (a) { return a.m2; }), d.productos, d.cal, d.agua, sp && sp.capacidad_l);
+  var sug = tiposSugeridos(d.productos, d.titulo);
+  if (!d.tiposManual) d.tipos = sug;
   var html = '<div class="between"><h1>Nueva orden</h1><span class="small muted">' + (d.duplicada_de ? 'Duplicada de la orden ' + num(d.duplicada_de) + ' · ajusta lo que cambie' : 'Orden nueva') + '</span></div><div class="row">';
   html += '<div class="grow" style="display:flex;flex-direction:column;gap:12px">';
   // duplicar
@@ -663,7 +700,11 @@ function renderNueva() {
     '<label class="f">Boquilla<select data-inp="boquilla_id"><option value="">Elegir…</option>' + S.cat.boquillas.filter(function (b) { return b.activo && (!b.sprayer_id || !d.sprayer_id || String(b.sprayer_id) === String(d.sprayer_id)); }).map(function (b) { return '<option value="' + b.id + '"' + (String(b.id) === String(d.boquilla_id) ? ' selected' : '') + '>' + esc(b.nombre) + (b.calibracion_l_ha ? ' · ' + n(b.calibracion_l_ha) + ' L/ha' : '') + '</option>'; }).join('') + '</select></label>' +
     '<label class="f">Calibración (L/ha)<input type="number" inputmode="decimal" min="0" step="1" data-inp="cal" value="' + esc(d.cal) + '"></label>' +
     '<label class="f">Agua por tanque (L)<input type="number" inputmode="decimal" min="0" step="10" data-inp="agua" value="' + esc(d.agua) + '" placeholder="' + (sp && sp.capacidad_l ? n(sp.capacidad_l) : 'Ej. 600') + '"></label>' +
-    '</div></div>';
+    '</div>' +
+    '<div class="f"><span>Tipo de aplicación <span class="small muted" style="font-weight:500">· puede ser más de uno</span></span><div class="tsel" role="group" aria-label="Tipo de aplicación">' +
+    TIPOS_APL.map(function (t) { var on = d.tipos.indexOf(t[0]) >= 0; return '<button class="t-' + t[0] + (on ? ' on' : '') + '" data-act="tipoApl" data-v="' + t[0] + '" aria-pressed="' + on + '">' + esc(t[1]) + '</button>'; }).join('') + '</div>' +
+    '<div class="small muted">' + (d.tiposManual ? 'Elegido a mano.' + (sug.join() !== d.tipos.join() ? ' <button class="btn sm" data-act="tiposAuto" style="min-height:32px">Usar lo que sugieren los productos' + (sug.length ? ' (' + esc(sug.map(tipoNombre).join(', ')) + ')' : '') + '</button>' : '') : 'Se marca solo según los productos de la receta. Toca para ajustar.') + '</div></div>' +
+    '</div>';
   // áreas
   html += '<div class="card"><div class="between"><h2>Áreas a aplicar</h2><div class="seg" role="group" aria-label="Zona">' +
     MEDIDAS.map(function (z) { return '<button class="' + (d.zona === z ? 'on' : '') + '" data-act="zona" data-v="' + z + '" aria-pressed="' + (d.zona === z) + '">' + esc(zonaNombre(z)) + '</button>'; }).join('') + '</div></div><div class="holes">' +
@@ -733,7 +774,7 @@ async function enviarOrden(btn) {
   btn.disabled = true; btn.textContent = 'Enviando…';
   var orden = null;
   try {
-    orden = await q(sb.from('smgc_apl_ordenes').insert({ titulo: String(d.titulo).trim(), fecha: d.fecha, operador_id: d.operador_id, sprayer_id: d.sprayer_id || null, boquilla_id: d.boquilla_id || null, calibracion_l_ha: cal, agua_tanque_l: aguaT, duplicada_de: d.duplicada_de, notas: d.notas || null, estado: 'enviada' }).select().single());
+    orden = await q(sb.from('smgc_apl_ordenes').insert({ titulo: String(d.titulo).trim(), tipos: ordenTipos(d.tipos), fecha: d.fecha, operador_id: d.operador_id, sprayer_id: d.sprayer_id || null, boquilla_id: d.boquilla_id || null, calibracion_l_ha: cal, agua_tanque_l: aguaT, duplicada_de: d.duplicada_de, notas: d.notas || null, estado: 'enviada' }).select().single());
     await q(sb.from('smgc_apl_orden_productos').insert(prods.map(function (x) { return { orden_id: orden.id, producto_id: Number(x.producto_id), cantidad_tanque: Number(x.cantidad_tanque), dosis_por_ha: Math.round(Number(x.cantidad_tanque) * cal / aguaT * 10000) / 10000 }; })));
     await q(sb.from('smgc_apl_orden_areas').insert(areas.map(function (a, i) { return { orden_id: orden.id, unidad_id: a.unidad_id, zona_id: a.zona_id, arrastrada_de: a.arrastrada_de || null, secuencia: i + 1 }; })));
     toast('Orden ' + num(orden.id) + ' enviada'); location.hash = '#/orden/' + orden.id;
@@ -831,21 +872,80 @@ async function vInventario() {
 }
 
 // ---------- historial ----------
+
+// ---------- seguimiento por tipo de aplicación ----------
+async function vTipos() {
+  var dias = S.tipoDias || 90, sel = S.tipoSel || '';
+  var desde = addDays(hoy(), -dias);
+  var ords = await q(sb.from('smgc_apl_ordenes').select('id, codigo, fecha, titulo, tipos, estado, operador_id, areas:smgc_apl_orden_areas(unidad_id, zona_id, estado, m2), productos:smgc_apl_orden_productos(producto_id)').gte('fecha', desde).neq('estado', 'cancelada').order('fecha', { ascending: false }).order('id', { ascending: false }).limit(1000));
+  var hoyT = hoy();
+  function con(t) { return ords.filter(function (o) { return (o.tipos || []).indexOf(t) >= 0; }); }
+  function aplicadas(o) { return o.areas.filter(function (a) { return a.estado === 'aplicada'; }); }
+  function ultimaCon(lista) { for (var i = 0; i < lista.length; i++) if (aplicadas(lista[i]).length) return lista[i].fecha; return null; }
+  var html = '<div class="between" style="flex-wrap:wrap;gap:8px"><h1>Seguimiento por tipo</h1><div class="seg" role="group" aria-label="Periodo">' +
+    [[30, '30 días'], [60, '60 días'], [90, '90 días'], [365, '1 año']].map(function (p) { return '<button class="' + (dias === p[0] ? 'on' : '') + '" data-act="tipoDias" data-v="' + p[0] + '" aria-pressed="' + (dias === p[0]) + '">' + p[1] + '</button>'; }).join('') + '</div></div>' +
+    '<div class="small muted">Una orden cuenta en cada tipo que tenga: un foliar con fungicida suma en Foliar y en Fungicida. Toca un tipo para ver sus órdenes.</div>';
+  // tarjetas por tipo
+  html += '<div class="kpis" style="margin-top:12px">' + TIPOS_APL.map(function (t) {
+    var lista = con(t[0]), m2 = 0;
+    lista.forEach(function (o) { aplicadas(o).forEach(function (a) { m2 += Number(a.m2) || 0; }); });
+    var ult = ultimaCon(lista), hace = ult ? diasEntre(ult, hoyT) : null;
+    return '<button class="kpi tkpi t-' + t[0] + (sel === t[0] ? ' on' : '') + '" data-act="tipoSel" data-v="' + t[0] + '" aria-pressed="' + (sel === t[0]) + '">' +
+      '<span class="tc t-' + t[0] + '">' + esc(t[1]) + '</span>' +
+      '<span class="v">' + lista.length + '</span><span class="l">' + (lista.length === 1 ? 'orden' : 'órdenes') + ' · ' + n(m2 / 10000, 2) + ' ha aplicadas</span>' +
+      '<span class="small" style="font-weight:600">' + (ult ? 'Última: ' + fecha(ult) + ' · ' + (hace === 0 ? 'hoy' : 'hace ' + hace + (hace === 1 ? ' día' : ' días')) : 'Sin aplicaciones en el periodo') + '</span></button>';
+  }).join('') + '</div>';
+  // días desde la última aplicación por zona
+  var ZT = [['green', 'Greens', ['green']], ['tee', 'Tees', ['tee_box', 'tee_complex']], ['fairway', 'Fairways', ['fairway']], ['rough', 'Roughs', ['rough']], ['otra', 'Otras zonas', null]];
+  html += '<div class="card"><h2>Días desde la última aplicación, por zona</h2><div class="small muted">Cuenta solo áreas que el operador confirmó como aplicadas.</div><div class="scroll"><table class="tmat" style="min-width:520px"><thead><tr><th>Tipo</th>' + ZT.map(function (z) { return '<th>' + z[1] + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    TIPOS_APL.map(function (t) {
+      return '<tr><td>' + chipsTipos([t[0]]) + '</td>' + ZT.map(function (z) {
+        var f = null;
+        con(t[0]).forEach(function (o) { if (aplicadas(o).some(function (a) { return z[2] ? z[2].indexOf(a.zona_id) >= 0 : MEDIDAS.indexOf(a.zona_id) < 0; }) && (!f || o.fecha > f)) f = o.fecha; });
+        if (!f) return '<td title="Sin registro en el periodo">—</td>';
+        var dd = diasEntre(f, hoyT);
+        return '<td class="' + (dd <= 7 ? 'd1' : dd <= 21 ? 'd2' : 'd3') + '" title="Última: ' + esc(fecha(f)) + '">' + dd + '</td>';
+      }).join('') + '</tr>';
+    }).join('') + '</tbody></table></div><div class="small muted">Verde: 7 días o menos · Amarillo: 8 a 21 · Naranja: más de 21.</div></div>';
+  // combinaciones
+  var combos = {};
+  ords.forEach(function (o) { var k = ordenTipos(o.tipos).join('|') || '—'; combos[k] = (combos[k] || 0) + 1; });
+  var ks = Object.keys(combos).sort(function (a, b) { return combos[b] - combos[a]; }), mx = ks.length ? combos[ks[0]] : 1;
+  html += '<div class="card"><h2>Combinaciones más usadas</h2>' + (ks.length ? ks.map(function (k) {
+    return '<div class="list-item" style="align-items:center"><div style="flex:0 1 auto">' + (k === '—' ? '<span class="small muted">Sin tipo marcado</span>' : chipsTipos(k.split('|'))) + '</div><div style="flex:1 1 120px;display:flex;align-items:center;gap:10px;justify-content:flex-end"><div class="bar" style="flex:1 1 auto;max-width:220px"><i style="width:' + Math.round(combos[k] / mx * 100) + '%;background:var(--green)"></i></div><span class="mono" style="min-width:28px;text-align:right">' + combos[k] + '</span></div></div>';
+  }).join('') : '<div class="empty">No hay órdenes en el periodo.</div>') + '</div>';
+  // detalle del tipo elegido
+  if (sel) {
+    var lista = con(sel), usos = {};
+    lista.forEach(function (o) { o.productos.forEach(function (x) { usos[x.producto_id] = (usos[x.producto_id] || 0) + 1; }); });
+    var top = Object.keys(usos).sort(function (a, b) { return usos[b] - usos[a]; }).slice(0, 8);
+    html += '<div class="card" id="tipoDet" style="scroll-margin-top:80px"><div class="between" style="flex-wrap:wrap;gap:8px"><h2>' + chipsTipos([sel]) + ' · ' + lista.length + (lista.length === 1 ? ' orden' : ' órdenes') + '</h2><button class="btn sm" data-act="tipoSel" data-v="' + sel + '">Cerrar</button></div>' +
+      (top.length ? '<div><div class="small muted" style="font-weight:700;margin-bottom:6px">Productos que más se repiten</div><div class="chips">' + top.map(function (id) { var p = prod(id); return '<span class="chip" style="padding-right:10px">' + esc(p ? p.nombre : '?') + ' <span class="mono muted">×' + usos[id] + '</span></span>'; }).join('') + '</div></div>' : '') +
+      (lista.length ? '<div>' + lista.map(function (o) {
+        var ok = aplicadas(o).length;
+        return '<a class="list-item" href="#/orden/' + o.id + '" style="text-decoration:none;color:inherit;align-items:flex-start"><div style="min-width:0"><div class="small muted mono">' + num(o.id) + ' · ' + fecha(o.fecha) + ' · ' + esc(perfilNombre(o.operador_id)) + '</div><b>' + esc(tituloOrden(o)) + '</b><div style="margin:4px 0">' + chipsTipos(o.tipos) + '</div><div class="small muted">' + esc(resumenAreas(o.areas)) + '</div></div><div style="flex:0 0 auto">' + cumplBadge(ok, o.areas.length) + '</div></a>';
+      }).join('') + '</div>' : '<div class="empty">No hay órdenes de este tipo en el periodo.</div>') + '</div>';
+  }
+  shell(html);
+}
+
 async function vHistorial() {
-  var fu = S.histU || '', fz = S.histZ || '';
-  var qy = sb.from('smgc_apl_orden_areas').select('*, orden:smgc_apl_ordenes!inner(id, fecha, titulo, estado, operador_id, sprayer_id, calibracion_l_ha, agua_tanque_l, productos:smgc_apl_orden_productos(producto_id, dosis_por_ha, cantidad_tanque))').order('id', { ascending: false }).limit(150);
+  var fu = S.histU || '', fz = S.histZ || '', ft = S.histT || '';
+  var qy = sb.from('smgc_apl_orden_areas').select('*, orden:smgc_apl_ordenes!inner(id, fecha, titulo, tipos, estado, operador_id, sprayer_id, calibracion_l_ha, agua_tanque_l, productos:smgc_apl_orden_productos(producto_id, dosis_por_ha, cantidad_tanque))').order('id', { ascending: false }).limit(150);
   if (fu) qy = qy.eq('unidad_id', fu);
   if (fz) qy = qy.eq('zona_id', fz);
+  if (ft) qy = qy.contains('orden.tipos', [ft]);
   var rows = await q(qy);
   var html = '<h1>Historial de aplicaciones</h1><div class="card"><div class="fgrid">' +
     '<label class="f">Lugar<select data-inp="histU"><option value="">Todos</option>' + S.cat.unidades.map(function (u) { return '<option value="' + u.id + '"' + (u.id === fu ? ' selected' : '') + '>' + esc(u.nombre) + '</option>'; }).join('') + '</select></label>' +
-    '<label class="f">Zona<select data-inp="histZ"><option value="">Todas</option>' + S.cat.zonas.map(function (z) { return '<option value="' + z.id + '"' + (z.id === fz ? ' selected' : '') + '>' + esc(z.nombre) + '</option>'; }).join('') + '</select></label></div></div>';
+    '<label class="f">Zona<select data-inp="histZ"><option value="">Todas</option>' + S.cat.zonas.map(function (z) { return '<option value="' + z.id + '"' + (z.id === fz ? ' selected' : '') + '>' + esc(z.nombre) + '</option>'; }).join('') + '</select></label>' +
+    '<label class="f">Tipo de aplicación<select data-inp="histT"><option value="">Todos</option>' + TIPOS_APL.map(function (t) { return '<option value="' + t[0] + '"' + (t[0] === ft ? ' selected' : '') + '>' + esc(t[1]) + '</option>'; }).join('') + '</select></label></div></div>';
   html += '<div class="card">' + (rows.length ? '<div class="scroll"><table class="tbl" style="min-width:720px"><thead><tr><th>Fecha</th><th>Área</th><th>Productos</th><th>Operador</th><th>Sprayer</th><th>Estado</th></tr></thead><tbody>' +
     rows.sort(function (a, b) { return a.orden.fecha < b.orden.fecha ? 1 : a.orden.fecha > b.orden.fecha ? -1 : b.id - a.id; }).map(function (r) {
       var spH = byId(S.cat.sprayers, r.orden.sprayer_id); var aT = Number(r.orden.agua_tanque_l) || (spH && Number(spH.capacidad_l)) || 0;
       var ps = (r.orden.productos || []).map(function (x) { var p = prod(x.producto_id); var pt = porTanqueDe(x, Number(r.orden.calibracion_l_ha) || 0, aT); return (p ? p.nombre : '?') + ' ' + (pt ? cant(p, pt) : cant(p, Number(x.dosis_por_ha), true)); }).join('<br>') + (aT ? '<div class="muted">por tanque de ' + n(aT) + ' L</div>' : '');
       var est = r.estado === 'aplicada' ? '<span class="badge b-ok">Aplicada</span>' : r.estado === 'no_aplicada' ? '<span class="badge b-warn">No · ' + esc(motivoTxt(r.motivo)) + '</span>' : '<span class="badge b-neutral">' + (r.orden.estado === 'cancelada' ? 'Cancelada' : 'Pendiente') + '</span>';
-      return '<tr><td><a href="#/orden/' + r.orden.id + '">' + fecha(r.orden.fecha) + '</a>' + (r.orden.titulo ? '<div class="small muted">' + esc(r.orden.titulo) + '</div>' : '') + '</td><td><b>' + esc(areaNombre(r)) + '</b></td><td class="small">' + ps + '</td><td>' + esc(perfilNombre(r.orden.operador_id)) + '</td><td>' + esc((byId(S.cat.sprayers, r.orden.sprayer_id) || {}).nombre || '—') + '</td><td>' + est + '</td></tr>';
+      return '<tr><td><a href="#/orden/' + r.orden.id + '">' + fecha(r.orden.fecha) + '</a>' + (r.orden.titulo ? '<div class="small muted">' + esc(r.orden.titulo) + '</div>' : '') + (r.orden.tipos && r.orden.tipos.length ? '<div style="margin-top:4px">' + chipsTipos(r.orden.tipos) + '</div>' : '') + '</td><td><b>' + esc(areaNombre(r)) + '</b></td><td class="small">' + ps + '</td><td>' + esc(perfilNombre(r.orden.operador_id)) + '</td><td>' + esc((byId(S.cat.sprayers, r.orden.sprayer_id) || {}).nombre || '—') + '</td><td>' + est + '</td></tr>';
     }).join('') + '</tbody></table></div>' : '<div class="empty">No hay aplicaciones con ese filtro.</div>') + '</div>';
   shell(html);
 }
@@ -941,6 +1041,10 @@ document.addEventListener('click', async function (e) {
       renderNueva();
     }
     else if (a === 'zona') { d.zona = el.dataset.v; renderNueva(); }
+    else if (a === 'tipoApl') { var tv = el.dataset.v; d.tiposManual = true; d.tipos = d.tipos.indexOf(tv) >= 0 ? d.tipos.filter(function (x) { return x !== tv; }) : ordenTipos(d.tipos.concat([tv])); renderNueva(); }
+    else if (a === 'tiposAuto') { d.tiposManual = false; renderNueva(); }
+    else if (a === 'tipoSel') { S.tipoSel = S.tipoSel === el.dataset.v ? '' : el.dataset.v; await route(); var td = document.getElementById('tipoDet'); if (td && el.closest('.kpis')) td.scrollIntoView({ behavior: 'smooth' }); }
+    else if (a === 'tipoDias') { S.tipoDias = Number(el.dataset.v); route(); }
     else if (a === 'hole') { var hk = el.dataset.u + '|' + d.zona; if (d.areas[hk]) delete d.areas[hk]; else d.areas[hk] = { unidad_id: el.dataset.u, zona_id: d.zona, arrastrada_de: null }; renderNueva(); }
     else if (a === 'addPunt') { var pk = d.puntUnidad + '|' + d.puntZona; d.areas[pk] = d.areas[pk] || { unidad_id: d.puntUnidad, zona_id: d.puntZona, arrastrada_de: null }; renderNueva(); }
     else if (a === 'seqMover' || a === 'seqOrdenar' || a === 'seqInvertir') {
@@ -970,9 +1074,11 @@ document.addEventListener('change', function (e) {
   var k = el.dataset && el.dataset.inp; if (!k) return;
   if (k === 'histU') { S.histU = el.value; return route(); }
   if (k === 'histZ') { S.histZ = el.value; return route(); }
+  if (k === 'histT') { S.histT = el.value; return route(); }
   if (k === 'puntual') { S.cierre.puntual[el.dataset.key] = el.value; return; }
   var d = S.draft; if (!d) return;
-  if (k === 'titulo' || k === 'notas' || k === 'buscar') { d[k] = el.value; return; }
+  if (k === 'titulo') { d.titulo = el.value; if (!d.tiposManual) renderNueva(); return; }
+  if (k === 'notas' || k === 'buscar') { d[k] = el.value; return; }
   if (k === 'prod') d.productos[Number(el.dataset.i)].producto_id = el.value;
   else if (k === 'cant') { var xc = d.productos[Number(el.dataset.i)]; xc.cantidad_tanque = aLitros(prod(xc.producto_id), el.value, xc.u); }
   else if (k === 'boquilla_id') { d.boquilla_id = el.value; var b = byId(S.cat.boquillas, el.value); if (b && b.calibracion_l_ha) d.cal = b.calibracion_l_ha; }
