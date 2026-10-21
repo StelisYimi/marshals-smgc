@@ -1780,6 +1780,7 @@ function renderTurnoCap(){
   <div class="head"><div><div class="eyebrow">${esc(TURNOS[ct.turno])} · Capitán de equipos</div><h1>${esc(fechaLarga(ct.fecha))}</h1>
     <p class="sub">${ro ? (ct.val ? "Turno firmado y validado por el Gerente de Operaciones." : "Turno firmado. Pendiente de validación del Gerente de Operaciones.") : "Responda cada actividad con Sí, No o N/A. Las respuestas N/A necesitan justificación."}</p></div>
     <div class="statusbar">${ro ? `<span class="pill ${ct.val ? "p-ok" : "p-gold"}">${ct.val ? "Validado" : "Firmado"}</span>` : `<span class="pill p-draft">Borrador</span><span class="saved" id="ctSave"></span>`}</div></div>
+  <button class="btn gold block" id="ctIr" type="button" style="padding:14px 16px">Ir al checklist · <span id="ctIrN">${st.answered}/${st.total}</span> ↓</button>
   ${p ? `<div class="handoff"><div class="eyebrow">Entrega del turno anterior</div><div><b>${esc(nm(p.capitan_id))}</b> · ${esc(fechaCorta(p.fecha))} · ${esc(TURNO_CORTO[p.turno])} · firmado ${hora(p.firmado_en)}</div>
     <div>${p.pendientes ? esc(p.pendientes) : "<span class='hint'>Sin pendientes anotados.</span>"}</div>
     ${bajos.length ? `<div class="hint" style="color:var(--warn);font-weight:600">Insumos bajos: ${esc(bajos.map(([k, l]) => l + " (" + NIVEL[p.inventario[k].nivel].toLowerCase() + ")").join(", "))}</div>` : ""}</div>` : ""}
@@ -1821,6 +1822,7 @@ function renderTurnoCap(){
     </div>
   </div>`;
   renderAreasCap(ro); updSaveCap(); updHintCap();
+  $("#ctIr").onclick = () => { const el = $("#ctAreas"); const first = ct.items.find(i => !ct.resp[i.id]); const d = first && el.querySelector(`details[data-a="${first.area}"]`); if (d) d.open = true; const t = d || el, hd = document.querySelector("header"); window.scrollTo({top: t.getBoundingClientRect().top + scrollY - (hd ? hd.getBoundingClientRect().height : 0) - 12, behavior:"smooth"}); };
   $("#ctTurno").onchange = async e => { await flushCap(); ct.turno = e.target.value; ct.loaded = false; ct.openAreas = null; renderTurnoCap(); };
   if (ro) return;
   v.querySelectorAll("[data-c]").forEach(el => el.oninput = el.onchange = () => {
@@ -1862,7 +1864,7 @@ function itemCapHTML(it, r, ro){
     <div class="seg" role="group" aria-label="Respuesta">${Object.entries(VAL).map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${v===k}" ${ro?"disabled":""}>${l}</button>`).join("")}</div></div>
     ${show ? `<input type="text" class="note ${v==="na" && !(r.nota||"").trim() ? "req" : ""}" id="cn-${it.id}" value="${esc(r.nota||"")}" placeholder="${v==="na" ? "Justificación obligatoria para N/A" : "Observación: qué pasó y a quién se informó"}" ${ro?"disabled":""}>` : ""}</div>`;
 }
-function updProgCap(){ const st = statsCap(); $("#ctProg").textContent = `${st.answered}/${st.total}`; $("#ctBar").style.width = Math.round(100*st.answered/st.total) + "%"; $("#ctCum").textContent = st.cumpl + "%";
+function updProgCap(){ const st = statsCap(); $("#ctProg").textContent = `${st.answered}/${st.total}`; if ($("#ctIrN")) $("#ctIrN").textContent = `${st.answered}/${st.total}`; $("#ctBar").style.width = Math.round(100*st.answered/st.total) + "%"; $("#ctCum").textContent = st.cumpl + "%";
   S.ct.areas.forEach(a => { const n = a.items.filter(it => S.ct.resp[it.id]).length, c = document.querySelector(`[data-ccnt="${a.codigo}"]`); if (c) { c.textContent = `${n}/${a.items.length}`; c.classList.toggle("done", n === a.items.length); } }); updHintCap(); }
 function updHintCap(){ const h = $("#ctHint"), b = $("#ctSign"); if (!h || !b) return; const m = faltaCap();
   h.textContent = m.length ? "Para firmar falta: " + m.join(", ") + "." : "Todo listo. Al firmar, el reporte pasa a validación del Gerente de Operaciones y ya no se puede editar.";
