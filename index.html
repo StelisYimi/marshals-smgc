@@ -93,7 +93,7 @@ td select{min-width:190px;padding:7px 9px;font-size:14px}
 .stack{display:grid;gap:12px;align-content:start;min-width:0}
 .fields{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 label.f{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
-input[type=text],input[type=password],input[type=email],input[type=date],select,textarea{background:var(--paper);border:1px solid var(--line-strong);border-radius:8px;padding:10px 11px;width:100%;min-width:0;font-size:16px}
+input[type=text],input[type=password],input[type=email],input[type=date],input[type=time],select,textarea{background:var(--paper);border:1px solid var(--line-strong);border-radius:8px;padding:10px 11px;width:100%;min-width:0;font-size:16px}
 textarea{resize:vertical;min-height:72px}
 input:disabled,select:disabled,textarea:disabled{opacity:.7}
 .btn{border:1px solid var(--line-strong);background:var(--paper);border-radius:8px;padding:10px 15px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center;justify-content:center;text-decoration:none}
@@ -226,6 +226,16 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .tipo .v{font-family:var(--f-display);font-size:28px;line-height:1}
 .tipo .v small{font-family:var(--f-body);font-size:13px;color:var(--muted)}
 .tipo .bar{flex:none;height:6px}
+/* Capitanes · salidas */
+.tee-list{display:grid;gap:8px}
+.tee{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;min-width:0}
+.tee.sig{border-left-color:var(--gold);background:var(--gold-soft)}
+.tee.ok{border-left-color:var(--ok)} .tee.tarde{border-left-color:var(--warn)} .tee.ns{border-left-color:var(--crit);opacity:.8}
+.tee .h{font-family:var(--f-mono);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.tee .j{min-width:0;overflow-wrap:anywhere;font-size:14px;cursor:pointer}
+.tee .j small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.tee .acc{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:560px){.tee{grid-template-columns:56px 1fr}.tee .acc{grid-column:1/-1;justify-content:stretch}.tee .acc .btn{flex:1}}
 .jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .jcard{text-align:left;border:1px solid var(--line);border-left:4px solid var(--ok);background:var(--paper);border-radius:10px;padding:12px;cursor:pointer;display:grid;gap:4px;min-width:0}
 .jcard.alquilado{border-left-color:var(--gold)} .jcard.mantenimiento{border-left-color:var(--warn)}
@@ -357,6 +367,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-bolsas" hidden></section>
     <section class="view" id="v-historial" hidden></section>
     <section class="view" id="v-turnocap" hidden></section>
+    <section class="view" id="v-salidas" hidden></section>
     <section class="view" id="v-supervision" hidden></section>
   </main>
 </div>
@@ -382,7 +393,7 @@ const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
 const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
   marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["equipo","Equipo","ger"]]},
-  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
+  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
 
@@ -558,8 +569,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","supervision"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, supervision:cargarSupervision})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","supervision"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, supervision:cargarSupervision})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -1180,6 +1191,7 @@ function suscribirCap(){
     .on("postgres_changes", {event:"*", schema:"public", table:"juegos_alquiler"}, re)
     .on("postgres_changes", {event:"*", schema:"public", table:"alquileres"}, re)
     .on("postgres_changes", {event:"*", schema:"public", table:"miembros"}, re)
+    .on("postgres_changes", {event:"*", schema:"public", table:"tee_salidas"}, () => { clearTimeout(suscribirCap._s); suscribirCap._s = setTimeout(() => { if (S.view === "salidas" && !$("#ov")) cargarSalidas(); }, 400); })
     .subscribe();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) cargarCapitanes(); });
 }
@@ -1605,6 +1617,111 @@ function crearCasillas(){
     const { error } = await sb.from("casillas").upsert(rows, {onConflict:"numero", ignoreDuplicates:true});
     if (error) { $("#cErr").textContent = errMsg(error); return; }
     closeSheet(); toast(`Casillas ${a} a ${b} listas`); cargarCapitanes();
+  };
+}
+
+/* ===================== Capitanes: salidas del día (tee sheet) ===================== */
+const TOL_MIN = 5;   // minutos de tolerancia para contar una salida como puntual
+S.tee = {fecha: hoyISO(), list:[], loaded:false, fechaCargada:null};
+const hm = t => String(t || "").slice(0, 5);
+const hora12 = t => { const [h, m] = hm(t).split(":").map(Number); return `${((h + 11) % 12) + 1}:${pad(m)} ${h < 12 ? "a. m." : "p. m."}`; };
+const progDe = x => { const d = fechaDe(x.fecha); const [h, m] = hm(x.hora).split(":").map(Number); d.setHours(h, m, 0, 0); return d; };
+const atraso = x => x.salida_real ? Math.round((new Date(x.salida_real) - progDe(x)) / 60000) : null;
+const puntual = x => x.estado === "salio" && atraso(x) <= TOL_MIN;
+function textoAtraso(min){ if (min == null) return ""; if (Math.abs(min) <= 1) return "a tiempo"; const n = Math.abs(min), t = n < 60 ? `${n} min` : `${Math.floor(n/60)} h ${pad(n % 60)} min`; return min > 0 ? `+${t}` : `${t} antes`; }
+
+async function cargarSalidas(){
+  const t = S.tee;
+  const { data, error } = await sb.from("tee_salidas").select("*").eq("fecha", t.fecha).order("hora");
+  if (error) { toast(errMsg(error)); return; }
+  t.list = data; t.loaded = true; t.fechaCargada = t.fecha;
+  if (S.view === "salidas") renderSalidas();
+}
+function statsSalidas(L){
+  const sal = L.filter(x => x.estado === "salio"), ns = L.filter(x => x.estado === "no_show"), pun = sal.filter(puntual);
+  return {total:L.length, jug:L.reduce((n, x) => n + x.jugadores.length, 0), sal:sal.length, ns:ns.length, pend:L.length - sal.length - ns.length,
+    pun:pun.length, pct: sal.length ? Math.round(100 * pun.length / sal.length) : null};
+}
+function renderSalidas(){
+  const v = $("#v-salidas"), t = S.tee;
+  if (!t.loaded || t.fechaCargada !== t.fecha) { v.innerHTML = `<div class="loading">Cargando salidas…</div>`; cargarSalidas(); return; }
+  const L = t.list, st = statsSalidas(L), esHoy = t.fecha === hoyISO();
+  const sig = esHoy ? L.find(x => x.estado === "programada") : null;
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Tee sheet</div><h1>Salidas · ${esc(fechaLarga(t.fecha))}</h1>
+      <p class="sub">${plural(st.total, "salida")} · ${plural(st.jug, "jugador", "jugadores")} · puntual si sale hasta ${TOL_MIN} min después de su hora</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+        <label class="f" style="margin:0">Fecha<input type="date" id="tFecha" value="${t.fecha}"></label>
+        <button class="btn primary" id="tNueva" type="button">Agregar salida</button></div></div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Salidas puntuales</div><div class="v ${st.pct == null ? "" : st.pct >= 95 ? "ok" : st.pct >= 85 ? "warn" : "crit"}">${st.pct == null ? "—" : st.pct + "%"}</div><div class="t">${st.pun} de ${st.sal} que ya salieron · meta 95%</div></div>
+      <div class="kpi"><div class="k">Ya salieron</div><div class="v">${st.sal}</div><div class="t">de ${st.total} programadas</div></div>
+      <div class="kpi"><div class="k">Pendientes</div><div class="v">${st.pend}</div><div class="t">${sig ? `próxima: ${hora12(sig.hora)}` : "sin pendientes"}</div></div>
+      <div class="kpi"><div class="k">No se presentaron</div><div class="v ${st.ns ? "warn" : ""}">${st.ns}</div><div class="t">salidas completas</div></div>
+    </div>
+    ${L.length ? `<div class="tee-list">${L.map(x => {
+      const a = atraso(x), cls = x.estado === "no_show" ? "ns" : x.estado === "salio" ? (puntual(x) ? "ok" : "tarde") : (sig && sig.id === x.id ? "sig" : "");
+      const estado = x.estado === "salio" ? `<span class="pill ${puntual(x) ? "p-ok" : "p-alta"}">Salió ${hora(x.salida_real)} · ${textoAtraso(a)}</span>`
+        : x.estado === "no_show" ? `<span class="pill p-crit">No se presentó</span>` : "";
+      const acc = x.estado === "programada" ? `<button class="btn small primary" data-salio="${x.id}" type="button">Salió</button><button class="btn small" data-ns="${x.id}" type="button">No se presentó</button>` : estado;
+      return `<div class="tee ${cls}"><div class="h">${hm(x.hora)}</div>
+        <div class="j" data-ed="${x.id}">${x.jugadores.length ? x.jugadores.map(esc).join(" · ") : `<span class="hint">Sin jugadores</span>`}<small>${plural(x.jugadores.length, "jugador", "jugadores")}${sig && sig.id === x.id ? " · próxima salida" : ""} · tocar para editar</small></div>
+        <div class="acc">${acc}</div></div>`; }).join("")}</div>`
+      : `<div class="empty"><strong>No hay salidas cargadas para este día</strong>${S.esGer ? "Cargue el tee sheet del día o agregue las salidas una por una." : "Pídale a Gerencia que cargue el tee sheet del día."}</div>`}`;
+  $("#tFecha").onchange = e => { if (e.target.value) { t.fecha = e.target.value; renderSalidas(); } };
+  $("#tNueva").onclick = () => editarSalida(null);
+  v.querySelectorAll("[data-salio]").forEach(b => b.onclick = () => marcarSalida(b.dataset.salio, "salio"));
+  v.querySelectorAll("[data-ns]").forEach(b => b.onclick = () => marcarSalida(b.dataset.ns, "no_show"));
+  v.querySelectorAll("[data-ed]").forEach(b => b.onclick = () => editarSalida(t.list.find(x => x.id === b.dataset.ed)));
+}
+async function marcarSalida(id, estado, horaReal){
+  const patch = {estado, marcado_por: estado === "programada" ? null : S.me.id, salida_real: estado === "salio" ? (horaReal || new Date().toISOString()) : null};
+  const x = S.tee.list.find(y => y.id === id), antes = x && {...x};
+  if (x) { Object.assign(x, patch); renderSalidas(); }
+  const { error } = await sb.from("tee_salidas").update(patch).eq("id", id);
+  if (error) { if (x) Object.assign(x, antes); toast(errMsg(error)); renderSalidas(); return false; }
+  if (x && estado === "salio") toast(`${hm(x.hora)} salió · ${textoAtraso(atraso(x))}`);
+  return true;
+}
+function editarSalida(x){
+  const nuevo = !x, f = S.tee.fecha;
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(fechaLarga(f))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${nuevo ? "Agregar salida" : "Salida de las " + hm(x.hora)}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <div style="display:grid;gap:14px">
+      <label class="f">Hora programada<input type="time" id="sHora" step="600" value="${nuevo ? "" : hm(x.hora)}"></label>
+      <label class="f">Jugadores (uno por línea)<textarea id="sJug" rows="4" placeholder="Ej. Diego Poma">${nuevo ? "" : esc(x.jugadores.join("\n"))}</textarea></label>
+      ${nuevo ? "" : `<div><div class="hint" style="margin-bottom:6px">Estado</div><div class="seg" id="sEst">${[["programada","Pendiente"],["salio","Salió"],["no_show","No se presentó"]].map(([k, l]) => `<button type="button" data-v="${k === "salio" ? "si" : k === "no_show" ? "no" : "na"}" data-est="${k}" aria-pressed="${x.estado === k}">${l}</button>`).join("")}</div></div>
+      <label class="f" id="sRealW" ${x.estado === "salio" ? "" : "hidden"}>Hora real de salida<input type="time" id="sReal" value="${x.salida_real ? hora(x.salida_real) : ""}"></label>`}
+      <p class="hint warn" id="sErr" style="margin:0"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="sOk" type="button">${nuevo ? "Agregar" : "Guardar cambios"}</button>
+        ${!nuevo && S.esGer ? `<button class="btn danger" id="sDel" type="button">Eliminar salida</button>` : ""}</div>
+    </div>`);
+  let est = nuevo ? "programada" : x.estado;
+  document.querySelectorAll("#sEst [data-est]").forEach(b => b.onclick = () => {
+    est = b.dataset.est; document.querySelectorAll("#sEst [data-est]").forEach(y => y.setAttribute("aria-pressed", y === b));
+    $("#sRealW").hidden = est !== "salio"; if (est === "salio" && !$("#sReal").value) $("#sReal").value = hora(new Date().toISOString());
+  });
+  $("#sOk").onclick = async () => {
+    const h = $("#sHora").value, jug = $("#sJug").value.split("\n").map(s => s.trim()).filter(Boolean), err = $("#sErr");
+    if (!h) { err.textContent = "Indique la hora de la salida."; return; }
+    if (jug.length > 4) { err.textContent = "Una salida tiene como máximo 4 jugadores."; return; }
+    const row = {fecha:f, hora:h, jugadores:jug};
+    if (!nuevo) {
+      row.estado = est; row.marcado_por = est === "programada" ? null : (x.estado === est && x.marcado_por) || S.me.id;
+      if (est === "salio") { const r = $("#sReal").value; if (!r) { err.textContent = "Indique la hora real de salida."; return; } const d = fechaDe(f); const [a, b] = r.split(":").map(Number); d.setHours(a, b, 0, 0); row.salida_real = d.toISOString(); }
+      else row.salida_real = null;
+    }
+    $("#sOk").disabled = true;
+    const { error } = nuevo ? await sb.from("tee_salidas").insert(row) : await sb.from("tee_salidas").update(row).eq("id", x.id);
+    $("#sOk").disabled = false;
+    if (error) { err.textContent = error.code === "23505" ? "Ya existe una salida a esa hora en este día." : errMsg(error); return; }
+    closeSheet(); toast(nuevo ? "Salida agregada" : "Salida actualizada"); cargarSalidas();
+  };
+  const del = $("#sDel");
+  if (del) del.onclick = async () => {
+    if (!confirm(`¿Eliminar la salida de las ${hm(x.hora)}?`)) return;
+    const { error } = await sb.from("tee_salidas").delete().eq("id", x.id);
+    if (error) { $("#sErr").textContent = errMsg(error); return; }
+    closeSheet(); toast("Salida eliminada"); cargarSalidas();
   };
 }
 
