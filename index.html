@@ -226,6 +226,24 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .tipo .v{font-family:var(--f-display);font-size:28px;line-height:1}
 .tipo .v small{font-family:var(--f-body);font-size:13px;color:var(--muted)}
 .tipo .bar{flex:none;height:6px}
+/* Capitanes · horario */
+.hgrid{border-collapse:separate;border-spacing:0;min-width:980px;font-size:13px}
+.hgrid th,.hgrid td{border-bottom:1px solid var(--line);padding:0}
+.hgrid th{padding:8px 6px;text-align:center}
+.hgrid th.hoy{background:var(--gold-soft);color:var(--ink)}
+.hgrid td.pn{padding:8px 10px;font-weight:600;white-space:nowrap;position:sticky;left:0;background:var(--paper);z-index:1;border-right:1px solid var(--line)}
+.hgrid td.pn small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+.hc{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;min-height:44px;border:0;background:none;padding:6px 8px;cursor:pointer;text-align:left;font:inherit;color:inherit}
+.hc:hover{background:var(--ground)}
+.hc .hr{font-family:var(--f-mono);font-size:12px;white-space:nowrap}
+.hc .lt{font-family:var(--f-mono);font-weight:600;font-size:12px;color:#fff;background:var(--c);border-radius:5px;padding:1px 6px;flex:none}
+.hc.libre{color:var(--muted);justify-content:center;font-size:12px}
+.hc.vac{background:var(--gold-soft)} .hc.comp{background:var(--ok-soft)}
+.hc.vacio{color:var(--line-strong);justify-content:center}
+.hc[disabled]{cursor:default} .hc[disabled]:hover{background:none}
+.hleyenda{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--muted)}
+.hleyenda span{display:inline-flex;gap:6px;align-items:center}
+.hleyenda i{font-style:normal;font-family:var(--f-mono);font-weight:600;color:#fff;background:var(--c);border-radius:5px;padding:0 6px}
 /* Capitanes · salidas */
 .tee-list{display:grid;gap:8px}
 .tee{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;min-width:0}
@@ -368,6 +386,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-historial" hidden></section>
     <section class="view" id="v-turnocap" hidden></section>
     <section class="view" id="v-salidas" hidden></section>
+    <section class="view" id="v-horario" hidden></section>
     <section class="view" id="v-supervision" hidden></section>
   </main>
 </div>
@@ -393,7 +412,7 @@ const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
 const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
   marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["equipo","Equipo","ger"]]},
-  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
+  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["horario","Horario"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
 
@@ -569,8 +588,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","supervision"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, supervision:cargarSupervision})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","horario","supervision"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, horario:renderHorario, supervision:cargarSupervision})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -1191,6 +1210,7 @@ function suscribirCap(){
     .on("postgres_changes", {event:"*", schema:"public", table:"juegos_alquiler"}, re)
     .on("postgres_changes", {event:"*", schema:"public", table:"alquileres"}, re)
     .on("postgres_changes", {event:"*", schema:"public", table:"miembros"}, re)
+    .on("postgres_changes", {event:"*", schema:"public", table:"hor_turnos"}, () => { clearTimeout(suscribirCap._h); suscribirCap._h = setTimeout(() => { if (S.view === "horario" && !$("#ov")) cargarHorario(); }, 400); })
     .on("postgres_changes", {event:"*", schema:"public", table:"tee_salidas"}, () => { clearTimeout(suscribirCap._s); suscribirCap._s = setTimeout(() => { if (S.view === "salidas" && !$("#ov")) cargarSalidas(); }, 400); })
     .subscribe();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) cargarCapitanes(); });
@@ -1618,6 +1638,186 @@ function crearCasillas(){
     if (error) { $("#cErr").textContent = errMsg(error); return; }
     closeSheet(); toast(`Casillas ${a} a ${b} listas`); cargarCapitanes();
   };
+}
+
+/* ===================== Capitanes: horario semanal y tablero de TV ===================== */
+const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const TIPO_T = {trabajo:"Trabaja", descanso:"Descanso", vacaciones:"Vacaciones", compensatorio:"Compensatorio"};
+const HORARIOS = [["05:00","13:00","Apertura 5:00 a. m. – 1:00 p. m."],["11:00","19:00","Cierre 11:00 a. m. – 7:00 p. m."],["13:00","21:00","Range nocturno 1:00 – 9:00 p. m."],["09:30","18:00","9:30 a. m. – 6:00 p. m."],["06:30","15:00","6:30 a. m. – 3:00 p. m."]];
+const lunesDe = f => { const d = fechaDe(f); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return hoyISO(d); };
+const masDias = (f, n) => { const d = fechaDe(f); d.setDate(d.getDate() + n); return hoyISO(d); };
+const hmin = t => { const [h, m] = hm(t).split(":").map(Number); return h * 60 + m; };
+const hcorta = t => { const m = hmin(t), h = Math.floor(m / 60), mm = m % 60; return `${((h + 11) % 12) + 1}${mm ? ":" + pad(mm) : ""}${h < 12 ? "a" : "p"}`; };
+function almuerzoPara(ini){ if (!ini) return [null, null]; const m = hmin(ini); return m <= 7*60 ? ["11:15","11:45"] : (m >= 10*60+30 && m <= 11*60+30) ? ["12:00","12:30"] : [null, null]; }
+S.hor = {lunes: lunesDe(hoyISO()), personal:[], puestos:[], turnos:[], loaded:false, semCargada:null, token:null};
+
+async function cargarHorario(){
+  const h = S.hor, fin = masDias(h.lunes, 6);
+  const [pe, pu, tu] = await Promise.all([
+    sb.from("hor_personal").select("*").eq("activo", true).order("orden").order("nombre"),
+    sb.from("hor_puestos").select("*").eq("activo", true).order("orden"),
+    sb.from("hor_turnos").select("*").gte("fecha", h.lunes).lte("fecha", fin),
+  ]);
+  const bad = [pe, pu, tu].find(x => x.error); if (bad) { toast(errMsg(bad.error)); return; }
+  h.personal = pe.data; h.puestos = pu.data; h.turnos = tu.data; h.loaded = true; h.semCargada = h.lunes;
+  if (S.esGer && !h.token) { const { data } = await sb.from("tablero_claves").select("token").eq("activo", true).order("creado_en", {ascending:false}).limit(1); h.token = data && data[0] ? data[0].token : null; }
+  if (S.view === "horario" && !$("#ov")) renderHorario();
+}
+const puestoDe = c => S.hor.puestos.find(p => p.codigo === c) || {codigo:c, nombre:c, color:"#4a5a66"};
+const puedeEditarDia = f => S.esGer || (S.esCap && f === hoyISO());
+const urlTablero = () => S.hor.token ? `${location.origin}${location.pathname.replace(/[^/]*$/, "")}tablero/?k=${S.hor.token}` : "";
+
+function celdaHor(t, f, pid){
+  const dis = puedeEditarDia(f) ? "" : "disabled";
+  if (!t) return `<button class="hc vacio" type="button" data-hf="${f}" data-hp="${pid}" ${dis}>${dis ? "—" : "+"}</button>`;
+  if (t.tipo !== "trabajo") return `<button class="hc libre ${t.tipo === "vacaciones" ? "vac" : t.tipo === "compensatorio" ? "comp" : ""}" type="button" data-hf="${f}" data-hp="${pid}" ${dis}>${TIPO_T[t.tipo]}</button>`;
+  const p = puestoDe(t.puesto);
+  return `<button class="hc" type="button" data-hf="${f}" data-hp="${pid}" ${dis} title="${esc(p.nombre)}${t.nota ? " · " + esc(t.nota) : ""}"><span class="hr">${hcorta(t.inicio)}–${hcorta(t.fin)}</span><span class="lt" style="--c:${esc(p.color)}">${esc(t.puesto)}</span></button>`;
+}
+function renderHorario(){
+  const v = $("#v-horario"), h = S.hor;
+  if (!h.loaded || h.semCargada !== h.lunes) { v.innerHTML = `<div class="loading">Cargando horario…</div>`; cargarHorario(); return; }
+  const dias = [0,1,2,3,4,5,6].map(i => masDias(h.lunes, i)), hoy = hoyISO();
+  const idx = {}; h.turnos.forEach(t => idx[t.fecha + "|" + t.personal_id] = t);
+  const grupos = [...new Set(h.personal.map(p => p.grupo))];
+  const vacios = h.personal.length * 7 - h.turnos.filter(t => h.personal.some(p => p.id === t.personal_id)).length;
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Operación de golf</div><h1>Horario del personal</h1>
+      <p class="sub">Semana del ${esc(fechaCorta(dias[0]))} al ${esc(fechaCorta(dias[6]))} · ${plural(h.personal.length, "persona")}${vacios > 0 ? ` · ${plural(vacios, "día sin asignar", "días sin asignar")}` : ""}${S.esGer ? "" : " · usted puede ajustar solo el día de hoy"}</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn small" id="hPrev" type="button">← Semana anterior</button><button class="btn small" id="hHoy" type="button">Esta semana</button><button class="btn small" id="hNext" type="button">Semana siguiente →</button></div></div>
+    ${S.esGer ? `<div class="callout gold" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Tablero de TV:</b> ${h.token ? `abra este enlace en el navegador de la Smart TV.` : "no hay enlace activo."}</span>
+      ${h.token ? `<code style="font-family:var(--f-mono);font-size:12px;overflow-wrap:anywhere;flex:1 1 260px">${esc(urlTablero())}</code><button class="btn small" id="hCopy" type="button">Copiar enlace</button><a class="btn small" style="color:var(--ink)" href="${esc(urlTablero())}" target="_blank" rel="noopener">Abrir tablero</a>` : ""}
+      <button class="btn small ghost" id="hToken" type="button">${h.token ? "Cambiar enlace" : "Crear enlace"}</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" id="hCopiar" type="button">Copiar la semana anterior</button><button class="btn small" id="hPers" type="button">Personal</button><button class="btn small" id="hFun" type="button">Funciones e instrucciones</button></div>` : ""}
+    <div class="tablewrap"><table class="hgrid"><thead><tr><th style="text-align:left">Colaborador</th>${dias.map((f, i) => `<th class="${f === hoy ? "hoy" : ""}">${DIAS[i]}<br><span class="mono" style="font-weight:500">${esc(fechaCorta(f))}</span></th>`).join("")}</tr></thead>
+      <tbody>${grupos.map(g => `<tr><td colspan="8" class="eyebrow" style="padding:10px 10px 4px;background:var(--ground)">${esc(g)}</td></tr>` +
+        h.personal.filter(p => p.grupo === g).map(p => `<tr><td class="pn">${esc(p.nombre)}</td>${dias.map(f => `<td>${celdaHor(idx[f + "|" + p.id], f, p.id)}</td>`).join("")}</tr>`).join("")).join("")}
+      </tbody></table></div>
+    ${h.personal.length ? "" : `<div class="empty"><strong>Aún no hay personal cargado</strong>${S.esGer ? "Agréguelo con el botón Personal." : "Gerencia debe cargar el personal."}</div>`}
+    <div class="hleyenda">${h.puestos.map(p => `<span><i style="--c:${esc(p.color)}">${esc(p.codigo)}</i>${esc(p.nombre)}</span>`).join("")}</div>`;
+  $("#hPrev").onclick = () => { h.lunes = masDias(h.lunes, -7); renderHorario(); };
+  $("#hNext").onclick = () => { h.lunes = masDias(h.lunes, 7); renderHorario(); };
+  $("#hHoy").onclick = () => { h.lunes = lunesDe(hoyISO()); renderHorario(); };
+  v.querySelectorAll("[data-hf]").forEach(b => b.onclick = () => editarTurno(b.dataset.hf, b.dataset.hp));
+  const th = v.querySelector(".hgrid th.hoy"), tw = v.querySelector(".tablewrap");
+  if (th && tw && tw.scrollWidth > tw.clientWidth) { const pn = v.querySelector(".hgrid td.pn"); tw.scrollLeft = Math.max(0, th.offsetLeft - (pn ? pn.offsetWidth : 0) - 8); }
+  if (!S.esGer) return;
+  if ($("#hCopy")) $("#hCopy").onclick = async () => { try { await navigator.clipboard.writeText(urlTablero()); toast("Enlace copiado"); } catch(e){ toast("Copie el enlace manualmente"); } };
+  $("#hToken").onclick = async () => {
+    if (h.token && !confirm("La TV que tenga el enlace actual dejará de mostrar el horario hasta que abra el enlace nuevo. ¿Continuar?")) return;
+    if (h.token) { const r = await sb.from("tablero_claves").update({activo:false}).eq("token", h.token); if (r.error) { toast(errMsg(r.error)); return; } }
+    const { data, error } = await sb.from("tablero_claves").insert({}).select("token").single();
+    if (error) { toast(errMsg(error)); return; }
+    h.token = data.token; toast("Enlace del tablero listo"); renderHorario();
+  };
+  $("#hCopiar").onclick = copiarSemana;
+  $("#hPers").onclick = editarPersonal;
+  $("#hFun").onclick = editarFunciones;
+}
+function editarTurno(f, pid){
+  const h = S.hor, p = h.personal.find(x => x.id === pid), t = h.turnos.find(x => x.fecha === f && x.personal_id === pid);
+  let tipo = t ? t.tipo : "trabajo";
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(fechaLarga(f))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(p.nombre)}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <div><div class="hint" style="margin-bottom:6px">Ese día</div><div class="chips" id="tTipo">${Object.entries(TIPO_T).map(([k, l]) => `<button type="button" class="chip" data-t="${k}" aria-pressed="${tipo === k}">${l}</button>`).join("")}</div></div>
+    <div id="tTrab" style="display:grid;gap:12px">
+      <div><div class="hint" style="margin-bottom:6px">Horario</div><div class="chips" id="tPre">${HORARIOS.map(([a, b, l], i) => `<button type="button" class="chip" data-i="${i}">${l}</button>`).join("")}</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label class="f">Entrada<input type="time" id="tIni" value="${t && t.inicio ? hm(t.inicio) : ""}"></label><label class="f">Salida<input type="time" id="tFin" value="${t && t.fin ? hm(t.fin) : ""}"></label></div>
+      <label class="f">Función<select id="tPu"><option value="">Seleccione…</option>${h.puestos.map(x => `<option value="${esc(x.codigo)}" ${t && t.puesto === x.codigo ? "selected" : ""}>${esc(x.codigo)} · ${esc(x.nombre)}</option>`).join("")}</select></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label class="f">Almuerzo desde<input type="time" id="tAi" value="${t && t.almuerzo_inicio ? hm(t.almuerzo_inicio) : ""}"></label><label class="f">Almuerzo hasta<input type="time" id="tAf" value="${t && t.almuerzo_fin ? hm(t.almuerzo_fin) : ""}"></label></div>
+      <p class="hint" style="margin:0">El almuerzo se llena solo: apertura 11:15–11:45 y cierre 12:00–12:30. Puede cambiarlo o dejarlo vacío.</p>
+    </div>
+    <label class="f">Nota (opcional)<input type="text" id="tNota" value="${esc(t && t.nota || "")}" placeholder="Ej. cubre a Rubén"></label>
+    <p class="hint warn" id="tErr" style="margin:0"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="tOk" type="button">Guardar</button>${t ? `<button class="btn danger" id="tDel" type="button">Dejar sin asignar</button>` : ""}</div>`);
+  const pinta = () => { document.querySelectorAll("#tTipo [data-t]").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === tipo)); $("#tTrab").hidden = tipo !== "trabajo"; };
+  pinta();
+  document.querySelectorAll("#tTipo [data-t]").forEach(b => b.onclick = () => { tipo = b.dataset.t; pinta(); });
+  const autoAlm = () => { const [a, b] = almuerzoPara($("#tIni").value); $("#tAi").value = a || ""; $("#tAf").value = b || ""; };
+  document.querySelectorAll("#tPre [data-i]").forEach(b => b.onclick = () => { const x = HORARIOS[+b.dataset.i]; $("#tIni").value = x[0]; $("#tFin").value = x[1]; autoAlm(); });
+  $("#tIni").onchange = autoAlm;
+  $("#tOk").onclick = async () => {
+    const err = $("#tErr"), row = {fecha:f, personal_id:pid, tipo, nota: $("#tNota").value.trim() || null, inicio:null, fin:null, puesto:null, almuerzo_inicio:null, almuerzo_fin:null};
+    if (tipo === "trabajo") {
+      row.inicio = $("#tIni").value; row.fin = $("#tFin").value; row.puesto = $("#tPu").value;
+      if (!row.inicio || !row.fin) { err.textContent = "Indique la hora de entrada y de salida."; return; }
+      if (hmin(row.fin) <= hmin(row.inicio)) { err.textContent = "La salida debe ser después de la entrada."; return; }
+      if (!row.puesto) { err.textContent = "Elija la función."; return; }
+      const ai = $("#tAi").value, af = $("#tAf").value;
+      if (!!ai !== !!af) { err.textContent = "Complete las dos horas del almuerzo o deje ambas vacías."; return; }
+      if (ai) { if (hmin(af) <= hmin(ai)) { err.textContent = "El almuerzo termina antes de empezar."; return; } row.almuerzo_inicio = ai; row.almuerzo_fin = af; }
+    }
+    $("#tOk").disabled = true;
+    const { error } = await sb.from("hor_turnos").upsert(row, {onConflict:"fecha,personal_id"});
+    $("#tOk").disabled = false;
+    if (error) { err.textContent = errMsg(error); return; }
+    closeSheet(); toast("Horario guardado"); cargarHorario();
+  };
+  if ($("#tDel")) $("#tDel").onclick = async () => {
+    const { error } = await sb.from("hor_turnos").delete().eq("id", t.id);
+    if (error) { $("#tErr").textContent = errMsg(error); return; }
+    closeSheet(); toast("Día sin asignar"); cargarHorario();
+  };
+}
+async function copiarSemana(){
+  const h = S.hor, ant = masDias(h.lunes, -7);
+  const { data, error } = await sb.from("hor_turnos").select("*").gte("fecha", ant).lte("fecha", masDias(ant, 6));
+  if (error) { toast(errMsg(error)); return; }
+  const ocupado = new Set(h.turnos.map(t => t.fecha + "|" + t.personal_id)), activos = new Set(h.personal.map(p => p.id));
+  const filas = data.filter(t => activos.has(t.personal_id)).map(t => ({fecha: masDias(t.fecha, 7), personal_id:t.personal_id, tipo:t.tipo, inicio:t.inicio, fin:t.fin, puesto:t.puesto, almuerzo_inicio:t.almuerzo_inicio, almuerzo_fin:t.almuerzo_fin, nota:null}))
+    .filter(t => !ocupado.has(t.fecha + "|" + t.personal_id));
+  if (!data.length) { toast("La semana anterior no tiene horario cargado."); return; }
+  if (!filas.length) { toast("Todos los días de esta semana ya tienen horario."); return; }
+  if (!confirm(`Se copiarán ${filas.length} días de la semana del ${fechaCorta(ant)}. Los días que ya tienen horario no se tocan. ¿Continuar?`)) return;
+  const r = await sb.from("hor_turnos").insert(filas);
+  if (r.error) { toast(errMsg(r.error)); return; }
+  toast(`${plural(filas.length, "día copiado", "días copiados")}`); cargarHorario();
+}
+function editarPersonal(){
+  const h = S.hor, grupos = [...new Set(h.personal.map(p => p.grupo).concat(["Operación de golf"]))];
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Personal del horario</h2><button class="btn ghost x" data-x type="button">Cerrar</button></div>
+    <div class="stack" style="gap:8px" id="pList">${h.personal.map(p => `<div style="display:grid;grid-template-columns:1fr 160px auto;gap:8px;align-items:center" data-pid="${p.id}">
+      <input type="text" value="${esc(p.nombre)}" data-k="nombre" aria-label="Nombre"><input type="text" value="${esc(p.grupo)}" data-k="grupo" list="gruposL" aria-label="Grupo">
+      <button class="btn small danger" type="button" data-baja>Dar de baja</button></div>`).join("")}</div>
+    <datalist id="gruposL">${grupos.map(g => `<option value="${esc(g)}">`).join("")}</datalist>
+    <div style="display:grid;grid-template-columns:1fr 160px auto;gap:8px;align-items:end;border-top:1px solid var(--line);padding-top:12px">
+      <label class="f">Nueva persona<input type="text" id="nNom" placeholder="Nombre y apellido"></label><label class="f">Grupo<input type="text" id="nGru" list="gruposL" value="Operación de golf"></label>
+      <button class="btn primary" id="nOk" type="button">Agregar</button></div>
+    <p class="hint" style="margin:0">Los cambios de nombre o grupo se guardan al salir del campo. Dar de baja oculta a la persona del horario y del tablero, sin borrar su historial.</p>`);
+  document.querySelectorAll("#pList [data-k]").forEach(i => i.onchange = async () => {
+    const id = i.closest("[data-pid]").dataset.pid, val = i.value.trim(); if (!val) return;
+    const { error } = await sb.from("hor_personal").update({[i.dataset.k]: val}).eq("id", id);
+    if (error) toast(errMsg(error)); else { toast("Guardado"); const p = h.personal.find(x => x.id === id); if (p) p[i.dataset.k] = val; }
+  });
+  document.querySelectorAll("#pList [data-baja]").forEach(b => b.onclick = async () => {
+    const row = b.closest("[data-pid]"), p = h.personal.find(x => x.id === row.dataset.pid);
+    if (!confirm(`¿Dar de baja a ${p.nombre}?`)) return;
+    const { error } = await sb.from("hor_personal").update({activo:false}).eq("id", p.id);
+    if (error) { toast(errMsg(error)); return; }
+    row.remove(); toast(`${p.nombre} dado de baja`); cargarHorario();
+  });
+  $("#nOk").onclick = async () => {
+    const nombre = $("#nNom").value.trim(), grupo = $("#nGru").value.trim() || "Operación de golf"; if (!nombre) return;
+    const orden = h.personal.reduce((m, p) => Math.max(m, p.orden || 0), 0) + 1;
+    const { error } = await sb.from("hor_personal").insert({nombre, grupo, orden});
+    if (error) { toast(errMsg(error)); return; }
+    closeSheet(); toast(`${nombre} agregado`); await cargarHorario(); editarPersonal();
+  };
+}
+function editarFunciones(){
+  const h = S.hor;
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Funciones e instrucciones</h2><button class="btn ghost x" data-x type="button">Cerrar</button></div>
+    <p class="hint" style="margin:0">Las instrucciones aparecen en el tablero de la TV cuando la persona entra a su turno. Se guardan al salir del campo.</p>
+    <div class="stack" style="gap:12px" id="fList">${h.puestos.map(p => `<div data-pc="${esc(p.codigo)}" style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:10px">
+      <div style="display:grid;grid-template-columns:64px 1fr 56px;gap:8px;align-items:center"><span class="pill" style="background:${esc(p.color)};color:#fff;justify-content:center">${esc(p.codigo)}</span><input type="text" data-k="nombre" value="${esc(p.nombre)}" aria-label="Nombre de la función"><input type="color" data-k="color" value="${esc(p.color)}" aria-label="Color" style="width:56px;height:40px;padding:2px;border:1px solid var(--line-strong);border-radius:8px;background:var(--paper)"></div>
+      <textarea data-k="instrucciones" rows="2" aria-label="Instrucciones">${esc(p.instrucciones || "")}</textarea></div>`).join("")}</div>`);
+  document.querySelectorAll("#fList [data-k]").forEach(i => i.onchange = async () => {
+    const c = i.closest("[data-pc]").dataset.pc, val = i.value.trim();
+    if (i.dataset.k === "nombre" && !val) return;
+    const { error } = await sb.from("hor_puestos").update({[i.dataset.k]: val || null}).eq("codigo", c);
+    if (error) { toast(errMsg(error)); return; }
+    const p = h.puestos.find(x => x.codigo === c); if (p) p[i.dataset.k] = val; toast("Guardado");
+    if (i.dataset.k === "color") i.closest("[data-pc]").querySelector(".pill").style.background = val;
+  });
 }
 
 /* ===================== Capitanes: salidas del día (tee sheet) ===================== */
