@@ -253,6 +253,15 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .tee .j{min-width:0;overflow-wrap:anywhere;font-size:14px;cursor:pointer}
 .tee .j small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
 .tee .acc{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.rvrow{display:grid;grid-template-columns:140px minmax(0,1fr) auto;gap:6px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--paper)}
+.rvrow input[type=time]{font-family:var(--f-mono)}
+.rvrow textarea{min-height:0;resize:vertical;font-size:16px;line-height:1.35}
+@media (max-width:560px){.rvrow{grid-template-columns:minmax(0,1fr) auto}.rvrow textarea{grid-column:1/-1;grid-row:2}}
+.rvthumbs{display:flex;gap:8px;flex-wrap:wrap}
+.rvthumbs a{display:block;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff}
+.rvthumbs img{display:block;height:120px;width:auto}
+.ocrbar{height:8px;background:var(--ground);border-radius:99px;overflow:hidden}
+.ocrbar i{display:block;height:100%;background:var(--brand-2);width:0;transition:width .2s}
 @media (max-width:560px){.tee{grid-template-columns:56px 1fr}.tee .acc{grid-column:1/-1;justify-content:stretch}.tee .acc .btn{flex:1}}
 .jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .jcard{text-align:left;border:1px solid var(--line);border-left:4px solid var(--ok);background:var(--paper);border-radius:10px;padding:12px;cursor:pointer;display:grid;gap:4px;min-width:0}
@@ -1851,7 +1860,8 @@ function renderSalidas(){
       <p class="sub">${plural(st.total, "salida")} · ${plural(st.jug, "jugador", "jugadores")} · puntual si sale hasta ${TOL_MIN} min después de su hora</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
         <label class="f" style="margin:0">Fecha<input type="date" id="tFecha" value="${t.fecha}"></label>
-        <button class="btn primary" id="tNueva" type="button">Agregar salida</button></div></div>
+        <button class="btn primary" id="tCargar" type="button">Cargar tee sheet</button>
+        <button class="btn" id="tNueva" type="button">Agregar salida</button></div></div>
     <div class="kpis">
       <div class="kpi"><div class="k">Salidas puntuales</div><div class="v ${st.pct == null ? "" : st.pct >= 95 ? "ok" : st.pct >= 85 ? "warn" : "crit"}">${st.pct == null ? "—" : st.pct + "%"}</div><div class="t">${st.pun} de ${st.sal} que ya salieron · meta 95%</div></div>
       <div class="kpi"><div class="k">Ya salieron</div><div class="v">${st.sal}</div><div class="t">de ${st.total} programadas</div></div>
@@ -1869,6 +1879,7 @@ function renderSalidas(){
       : `<div class="empty"><strong>No hay salidas cargadas para este día</strong>${S.esGer ? "Cargue el tee sheet del día o agregue las salidas una por una." : "Pídale a Gerencia que cargue el tee sheet del día."}</div>`}`;
   $("#tFecha").onchange = e => { if (e.target.value) { t.fecha = e.target.value; renderSalidas(); } };
   $("#tNueva").onclick = () => editarSalida(null);
+  $("#tCargar").onclick = abrirCargaTee;
   v.querySelectorAll("[data-salio]").forEach(b => b.onclick = () => marcarSalida(b.dataset.salio, "salio"));
   v.querySelectorAll("[data-ns]").forEach(b => b.onclick = () => marcarSalida(b.dataset.ns, "no_show"));
   v.querySelectorAll("[data-ed]").forEach(b => b.onclick = () => editarSalida(t.list.find(x => x.id === b.dataset.ed)));
@@ -1922,6 +1933,234 @@ function editarSalida(x){
     const { error } = await sb.from("tee_salidas").delete().eq("id", x.id);
     if (error) { $("#sErr").textContent = errMsg(error); return; }
     closeSheet(); toast("Salida eliminada"); cargarSalidas();
+  };
+}
+
+/* ---------- Cargar tee sheet: captura de pantalla (lectura en el teléfono), PDF o texto pegado ---------- */
+const TESS_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+const PDFJS_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
+const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+const OCR_LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÑÜáéíóúñü.'-/() ";
+const MESES_EN = {jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12};
+function cargarJS(src, glob){ return window[glob] ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = () => res(); s.onerror = () => rej(new Error("No se pudo descargar el lector. Revise la conexión e intente de nuevo.")); document.head.append(s); }); }
+const clave = s => norm(s).replace(/[^a-z0-9]/g, "");
+function fechaTexto(t){ const m = String(t).match(/(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s+([a-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/i);
+  return m && MESES_EN[m[1].toLowerCase()] ? `${m[3]}-${pad(MESES_EN[m[1].toLowerCase()])}-${pad(+m[2])}` : null; }
+const limpiarNombre = s => String(s || "").trim().replace(/\s*\([\s\S]*$/, "").replace(/[|_~{}\[\]]/g, " ").replace(/^[^A-Za-zÁ-úñÑ]+|[^A-Za-zÁ-úñÑ.]+$/g, "").replace(/\s+/g, " ").trim();
+function lev(a, b){ let p = Array.from({length:b.length + 1}, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j-1] + 1, p[j-1] + (a[i-1] === b[j-1] ? 0 : 1)); p = c; }
+  return p[b.length]; }
+
+// Texto por líneas (PDF o pegado): "6:30 AM 1 A Dominguez (MEM CART) G Stieo (SHARED CRT) …"
+function parsearLineas(lineas){
+  const salidas = [], sueltas = []; let fecha = null;
+  for (const l of lineas) {
+    fecha = fecha || fechaTexto(l);
+    const m = l.match(/^\W{0,3}(\d{1,2})\s*[:.]\s*(\d{2})[\s‖]*([AaPp])\.?\s*[Mm]\.?/);
+    if (!m) { if (/\(/.test(l) && /[A-Za-z]{2}/.test(l) && !fechaTexto(l)) sueltas.push(l.replace(/‖/g, " ").trim()); continue; }
+    const h = (+m[1] % 12) + (/p/i.test(m[3]) ? 12 : 0);
+    const resto = l.slice(m[0].length).replace(/^[\s‖]*1(?=[\s‖]|$)/, "");
+    const jug = resto.split(/\s*\([^)]*\)\s*|\s*‖\s*|\t+|\s{3,}/).map(limpiarNombre).filter(n => n.length >= 2 && !/^g$/i.test(n));
+    if (jug.length) salidas.push({hora:`${pad(h)}:${m[2]}`, jugadores:jug});
+  }
+  return {fecha, salidas, sueltas};
+}
+async function leerPDF(file, prog){
+  await cargarJS(PDFJS_URL, "pdfjsLib"); pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise, lineas = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    prog(`Leyendo el PDF: página ${p} de ${pdf.numPages}…`, p / pdf.numPages);
+    const items = (await (await pdf.getPage(p)).getTextContent()).items.filter(i => i.str && i.str.trim()).map(i => ({x:i.transform[4], y:i.transform[5], s:i.str.trim()})).sort((a, b) => b.y - a.y);
+    const filas = [];
+    items.forEach(i => { const f = filas[filas.length - 1]; if (f && f.y - i.y < 8) f.items.push(i); else filas.push({y:i.y, items:[i]}); });
+    filas.forEach(f => lineas.push(f.items.sort((a, b) => a.x - b.x).map(i => i.s).join(" ‖ ")));
+  }
+  return parsearLineas(lineas);
+}
+
+// Captura de pantalla: detecta la cuadrícula y lee celda por celda; las horas salen de la secuencia de 10 minutos.
+async function leerImagen(file, worker, prog, n, total){
+  const bmp = await createImageBitmap(file);
+  const s = Math.min(4, Math.max(0.5, 1600 / bmp.width)), W = Math.round(bmp.width * s), H = Math.round(bmp.height * s);
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const cx = cv.getContext("2d", {willReadFrequently:true});
+  cx.fillStyle = "#fff"; cx.fillRect(0, 0, W, H); cx.imageSmoothingQuality = "high"; cx.drawImage(bmp, 0, 0, W, H);
+  const px = cx.getImageData(0, 0, W, H).data, g = new Uint8ClampedArray(W * H);
+  for (let i = 0; i < W * H; i++) g[i] = (px[4*i] * 299 + px[4*i+1] * 587 + px[4*i+2] * 114) / 1000;
+  const grupos = arr => { const o = []; let i = 0; while (i < arr.length) { if (arr[i]) { let j = i; while (j < arr.length && arr[j]) j++; o.push([i, j]); i = j; } else i++; } return o; };
+  const hf = []; for (let y = 0; y < H; y++) { let c = 0; for (let x = 0; x < W; x++) if (g[y*W + x] < 150) c++; hf.push(c / W > 0.45); }
+  const hl = grupos(hf);
+  if (hl.length < 4) throw new Error(`La imagen ${n} no parece un tee sheet: no se encontró la tabla.`);
+  const raw = []; for (let k = 0; k + 1 < hl.length; k++) if (hl[k+1][0] > hl[k][1]) raw.push([hl[k][1], hl[k+1][0]]);
+  const altos = raw.map(b => b[1] - b[0]).filter(v => v > 8).sort((a, b) => a - b), med = altos[Math.floor(altos.length / 2)] || 1;
+  const filas = [];
+  for (let k = 0; k < raw.length; k++) {
+    const [a, b] = raw[k];
+    if (b - a < 0.6*med && b - a >= 0.25*med && k + 1 < raw.length && raw[k+1][1] - a <= 1.3*med && raw[k+1][1] - raw[k+1][0] >= 0.25*med) { filas.push([a, raw[k+1][1]]); k++; continue; }
+    if (b - a >= 0.6*med) filas.push([a, b]);
+  }
+  const ya = hl[0][0], yb = hl[hl.length - 1][1];
+  const vf = []; for (let x = 0; x < W; x++) { let c = 0; for (let y = ya; y < yb; y++) if (g[y*W + x] < 150) c++; vf.push(c / (yb - ya) > 0.5); }
+  const vl = grupos(vf);
+  if (vl.length < 3) throw new Error(`La imagen ${n} no parece un tee sheet: no se encontraron las columnas.`);
+  const tc = vl.reduce((m, v) => v[1] - v[0] > m[1] - m[0] ? v : m);
+  const huecos = []; for (let k = 0; k + 1 < vl.length; k++) if (vl[k][0] >= tc[0] && vl[k+1][0] > vl[k][1]) huecos.push([vl[k][1], vl[k+1][0]]);
+  const mx = Math.max(...huecos.map(v => v[1] - v[0])), celdas = huecos.filter(v => v[1] - v[0] >= 0.55 * mx);
+  const recorte = (x0, y0, x1, y1, invertir, inclinar) => {
+    const w = x1 - x0, h = y1 - y0, P = 20, src = document.createElement("canvas"); src.width = w; src.height = h;
+    const sk = src.getContext("2d"), id = sk.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = g[(y0 + y) * W + x0 + x]; if (invertir) v = 255 - v; const i = 4 * (y * w + x); id.data[i] = id.data[i+1] = id.data[i+2] = v; id.data[i+3] = 255; }
+    sk.putImageData(id, 0, 0);
+    const c = document.createElement("canvas"); c.width = w + Math.ceil(Math.abs(inclinar) * h) + 2*P; c.height = h + 2*P;
+    const k = c.getContext("2d"); k.fillStyle = "#fff"; k.fillRect(0, 0, c.width, c.height); k.setTransform(1, 0, inclinar, 1, P, P); k.drawImage(src, 0, 0);
+    return c;
+  };
+  const oscuro = (x0, y0, x1, y1) => { let c = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (g[y*W + x] < 150) c++; return c / Math.max(1, (x1 - x0) * (y1 - y0)); };
+  // Fecha del encabezado
+  let fecha = null;
+  if (ya > 10) { await worker.setParameters({tessedit_pageseg_mode:"6", tessedit_char_whitelist:""}); fecha = fechaTexto((await worker.recognize(recorte(0, 0, W, ya, false, 0))).data.text); }
+  // Nombres
+  await worker.setParameters({tessedit_pageseg_mode:"7", tessedit_char_whitelist:OCR_LETRAS});
+  const leidas = [];
+  for (let k = 0; k < filas.length; k++) {
+    prog(`Leyendo imagen ${n} de ${total}: fila ${k + 1} de ${filas.length}…`, ((n - 1) + (k + 1) / filas.length * 0.85) / total);
+    const [y0, y1] = filas[k], m = Math.round((y1 - y0) * 0.08), jug = [];
+    for (const [x0, x1] of celdas) {
+      if (oscuro(x0 + m, y0 + m, x1 - m, y1 - m) < 0.004) continue;
+      const t = limpiarNombre((await worker.recognize(recorte(x0 + m, y0 + m, x1 - m, y1 - m, false, 0.08))).data.text);
+      if (t.length >= 2) jug.push(t);
+    }
+    if (jug.length) leidas.push({k, jug});
+  }
+  // Horas: lee la celda negra de cada fila con jugadores y toma la secuencia más votada
+  await worker.setParameters({tessedit_pageseg_mode:"7", tessedit_char_whitelist:"0123456789:APM "});
+  const votos = {};
+  for (const r of leidas) {
+    const [y0, y1] = filas[r.k];
+    const t = (await worker.recognize(recorte(tc[0] + 2, y0 + 2, tc[1] - 2, y1 - 2, true, 0))).data.text;
+    const m = t.match(/(\d{1,2})\s*:?\s*(\d{2})\s*([AP])?/);
+    if (!m || +m[1] > 12 || +m[2] > 59) continue;
+    const hs = m[3] ? [(+m[1] % 12) + (m[3] === "P" ? 12 : 0)] : [+m[1] % 12, (+m[1] % 12) + 12];
+    hs.forEach(h => { const b = h * 60 + +m[2] - 10 * r.k; votos[b] = (votos[b] || 0) + 1; });
+  }
+  const base = Object.keys(votos).sort((a, b) => votos[b] - votos[a])[0];
+  if (base == null) throw new Error(`No se pudo leer ninguna hora en la imagen ${n}. Pruebe con una captura más grande o más nítida.`);
+  const salidas = leidas.map(r => { const t = +base + 10 * r.k; return t >= 0 && t < 24*60 ? {hora:`${pad(Math.floor(t / 60))}:${pad(t % 60)}`, jugadores:r.jug} : null; }).filter(Boolean);
+  return {fecha, salidas, sueltas:[]};
+}
+
+async function nombresConocidos(){
+  const { data } = await sb.from("tee_salidas").select("jugadores").gte("fecha", diasAtras(120)).limit(2000);
+  return [...new Set((data || []).flatMap(x => x.jugadores || []).filter(n => n && n.length >= 2))];
+}
+function corregirNombres(salidas, conocidos){
+  const idx = conocidos.map(nm => [nm, clave(nm)]).filter(x => x[1]); let n = 0;
+  salidas.forEach(s => s.jugadores = s.jugadores.map(j => {
+    const a = clave(j); if (!a) return j;
+    const exacto = idx.find(x => x[1] === a); if (exacto) { if (exacto[0] !== j) n++; return exacto[0]; }
+    if (a.length < 4) return j;
+    let mejor = null, r = 0;
+    for (const [nm, b] of idx) { if (b.length < 4) continue; const q = 1 - lev(a, b) / Math.max(a.length, b.length); if (q > r) { r = q; mejor = nm; } }
+    if (mejor && r >= 0.75) { n++; return mejor; }
+    return j;
+  }));
+  return n;
+}
+
+function abrirCargaTee(){
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">Salidas · ${esc(fechaLarga(S.tee.fecha))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Cargar tee sheet</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <p class="hint" style="margin:0;font-size:14px">Elija las capturas de pantalla del tee sheet (una por página) o el PDF. La app lee la hora y los jugadores de cada salida y le muestra la lista para revisarla antes de guardar.</p>
+    <label class="btn primary" style="cursor:pointer;padding:14px 18px"><input type="file" id="ctFile" accept="image/*,application/pdf" multiple hidden>Elegir capturas o PDF</label>
+    <details><summary style="cursor:pointer;font-weight:600">O pegar el texto del tee sheet</summary>
+      <div style="display:grid;gap:8px;margin-top:8px"><textarea id="ctTxt" rows="6" placeholder="6:30 AM 1 A Dominguez (MEM CART) G Stieo (SHARED CRT)…"></textarea>
+      <button class="btn" id="ctTxtOk" type="button">Leer texto</button></div></details>
+    <div id="ctProg" hidden style="display:grid;gap:6px"><div class="hint" id="ctProgTxt" style="font-size:14px"></div><div class="ocrbar"><i id="ctBar"></i></div></div>
+    <p class="hint warn" id="ctErr" style="margin:0"></p>
+    <p class="hint" style="margin:0">Consejo: para las capturas, abra el tee sheet en pantalla completa y con buen zoom. Mientras más nítida la imagen, menos nombres hay que corregir. Con el PDF la lectura es exacta.</p>`);
+  const prog = (t, f) => { $("#ctProg").hidden = false; $("#ctProgTxt").textContent = t; if (f != null) $("#ctBar").style.width = Math.round(Math.min(1, f) * 100) + "%"; };
+  const fallo = e => { $("#ctProg").hidden = true; $("#ctErr").textContent = errMsg(e); $("#ctFile").disabled = false; };
+  $("#ctTxtOk").onclick = async () => {
+    const t = $("#ctTxt").value.trim(); if (!t) return;
+    const r = parsearLineas(t.split(/\r?\n/));
+    if (!r.salidas.length) { $("#ctErr").textContent = "No se encontraron salidas en el texto. Cada línea debe empezar con la hora (ej. 6:30 AM)."; return; }
+    revisarCarga(r, "texto", [], 0);
+  };
+  $("#ctFile").onchange = async e => {
+    const files = [...e.target.files]; if (!files.length) return;
+    $("#ctErr").textContent = ""; $("#ctFile").disabled = true;
+    const total = {fecha:null, salidas:[], sueltas:[]}, imgs = files.filter(f => f.type.startsWith("image/")), pdfs = files.filter(f => f.type === "application/pdf");
+    let worker = null;
+    try {
+      for (const f of pdfs) { const r = await leerPDF(f, prog); total.fecha = total.fecha || r.fecha; total.salidas.push(...r.salidas); total.sueltas.push(...r.sueltas); }
+      if (imgs.length) {
+        prog("Preparando el lector de imágenes (la primera vez tarda un poco más)…", 0.02);
+        await cargarJS(TESS_URL, "Tesseract");
+        worker = await Tesseract.createWorker("eng", 1);
+        for (let i = 0; i < imgs.length; i++) { const r = await leerImagen(imgs[i], worker, prog, i + 1, imgs.length); total.fecha = total.fecha || r.fecha; total.salidas.push(...r.salidas); }
+      }
+      prog("Revisando nombres…", 0.97);
+      const porHora = {};
+      total.salidas.forEach(x => { if (!porHora[x.hora]) porHora[x.hora] = x; else porHora[x.hora].jugadores.push(...x.jugadores.filter(j => !porHora[x.hora].jugadores.includes(j))); });
+      total.salidas = Object.values(porHora).sort((a, b) => a.hora.localeCompare(b.hora));
+      if (!total.salidas.length) throw new Error("No se encontraron salidas con jugadores en los archivos.");
+      const corr = imgs.length ? corregirNombres(total.salidas, await nombresConocidos()) : 0;
+      revisarCarga(total, imgs.length ? "imagen" : "pdf", imgs.map(f => URL.createObjectURL(f)), corr);
+    } catch(err) { fallo(err); }
+    finally { if (worker) worker.terminate(); }
+  };
+}
+
+async function revisarCarga(r, fuente, urls, corregidos){
+  let fecha = r.fecha || S.tee.fecha;
+  const filaHTML = (x = {hora:"", jugadores:[]}) => `<div class="rvrow"><input type="time" step="600" value="${esc(x.hora)}" aria-label="Hora"><textarea rows="2" placeholder="Jugadores separados por coma" aria-label="Jugadores">${esc(x.jugadores.join(", "))}</textarea><button class="btn small ghost" type="button" data-rm aria-label="Quitar">✕</button></div>`;
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">Revisar antes de guardar</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Tee sheet leído</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <label class="f">Fecha del tee sheet<input type="date" id="rvFecha" value="${esc(fecha)}"></label>
+    ${r.fecha && r.fecha !== S.tee.fecha ? `<div class="callout gold">La fecha se tomó del tee sheet: ${esc(fechaLarga(r.fecha))}.</div>` : ""}
+    ${fuente === "imagen" ? `<div class="callout gold">Leído desde captura: compare los nombres con la imagen y corrija los que salieron mal.${corregidos ? ` ${plural(corregidos, "nombre se ajustó", "nombres se ajustaron")} con jugadores de días anteriores.` : ""}</div>
+      <div class="rvthumbs">${urls.map((u, i) => `<a href="${u}" target="_blank" rel="noopener" title="Ver imagen ${i + 1}"><img src="${u}" alt="Captura ${i + 1}"></a>`).join("")}</div>` : ""}
+    <div class="stack" style="gap:6px" id="rvRows">${r.salidas.map(filaHTML).join("")}</div>
+    <button class="btn small" id="rvAdd" type="button">+ Agregar salida</button>
+    ${r.sueltas && r.sueltas.length ? `<div class="callout"><b>Líneas sin hora reconocida</b> (agréguelas a mano si corresponde):<br>${r.sueltas.slice(0, 8).map(esc).join("<br>")}</div>` : ""}
+    <div class="callout" id="rvResumen">Comparando con las salidas cargadas…</div>
+    <label class="terms" id="rvQuitarW" hidden><input type="checkbox" id="rvQuitar" checked><span id="rvQuitarTxt"></span></label>
+    <p class="hint warn" id="rvErr" style="margin:0"></p>
+    <button class="btn primary" id="rvOk" type="button" style="padding:14px 18px">Guardar</button>`);
+  let existentes = [];
+  const leer = () => [...document.querySelectorAll("#rvRows .rvrow")].map(row => { const t = row.querySelector("input"), j = row.querySelector("textarea"); return {hora:t.value, jugadores:j.value.split(/[,;\n]/).map(x => x.replace(/\s+/g, " ").trim()).filter(Boolean)}; });
+  const resumen = () => {
+    const filas = leer().filter(x => x.hora), ex = Object.fromEntries(existentes.map(e => [hm(e.hora), e])), horas = new Set(filas.map(x => x.hora));
+    const nuevas = filas.filter(x => !ex[x.hora]).length, camb = filas.filter(x => ex[x.hora] && ex[x.hora].jugadores.join("|") !== x.jugadores.join("|")).length;
+    const quitar = existentes.filter(e => !horas.has(hm(e.hora)) && e.estado === "programada"), marcadas = existentes.filter(e => !horas.has(hm(e.hora)) && e.estado !== "programada");
+    $("#rvResumen").innerHTML = `<b>${plural(filas.length, "salida")}</b> · ${plural(filas.reduce((n, x) => n + x.jugadores.length, 0), "jugador", "jugadores")}<br>` +
+      (existentes.length ? `${plural(nuevas, "nueva", "nuevas")} · ${plural(camb, "con cambios", "con cambios")}${marcadas.length ? ` · ${plural(marcadas.length, "ya marcada se conserva", "ya marcadas se conservan")}` : ""}. Las salidas ya marcadas como “Salió” o “No se presentó” mantienen su estado.` : "No hay salidas cargadas para esta fecha todavía.");
+    $("#rvQuitarW").hidden = !quitar.length;
+    $("#rvQuitarTxt").textContent = `Quitar ${plural(quitar.length, "salida pendiente que ya no aparece", "salidas pendientes que ya no aparecen")} en el tee sheet (${quitar.map(e => hm(e.hora)).join(", ")})`;
+    $("#rvOk").textContent = `Guardar ${plural(filas.length, "salida")}`;
+    return {filas, quitar};
+  };
+  const cargarEx = async () => { fecha = $("#rvFecha").value; const { data } = await sb.from("tee_salidas").select("id,hora,jugadores,estado").eq("fecha", fecha); existentes = data || []; resumen(); };
+  $("#rvRows").addEventListener("click", e => { if (e.target.closest("[data-rm]")) { e.target.closest(".rvrow").remove(); resumen(); } });
+  $("#rvRows").addEventListener("input", resumen);
+  $("#rvAdd").onclick = () => { $("#rvRows").insertAdjacentHTML("beforeend", filaHTML()); resumen(); };
+  $("#rvFecha").onchange = cargarEx;
+  await cargarEx();
+  $("#rvOk").onclick = async () => {
+    const err = $("#rvErr"), {filas, quitar} = resumen(); err.textContent = "";
+    if (!fecha) { err.textContent = "Indique la fecha."; return; }
+    if (leer().some(x => !x.hora)) { err.textContent = "Hay una salida sin hora. Complétela o quítela."; return; }
+    const rep = filas.map(x => x.hora).find((h, i, a) => a.indexOf(h) !== i); if (rep) { err.textContent = `La hora ${rep} aparece dos veces. Una las salidas o corrija la hora.`; return; }
+    const vacia = filas.find(x => !x.jugadores.length); if (vacia) { err.textContent = `La salida de las ${vacia.hora} no tiene jugadores.`; return; }
+    const llena = filas.find(x => x.jugadores.length > 4); if (llena) { err.textContent = `La salida de las ${llena.hora} tiene más de 4 jugadores. Revise si un nombre quedó partido.`; return; }
+    $("#rvOk").disabled = true;
+    const up = await sb.from("tee_salidas").upsert(filas.map(x => ({fecha, hora:x.hora, jugadores:x.jugadores})), {onConflict:"fecha,hora"});
+    if (up.error) { $("#rvOk").disabled = false; err.textContent = errMsg(up.error); return; }
+    if (quitar.length && $("#rvQuitar").checked) {
+      const del = await sb.from("tee_salidas").delete().in("id", quitar.map(e => e.id)).eq("estado", "programada");
+      if (del.error) toast("Se guardaron las salidas, pero no se pudieron quitar las canceladas: " + errMsg(del.error));
+    }
+    urls.forEach(u => URL.revokeObjectURL(u));
+    closeSheet(); toast(`Tee sheet cargado: ${plural(filas.length, "salida")}`);
+    S.tee.fecha = fecha; S.tee.loaded = false; renderSalidas();
   };
 }
 

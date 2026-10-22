@@ -12,7 +12,7 @@ Plataforma web del departamento de Operación de Golf: la usan Marshals, Capitan
 |---|---|
 | **Marshals** | Checklist por turno, incidencias con fotos y prioridad, protocolo de juego lento, entrega de turno, panel de Gerencia con indicadores. |
 | **Capitanes · Mi turno** | Checklist del Capitán (55 actividades en 8 áreas), condiciones de la cancha, puestos del equipo, insumos, firma y validación de Gerencia. |
-| **Capitanes · Salidas** | Salidas del tee sheet del día: hora real de salida, no presentados y % de salidas puntuales (tolerancia 5 min). |
+| **Capitanes · Salidas** | Salidas del tee sheet del día: botón **Cargar tee sheet** (capturas de pantalla leídas en el propio teléfono, PDF o texto pegado, con revisión antes de guardar), hora real de salida, no presentados y % de salidas puntuales (tolerancia 5 min). |
 | **Capitanes · Horario** | Horario semanal del personal: turno, función (letra), almuerzo, descanso, vacaciones y compensatorio. Copiar semana anterior, personal y funciones editables. |
 | **Capitanes · Palos de alquiler** | Entrega con revisión de piezas y firma del huésped, devolución, historial y correos de confirmación. |
 | **Capitanes · Bolsas** | Bolsas de miembros por casilla: entrega y recepción. |
