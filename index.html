@@ -250,13 +250,16 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .tee.sig{border-left-color:var(--gold);background:var(--gold-soft)}
 .tee.ok{border-left-color:var(--ok)} .tee.tarde{border-left-color:var(--warn)} .tee.ns{border-left-color:var(--crit);opacity:.8}
 .tee .h{font-family:var(--f-mono);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.tee .h .hoyo{display:inline-block;margin-top:3px;font-family:var(--f-body);font-size:11px;font-weight:800;letter-spacing:.04em;border-radius:5px;padding:1px 6px;background:var(--ground);color:var(--muted)}
+.tee .h .hoyo.h10{background:var(--gold-soft);color:var(--gold)}
+.tee.h10{border-left-style:double;border-left-width:6px}
 .tee .j{min-width:0;overflow-wrap:anywhere;font-size:14px;cursor:pointer}
 .tee .j small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
 .tee .acc{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.rvrow{display:grid;grid-template-columns:140px minmax(0,1fr) auto;gap:6px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--paper)}
+.rvrow{display:grid;grid-template-columns:140px 104px minmax(0,1fr) auto;gap:6px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--paper)}
 .rvrow input[type=time]{font-family:var(--f-mono)}
 .rvrow textarea{min-height:0;resize:vertical;font-size:16px;line-height:1.35}
-@media (max-width:560px){.rvrow{grid-template-columns:minmax(0,1fr) auto}.rvrow textarea{grid-column:1/-1;grid-row:2}}
+@media (max-width:560px){.rvrow{grid-template-columns:minmax(0,1fr) 104px auto}.rvrow textarea{grid-column:1/-1;grid-row:2}}
 .rvthumbs{display:flex;gap:8px;flex-wrap:wrap}
 .rvthumbs a{display:block;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff}
 .rvthumbs img{display:block;height:120px;width:auto}
@@ -1831,7 +1834,9 @@ function editarFunciones(){
 
 /* ===================== Capitanes: salidas del día (tee sheet) ===================== */
 const TOL_MIN = 5;   // minutos de tolerancia para contar una salida como puntual
-S.tee = {fecha: hoyISO(), list:[], loaded:false, fechaCargada:null};
+S.tee = {fecha: hoyISO(), list:[], loaded:false, fechaCargada:null, hoyo: (() => { try { return localStorage.getItem("smgc_tee_hoyo") || "todos"; } catch(e){ return "todos"; } })()};
+const hoyoDe = x => +(x && x.hoyo) === 10 ? 10 : 1;
+const etHoyo = x => hoyoDe(x) === 10 ? "Hoyo 10" : "Hoyo 1";
 const hm = t => String(t || "").slice(0, 5);
 const hora12 = t => { const [h, m] = hm(t).split(":").map(Number); return `${((h + 11) % 12) + 1}:${pad(m)} ${h < 12 ? "a. m." : "p. m."}`; };
 const progDe = x => { const d = fechaDe(x.fecha); const [h, m] = hm(x.hora).split(":").map(Number); d.setHours(h, m, 0, 0); return d; };
@@ -1841,7 +1846,7 @@ function textoAtraso(min){ if (min == null) return ""; if (Math.abs(min) <= 1) r
 
 async function cargarSalidas(){
   const t = S.tee;
-  const { data, error } = await sb.from("tee_salidas").select("*").eq("fecha", t.fecha).order("hora");
+  const { data, error } = await sb.from("tee_salidas").select("*").eq("fecha", t.fecha).order("hora").order("hoyo");
   if (error) { toast(errMsg(error)); return; }
   t.list = data; t.loaded = true; t.fechaCargada = t.fecha;
   if (S.view === "salidas") renderSalidas();
@@ -1854,30 +1859,36 @@ function statsSalidas(L){
 function renderSalidas(){
   const v = $("#v-salidas"), t = S.tee;
   if (!t.loaded || t.fechaCargada !== t.fecha) { v.innerHTML = `<div class="loading">Cargando salidas…</div>`; cargarSalidas(); return; }
-  const L = t.list, st = statsSalidas(L), esHoy = t.fecha === hoyISO();
-  const sig = esHoy ? L.find(x => x.estado === "programada") : null;
+  const doble = t.list.some(x => hoyoDe(x) === 10), filtro = doble ? t.hoyo : "todos";
+  const L = filtro === "todos" ? t.list : t.list.filter(x => String(hoyoDe(x)) === String(filtro)), st = statsSalidas(L), esHoy = t.fecha === hoyISO();
+  // Próxima salida pendiente de cada hoyo (en salida simultánea hay una por el 1 y otra por el 10)
+  const sigs = esHoy ? [1, 10].map(h => L.find(x => hoyoDe(x) === h && x.estado === "programada")).filter(Boolean) : [];
+  const esSig = x => sigs.some(y => y.id === x.id), sig = sigs.slice().sort((a, b) => hm(a.hora).localeCompare(hm(b.hora)))[0] || null;
+  const pctHoyo = h => statsSalidas(t.list.filter(x => hoyoDe(x) === h)).pct;
   v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Tee sheet</div><h1>Salidas · ${esc(fechaLarga(t.fecha))}</h1>
-      <p class="sub">${plural(st.total, "salida")} · ${plural(st.jug, "jugador", "jugadores")} · puntual si sale hasta ${TOL_MIN} min después de su hora</p></div>
+      <p class="sub">${plural(st.total, "salida")} · ${plural(st.jug, "jugador", "jugadores")}${doble ? " · salida simultánea por los hoyos 1 y 10" : ""} · puntual si sale hasta ${TOL_MIN} min después de su hora</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
         <label class="f" style="margin:0">Fecha<input type="date" id="tFecha" value="${t.fecha}"></label>
         <button class="btn primary" id="tCargar" type="button">Cargar tee sheet</button>
         <button class="btn" id="tNueva" type="button">Agregar salida</button></div></div>
+    ${doble ? `<div class="chips" id="tHoyo" role="group" aria-label="Hoyo de salida">${[["todos","Ambos hoyos"],["1","Hoyo 1"],["10","Hoyo 10"]].map(([k, l]) => `<button type="button" class="chip" data-h="${k}" aria-pressed="${String(filtro) === k}">${l} · ${k === "todos" ? t.list.length : t.list.filter(x => String(hoyoDe(x)) === k).length}</button>`).join("")}</div>` : ""}
     <div class="kpis">
-      <div class="kpi"><div class="k">Salidas puntuales</div><div class="v ${st.pct == null ? "" : st.pct >= 95 ? "ok" : st.pct >= 85 ? "warn" : "crit"}">${st.pct == null ? "—" : st.pct + "%"}</div><div class="t">${st.pun} de ${st.sal} que ya salieron · meta 95%</div></div>
+      <div class="kpi"><div class="k">Salidas puntuales</div><div class="v ${st.pct == null ? "" : st.pct >= 95 ? "ok" : st.pct >= 85 ? "warn" : "crit"}">${st.pct == null ? "—" : st.pct + "%"}</div><div class="t">${doble && filtro === "todos" ? `Hoyo 1: ${pctHoyo(1) == null ? "—" : pctHoyo(1) + "%"} · Hoyo 10: ${pctHoyo(10) == null ? "—" : pctHoyo(10) + "%"}` : `${st.pun} de ${st.sal} que ya salieron`} · meta 95%</div></div>
       <div class="kpi"><div class="k">Ya salieron</div><div class="v">${st.sal}</div><div class="t">de ${st.total} programadas</div></div>
-      <div class="kpi"><div class="k">Pendientes</div><div class="v">${st.pend}</div><div class="t">${sig ? `próxima: ${hora12(sig.hora)}` : "sin pendientes"}</div></div>
+      <div class="kpi"><div class="k">Pendientes</div><div class="v">${st.pend}</div><div class="t">${sigs.length ? "próxima: " + sigs.map(x => hora12(x.hora) + (doble ? ` (H${hoyoDe(x)})` : "")).join(" · ") : "sin pendientes"}</div></div>
       <div class="kpi"><div class="k">No se presentaron</div><div class="v ${st.ns ? "warn" : ""}">${st.ns}</div><div class="t">salidas completas</div></div>
     </div>
     ${L.length ? `<div class="tee-list">${L.map(x => {
-      const a = atraso(x), cls = x.estado === "no_show" ? "ns" : x.estado === "salio" ? (puntual(x) ? "ok" : "tarde") : (sig && sig.id === x.id ? "sig" : "");
+      const a = atraso(x), cls = (x.estado === "no_show" ? "ns" : x.estado === "salio" ? (puntual(x) ? "ok" : "tarde") : (esSig(x) ? "sig" : "")) + (doble && hoyoDe(x) === 10 ? " h10" : "");
       const estado = x.estado === "salio" ? `<span class="pill ${puntual(x) ? "p-ok" : "p-alta"}">Salió ${hora(x.salida_real)} · ${textoAtraso(a)}</span>`
         : x.estado === "no_show" ? `<span class="pill p-crit">No se presentó</span>` : "";
       const acc = x.estado === "programada" ? `<button class="btn small primary" data-salio="${x.id}" type="button">Salió</button><button class="btn small" data-ns="${x.id}" type="button">No se presentó</button>` : estado;
-      return `<div class="tee ${cls}"><div class="h">${hm(x.hora)}</div>
-        <div class="j" data-ed="${x.id}">${x.jugadores.length ? x.jugadores.map(esc).join(" · ") : `<span class="hint">Sin jugadores</span>`}<small>${plural(x.jugadores.length, "jugador", "jugadores")}${sig && sig.id === x.id ? " · próxima salida" : ""} · tocar para editar</small></div>
+      return `<div class="tee ${cls}"><div class="h">${hm(x.hora)}${doble ? `<br><span class="hoyo ${hoyoDe(x) === 10 ? "h10" : ""}">${etHoyo(x)}</span>` : ""}</div>
+        <div class="j" data-ed="${x.id}">${x.jugadores.length ? x.jugadores.map(esc).join(" · ") : `<span class="hint">Sin jugadores</span>`}<small>${plural(x.jugadores.length, "jugador", "jugadores")}${esSig(x) ? ` · próxima salida${doble ? " por el " + etHoyo(x).toLowerCase() : ""}` : ""} · tocar para editar</small></div>
         <div class="acc">${acc}</div></div>`; }).join("")}</div>`
       : `<div class="empty"><strong>No hay salidas cargadas para este día</strong>${S.esGer ? "Cargue el tee sheet del día o agregue las salidas una por una." : "Pídale a Gerencia que cargue el tee sheet del día."}</div>`}`;
   $("#tFecha").onchange = e => { if (e.target.value) { t.fecha = e.target.value; renderSalidas(); } };
+  v.querySelectorAll("#tHoyo [data-h]").forEach(b => b.onclick = () => { t.hoyo = b.dataset.h; try { localStorage.setItem("smgc_tee_hoyo", t.hoyo); } catch(e){} renderSalidas(); });
   $("#tNueva").onclick = () => editarSalida(null);
   $("#tCargar").onclick = abrirCargaTee;
   v.querySelectorAll("[data-salio]").forEach(b => b.onclick = () => marcarSalida(b.dataset.salio, "salio"));
@@ -1890,14 +1901,16 @@ async function marcarSalida(id, estado, horaReal){
   if (x) { Object.assign(x, patch); renderSalidas(); }
   const { error } = await sb.from("tee_salidas").update(patch).eq("id", id);
   if (error) { if (x) Object.assign(x, antes); toast(errMsg(error)); renderSalidas(); return false; }
-  if (x && estado === "salio") toast(`${hm(x.hora)} salió · ${textoAtraso(atraso(x))}`);
+  if (x && estado === "salio") toast(`${hm(x.hora)}${S.tee.list.some(y => hoyoDe(y) === 10) ? " · " + etHoyo(x) : ""} salió · ${textoAtraso(atraso(x))}`);
   return true;
 }
 function editarSalida(x){
   const nuevo = !x, f = S.tee.fecha;
-  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(fechaLarga(f))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${nuevo ? "Agregar salida" : "Salida de las " + hm(x.hora)}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+  let hoyo = nuevo ? (S.tee.hoyo === "10" && S.tee.list.some(y => hoyoDe(y) === 10) ? 10 : 1) : hoyoDe(x);
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(fechaLarga(f))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${nuevo ? "Agregar salida" : "Salida de las " + hm(x.hora) + " · " + etHoyo(x)}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
     <div style="display:grid;gap:14px">
       <label class="f">Hora programada<input type="time" id="sHora" step="600" value="${nuevo ? "" : hm(x.hora)}"></label>
+      <div><div class="hint" style="margin-bottom:6px">Sale por</div><div class="seg" id="sHoyo">${[1, 10].map(h => `<button type="button" data-v="na" data-hoyo="${h}" aria-pressed="${hoyo === h}">Hoyo ${h}</button>`).join("")}</div></div>
       <label class="f">Jugadores (uno por línea)<textarea id="sJug" rows="4" placeholder="Ej. Diego Poma">${nuevo ? "" : esc(x.jugadores.join("\n"))}</textarea></label>
       ${nuevo ? "" : `<div><div class="hint" style="margin-bottom:6px">Estado</div><div class="seg" id="sEst">${[["programada","Pendiente"],["salio","Salió"],["no_show","No se presentó"]].map(([k, l]) => `<button type="button" data-v="${k === "salio" ? "si" : k === "no_show" ? "no" : "na"}" data-est="${k}" aria-pressed="${x.estado === k}">${l}</button>`).join("")}</div></div>
       <label class="f" id="sRealW" ${x.estado === "salio" ? "" : "hidden"}>Hora real de salida<input type="time" id="sReal" value="${x.salida_real ? hora(x.salida_real) : ""}"></label>`}
@@ -1907,6 +1920,7 @@ function editarSalida(x){
         ${!nuevo && S.esGer ? `<button class="btn danger" id="sDel" type="button">Eliminar salida</button>` : ""}</div>
     </div>`);
   let est = nuevo ? "programada" : x.estado;
+  document.querySelectorAll("#sHoyo [data-hoyo]").forEach(b => b.onclick = () => { hoyo = +b.dataset.hoyo; document.querySelectorAll("#sHoyo [data-hoyo]").forEach(y => y.setAttribute("aria-pressed", y === b)); });
   document.querySelectorAll("#sEst [data-est]").forEach(b => b.onclick = () => {
     est = b.dataset.est; document.querySelectorAll("#sEst [data-est]").forEach(y => y.setAttribute("aria-pressed", y === b));
     $("#sRealW").hidden = est !== "salio"; if (est === "salio" && !$("#sReal").value) $("#sReal").value = hora(new Date().toISOString());
@@ -1915,7 +1929,7 @@ function editarSalida(x){
     const h = $("#sHora").value, jug = $("#sJug").value.split("\n").map(s => s.trim()).filter(Boolean), err = $("#sErr");
     if (!h) { err.textContent = "Indique la hora de la salida."; return; }
     if (jug.length > 4) { err.textContent = "Una salida tiene como máximo 4 jugadores."; return; }
-    const row = {fecha:f, hora:h, jugadores:jug};
+    const row = {fecha:f, hora:h, hoyo, jugadores:jug};
     if (!nuevo) {
       row.estado = est; row.marcado_por = est === "programada" ? null : (x.estado === est && x.marcado_por) || S.me.id;
       if (est === "salio") { const r = $("#sReal").value; if (!r) { err.textContent = "Indique la hora real de salida."; return; } const d = fechaDe(f); const [a, b] = r.split(":").map(Number); d.setHours(a, b, 0, 0); row.salida_real = d.toISOString(); }
@@ -1924,12 +1938,12 @@ function editarSalida(x){
     $("#sOk").disabled = true;
     const { error } = nuevo ? await sb.from("tee_salidas").insert(row) : await sb.from("tee_salidas").update(row).eq("id", x.id);
     $("#sOk").disabled = false;
-    if (error) { err.textContent = error.code === "23505" ? "Ya existe una salida a esa hora en este día." : errMsg(error); return; }
+    if (error) { err.textContent = error.code === "23505" ? `Ya existe una salida a las ${h} por el hoyo ${hoyo} en este día.` : errMsg(error); return; }
     closeSheet(); toast(nuevo ? "Salida agregada" : "Salida actualizada"); cargarSalidas();
   };
   const del = $("#sDel");
   if (del) del.onclick = async () => {
-    if (!confirm(`¿Eliminar la salida de las ${hm(x.hora)}?`)) return;
+    if (!confirm(`¿Eliminar la salida de las ${hm(x.hora)} (${etHoyo(x)})?`)) return;
     const { error } = await sb.from("tee_salidas").delete().eq("id", x.id);
     if (error) { $("#sErr").textContent = errMsg(error); return; }
     closeSheet(); toast("Salida eliminada"); cargarSalidas();
@@ -1946,7 +1960,7 @@ function cargarJS(src, glob){ return window[glob] ? Promise.resolve() : new Prom
 const clave = s => norm(s).replace(/[^a-z0-9]/g, "");
 function fechaTexto(t){ const m = String(t).match(/(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s+([a-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/i);
   return m && MESES_EN[m[1].toLowerCase()] ? `${m[3]}-${pad(MESES_EN[m[1].toLowerCase()])}-${pad(+m[2])}` : null; }
-const limpiarNombre = s => String(s || "").trim().replace(/\s*\([\s\S]*$/, "").replace(/[|_~{}\[\]]/g, " ").replace(/^[^A-Za-zÁ-úñÑ]+|[^A-Za-zÁ-úñÑ.]+$/g, "").replace(/\s+/g, " ").trim();
+const limpiarNombre = s => String(s || "").trim().replace(/\s*\([\s\S]*$/, "").replace(/[|_~{}\[\]]/g, " ").replace(/^[^A-Za-zÁ-úñÑ]+|[^A-Za-zÁ-úñÑ0-9.]+$/g, "").replace(/\s+/g, " ").trim();
 function lev(a, b){ let p = Array.from({length:b.length + 1}, (_, j) => j);
   for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j-1] + 1, p[j-1] + (a[i-1] === b[j-1] ? 0 : 1)); p = c; }
   return p[b.length]; }
@@ -1959,11 +1973,49 @@ function parsearLineas(lineas){
     const m = l.match(/^\W{0,3}(\d{1,2})\s*[:.]\s*(\d{2})[\s‖]*([AaPp])\.?\s*[Mm]\.?/);
     if (!m) { if (/\(/.test(l) && /[A-Za-z]{2}/.test(l) && !fechaTexto(l)) sueltas.push(l.replace(/‖/g, " ").trim()); continue; }
     const h = (+m[1] % 12) + (/p/i.test(m[3]) ? 12 : 0);
-    const resto = l.slice(m[0].length).replace(/^[\s‖]*1(?=[\s‖]|$)/, "");
+    let resto = l.slice(m[0].length); const hy = resto.match(/^[\s‖]*(10|1)(?=[\s‖]|$)/);
+    if (hy) resto = resto.slice(hy[0].length);
     const jug = resto.split(/\s*\([^)]*\)\s*|\s*‖\s*|\t+|\s{3,}/).map(limpiarNombre).filter(n => n.length >= 2 && !/^g$/i.test(n));
-    if (jug.length) salidas.push({hora:`${pad(h)}:${m[2]}`, jugadores:jug});
+    if (jug.length) salidas.push({hora:`${pad(h)}:${m[2]}`, hoyo: hy && hy[1] === "10" ? 10 : 1, jugadores:jug});
   }
   return {fecha, salidas, sueltas};
+}
+// items: {s, x, y, w} con y hacia arriba (coordenadas del PDF). Devuelve null si la página no tiene ese formato.
+function salidasPorColumnas(items){
+  const cx = i => i.x + (i.w || 0) / 2;
+  const hole = items.find(i => /^hole$/i.test(i.s));
+  if (!hole) return null;
+  // Encabezado: une las piezas de la misma línea por si "Player" y "#1" vienen separados
+  const enc = [];
+  items.filter(i => Math.abs(i.y - hole.y) < 2).sort((a, b) => a.x - b.x).forEach(i => { const u = enc[enc.length - 1];
+    if (u && i.x - (u.x + u.w) < 8) { u.s += " " + i.s; u.w = i.x + (i.w || 0) - u.x; } else enc.push({s:i.s, x:i.x, w:i.w || 0, y:i.y}); });
+  const pl = [1, 2, 3, 4].map(k => enc.find(i => new RegExp(`^player\\s*#?\\s*${k}$`, "i").test(i.s))).filter(Boolean);
+  if (pl.length < 2) return null;
+  const centros = pl.map(cx), limites = centros.slice(1).map((c, k) => (centros[k] + c) / 2);
+  const holeR = hole.x + (hole.w || 20) + 4, bajo = items.filter(i => i.y < hole.y - 2);
+  const hoyos = bajo.filter(i => /^(1|10)$/.test(i.s) && cx(i) >= hole.x - 30 && cx(i) <= holeR + 10).sort((a, b) => b.y - a.y);
+  // La hora puede venir en una pieza ("6:30 AM") o en dos ("6:30" y "AM")
+  const izq = bajo.filter(i => i.x + (i.w || 0) < hole.x).sort((a, b) => b.y - a.y || a.x - b.x), horas = [];
+  izq.forEach(i => { const u = horas[horas.length - 1]; if (u && Math.abs(u.y - i.y) < 2) u.s += " " + i.s; else horas.push({y:i.y, s:i.s}); });
+  const horasOk = horas.filter(h => /(\d{1,2}):(\d{2})\s*([AP])/i.test(h.s));
+  if (!hoyos.length || !horasOk.length) return null;
+  const filas = hoyos.map(h => ({y:h.y, hoyo:+h.s, celdas:[[], [], [], []]}));
+  const difs = filas.slice(1).map((f, k) => filas[k].y - f.y).filter(d => d > 1), paso = difs.length ? Math.min(...difs) : 20;
+  bajo.filter(i => i.x >= holeR - 2 && !(/^(1|10)$/.test(i.s) && cx(i) <= holeR + 10)).forEach(i => {
+    let f = null, d = Infinity; for (const r of filas) { const dd = Math.abs(r.y - i.y); if (dd < d) { d = dd; f = r; } }
+    if (!f || d > paso * 0.6) return;
+    let col = limites.findIndex(l => cx(i) < l); if (col < 0) col = limites.length;
+    f.celdas[Math.min(col, 3)].push(i);
+  });
+  const salidas = [];
+  for (const f of filas) {
+    let h = null, d = Infinity; for (const t of horasOk) { const dd = Math.abs(t.y - f.y); if (dd < d) { d = dd; h = t; } }
+    if (!h || d > paso * 1.2) continue;
+    const m = h.s.match(/(\d{1,2}):(\d{2})\s*([AP])/i), hh = (+m[1] % 12) + (/p/i.test(m[3]) ? 12 : 0);
+    const jug = f.celdas.map(c => limpiarNombre(c.sort((a, b) => a.x - b.x).map(i => i.s).join(" "))).filter(n => n.length >= 2);
+    if (jug.length) salidas.push({hora:`${pad(hh)}:${m[2]}`, hoyo:f.hoyo, jugadores:jug});
+  }
+  return salidas;
 }
 async function paginaComoImagen(page){
   const v1 = page.getViewport({scale:1}), vp = page.getViewport({scale: Math.min(5, 2400 / v1.width)});
@@ -1980,17 +2032,20 @@ async function paginaComoImagen(page){
 }
 async function leerPDF(file, prog){
   await cargarJS(PDFJS_URL, "pdfjsLib"); pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
-  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise, lineas = [], imagenes = [];
+  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise, lineas = [], imagenes = [], salidasCol = [];
   for (let p = 1; p <= pdf.numPages; p++) {
     prog(`Abriendo el PDF: página ${p} de ${pdf.numPages}…`, 0.02 + 0.08 * p / pdf.numPages);
     const page = await pdf.getPage(p);
-    const items = (await page.getTextContent()).items.filter(i => i.str && i.str.trim()).map(i => ({x:i.transform[4], y:i.transform[5], s:i.str.trim()})).sort((a, b) => b.y - a.y);
+    const items = (await page.getTextContent()).items.filter(i => i.str && i.str.trim()).map(i => ({x:i.transform[4], y:i.transform[5], w:i.width, s:i.str.trim()})).sort((a, b) => b.y - a.y);
     if (items.reduce((n, i) => n + i.s.length, 0) < 40) { const img = await paginaComoImagen(page); if (img) imagenes.push(img); continue; }
+    const porCol = salidasPorColumnas(items);
+    if (porCol) { salidasCol.push(...porCol); lineas.push(items.map(i => i.s).join(" ")); continue; }
     const filas = [];
     items.forEach(i => { const f = filas[filas.length - 1]; if (f && f.y - i.y < 8) f.items.push(i); else filas.push({y:i.y, items:[i]}); });
     filas.forEach(f => lineas.push(f.items.sort((a, b) => a.x - b.x).map(i => i.s).join(" ‖ ")));
   }
-  return {...parsearLineas(lineas), imagenes};
+  const r = parsearLineas(lineas); r.salidas.push(...salidasCol);
+  return {...r, imagenes};
 }
 
 // Captura de pantalla: detecta la cuadrícula y lee celda por celda; las horas salen de la secuencia de 10 minutos.
@@ -2065,7 +2120,7 @@ async function leerImagen(file, worker, prog, n, total){
   }
   const base = Object.keys(votos).sort((a, b) => votos[b] - votos[a])[0];
   if (base == null) throw new Error(`No se pudo leer ninguna hora en la imagen ${n}. Pruebe con una captura más grande o más nítida.`);
-  const salidas = leidas.map(r => { const t = +base + 10 * r.k; return t >= 0 && t < 24*60 ? {hora:`${pad(Math.floor(t / 60))}:${pad(t % 60)}`, jugadores:r.jug} : null; }).filter(Boolean);
+  const salidas = leidas.map(r => { const t = +base + 10 * r.k; return t >= 0 && t < 24*60 ? {hora:`${pad(Math.floor(t / 60))}:${pad(t % 60)}`, hoyo:1, jugadores:r.jug} : null; }).filter(Boolean);
   return {fecha, salidas, sueltas:[]};
 }
 
@@ -2120,8 +2175,8 @@ function abrirCargaTee(){
       }
       prog("Revisando nombres…", 0.97);
       const porHora = {};
-      total.salidas.forEach(x => { if (!porHora[x.hora]) porHora[x.hora] = x; else porHora[x.hora].jugadores.push(...x.jugadores.filter(j => !porHora[x.hora].jugadores.includes(j))); });
-      total.salidas = Object.values(porHora).sort((a, b) => a.hora.localeCompare(b.hora));
+      total.salidas.forEach(x => { const k = x.hora + "|" + hoyoDe(x); if (!porHora[k]) porHora[k] = {...x, hoyo:hoyoDe(x)}; else porHora[k].jugadores.push(...x.jugadores.filter(j => !porHora[k].jugadores.includes(j))); });
+      total.salidas = Object.values(porHora).sort((a, b) => a.hora.localeCompare(b.hora) || a.hoyo - b.hoyo);
       if (!total.salidas.length) throw new Error("No se encontraron salidas con jugadores en los archivos.");
       const corr = imgs.length ? corregirNombres(total.salidas, await nombresConocidos()) : 0;
       revisarCarga(total, imgs.length ? "imagen" : "pdf", imgs.map(f => URL.createObjectURL(f)), corr);
@@ -2132,7 +2187,7 @@ function abrirCargaTee(){
 
 async function revisarCarga(r, fuente, urls, corregidos){
   let fecha = r.fecha || S.tee.fecha;
-  const filaHTML = (x = {hora:"", jugadores:[]}) => `<div class="rvrow"><input type="time" step="600" value="${esc(x.hora)}" aria-label="Hora"><textarea rows="2" placeholder="Jugadores separados por coma" aria-label="Jugadores">${esc(x.jugadores.join(", "))}</textarea><button class="btn small ghost" type="button" data-rm aria-label="Quitar">✕</button></div>`;
+  const filaHTML = (x = {hora:"", hoyo:1, jugadores:[]}) => `<div class="rvrow"><input type="time" step="600" value="${esc(x.hora)}" aria-label="Hora"><select aria-label="Hoyo de salida"><option value="1" ${hoyoDe(x) === 1 ? "selected" : ""}>Hoyo 1</option><option value="10" ${hoyoDe(x) === 10 ? "selected" : ""}>Hoyo 10</option></select><textarea rows="2" placeholder="Jugadores separados por coma" aria-label="Jugadores">${esc(x.jugadores.join(", "))}</textarea><button class="btn small ghost" type="button" data-rm aria-label="Quitar">✕</button></div>`;
   openSheet(`<div class="sheet-head"><div><div class="eyebrow">Revisar antes de guardar</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Tee sheet leído</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
     <label class="f">Fecha del tee sheet<input type="date" id="rvFecha" value="${esc(fecha)}"></label>
     ${r.fecha && r.fecha !== S.tee.fecha ? `<div class="callout gold">La fecha se tomó del tee sheet: ${esc(fechaLarga(r.fecha))}.</div>` : ""}
@@ -2146,19 +2201,20 @@ async function revisarCarga(r, fuente, urls, corregidos){
     <p class="hint warn" id="rvErr" style="margin:0"></p>
     <button class="btn primary" id="rvOk" type="button" style="padding:14px 18px">Guardar</button>`);
   let existentes = [];
-  const leer = () => [...document.querySelectorAll("#rvRows .rvrow")].map(row => { const t = row.querySelector("input"), j = row.querySelector("textarea"); return {hora:t.value, jugadores:j.value.split(/[,;\n]/).map(x => x.replace(/\s+/g, " ").trim()).filter(Boolean)}; });
+  const leer = () => [...document.querySelectorAll("#rvRows .rvrow")].map(row => { const t = row.querySelector("input"), j = row.querySelector("textarea"), hs = row.querySelector("select"); return {hora:t.value, hoyo:+hs.value, jugadores:j.value.split(/[,;\n]/).map(x => x.replace(/\s+/g, " ").trim()).filter(Boolean)}; });
   const resumen = () => {
-    const filas = leer().filter(x => x.hora), ex = Object.fromEntries(existentes.map(e => [hm(e.hora), e])), horas = new Set(filas.map(x => x.hora));
-    const nuevas = filas.filter(x => !ex[x.hora]).length, camb = filas.filter(x => ex[x.hora] && ex[x.hora].jugadores.join("|") !== x.jugadores.join("|")).length;
-    const quitar = existentes.filter(e => !horas.has(hm(e.hora)) && e.estado === "programada"), marcadas = existentes.filter(e => !horas.has(hm(e.hora)) && e.estado !== "programada");
-    $("#rvResumen").innerHTML = `<b>${plural(filas.length, "salida")}</b> · ${plural(filas.reduce((n, x) => n + x.jugadores.length, 0), "jugador", "jugadores")}<br>` +
+    const kx = x => hm(x.hora) + "|" + hoyoDe(x), filas = leer().filter(x => x.hora), ex = Object.fromEntries(existentes.map(e => [kx(e), e])), horas = new Set(filas.map(kx));
+    const nuevas = filas.filter(x => !ex[kx(x)]).length, camb = filas.filter(x => ex[kx(x)] && ex[kx(x)].jugadores.join("|") !== x.jugadores.join("|")).length;
+    const quitar = existentes.filter(e => !horas.has(kx(e)) && e.estado === "programada"), marcadas = existentes.filter(e => !horas.has(kx(e)) && e.estado !== "programada");
+    const h10 = filas.filter(x => x.hoyo === 10).length;
+    $("#rvResumen").innerHTML = `<b>${plural(filas.length, "salida")}</b> · ${plural(filas.reduce((n, x) => n + x.jugadores.length, 0), "jugador", "jugadores")}${h10 ? ` · ${filas.length - h10} por el hoyo 1 y ${h10} por el hoyo 10` : ""}<br>` +
       (existentes.length ? `${plural(nuevas, "nueva", "nuevas")} · ${plural(camb, "con cambios", "con cambios")}${marcadas.length ? ` · ${plural(marcadas.length, "ya marcada se conserva", "ya marcadas se conservan")}` : ""}. Las salidas ya marcadas como “Salió” o “No se presentó” mantienen su estado.` : "No hay salidas cargadas para esta fecha todavía.");
     $("#rvQuitarW").hidden = !quitar.length;
-    $("#rvQuitarTxt").textContent = `Quitar ${plural(quitar.length, "salida pendiente que ya no aparece", "salidas pendientes que ya no aparecen")} en el tee sheet (${quitar.map(e => hm(e.hora)).join(", ")})`;
+    $("#rvQuitarTxt").textContent = `Quitar ${plural(quitar.length, "salida pendiente que ya no aparece", "salidas pendientes que ya no aparecen")} en el tee sheet (${quitar.map(e => hm(e.hora) + (hoyoDe(e) === 10 ? " H10" : "")).join(", ")})`;
     $("#rvOk").textContent = `Guardar ${plural(filas.length, "salida")}`;
     return {filas, quitar};
   };
-  const cargarEx = async () => { fecha = $("#rvFecha").value; const { data } = await sb.from("tee_salidas").select("id,hora,jugadores,estado").eq("fecha", fecha); existentes = data || []; resumen(); };
+  const cargarEx = async () => { fecha = $("#rvFecha").value; const { data } = await sb.from("tee_salidas").select("id,hora,hoyo,jugadores,estado").eq("fecha", fecha); existentes = data || []; resumen(); };
   $("#rvRows").addEventListener("click", e => { if (e.target.closest("[data-rm]")) { e.target.closest(".rvrow").remove(); resumen(); } });
   $("#rvRows").addEventListener("input", resumen);
   $("#rvAdd").onclick = () => { $("#rvRows").insertAdjacentHTML("beforeend", filaHTML()); resumen(); };
@@ -2168,12 +2224,12 @@ async function revisarCarga(r, fuente, urls, corregidos){
     const err = $("#rvErr"), {filas, quitar} = resumen(); err.textContent = "";
     if (!fecha) { err.textContent = "Indique la fecha."; return; }
     if (leer().some(x => !x.hora)) { err.textContent = "Hay una salida sin hora. Complétela o quítela."; return; }
-    const rep = filas.map(x => x.hora).find((h, i, a) => a.indexOf(h) !== i); if (rep) { err.textContent = `La hora ${rep} aparece dos veces. Una las salidas o corrija la hora.`; return; }
+    const rep = filas.map(x => x.hora + "|" + x.hoyo).find((h, i, a) => a.indexOf(h) !== i); if (rep) { const [rh, rhy] = rep.split("|"); err.textContent = `La salida de las ${rh} por el hoyo ${rhy} aparece dos veces. Una las salidas o corrija la hora o el hoyo.`; return; }
     const vacia = filas.find(x => !x.jugadores.length); if (vacia) { err.textContent = `La salida de las ${vacia.hora} no tiene jugadores.`; return; }
     const rev = filas.find(x => x.jugadores.includes("(revisar)")); if (rev) { err.textContent = `En la salida de las ${rev.hora} hay un jugador que no se pudo leer: escriba su nombre en lugar de “(revisar)”.`; return; }
     const llena = filas.find(x => x.jugadores.length > 4); if (llena) { err.textContent = `La salida de las ${llena.hora} tiene más de 4 jugadores. Revise si un nombre quedó partido.`; return; }
     $("#rvOk").disabled = true;
-    const up = await sb.from("tee_salidas").upsert(filas.map(x => ({fecha, hora:x.hora, jugadores:x.jugadores})), {onConflict:"fecha,hora"});
+    const up = await sb.from("tee_salidas").upsert(filas.map(x => ({fecha, hora:x.hora, hoyo:x.hoyo, jugadores:x.jugadores})), {onConflict:"fecha,hora,hoyo"});
     if (up.error) { $("#rvOk").disabled = false; err.textContent = errMsg(up.error); return; }
     if (quitar.length && $("#rvQuitar").checked) {
       const del = await sb.from("tee_salidas").delete().in("id", quitar.map(e => e.id)).eq("estado", "programada");
