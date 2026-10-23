@@ -1965,17 +1965,32 @@ function parsearLineas(lineas){
   }
   return {fecha, salidas, sueltas};
 }
+async function paginaComoImagen(page){
+  const v1 = page.getViewport({scale:1}), vp = page.getViewport({scale: Math.min(5, 2400 / v1.width)});
+  const c = document.createElement("canvas"); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+  const k = c.getContext("2d", {willReadFrequently:true}); k.fillStyle = "#fff"; k.fillRect(0, 0, c.width, c.height);
+  await page.render({canvasContext:k, viewport:vp}).promise;
+  // Recorta el margen blanco de la hoja para quedarse con el tee sheet
+  const d = k.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
+  for (let y = 0; y < c.height; y += 2) for (let x = 0; x < c.width; x += 2) { const i = 4 * (y * c.width + x); if (d[i] + d[i+1] + d[i+2] < 600) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+  if (x1 <= x0 || y1 <= y0) return null;
+  const m = 12, cw = Math.min(c.width, x1 + m) - Math.max(0, x0 - m), ch = Math.min(c.height, y1 + m) - Math.max(0, y0 - m);
+  const o = document.createElement("canvas"); o.width = cw; o.height = ch; o.getContext("2d").drawImage(c, Math.max(0, x0 - m), Math.max(0, y0 - m), cw, ch, 0, 0, cw, ch);
+  return new Promise(res => o.toBlob(res, "image/png"));
+}
 async function leerPDF(file, prog){
   await cargarJS(PDFJS_URL, "pdfjsLib"); pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
-  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise, lineas = [];
+  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise, lineas = [], imagenes = [];
   for (let p = 1; p <= pdf.numPages; p++) {
-    prog(`Leyendo el PDF: página ${p} de ${pdf.numPages}…`, p / pdf.numPages);
-    const items = (await (await pdf.getPage(p)).getTextContent()).items.filter(i => i.str && i.str.trim()).map(i => ({x:i.transform[4], y:i.transform[5], s:i.str.trim()})).sort((a, b) => b.y - a.y);
+    prog(`Abriendo el PDF: página ${p} de ${pdf.numPages}…`, 0.02 + 0.08 * p / pdf.numPages);
+    const page = await pdf.getPage(p);
+    const items = (await page.getTextContent()).items.filter(i => i.str && i.str.trim()).map(i => ({x:i.transform[4], y:i.transform[5], s:i.str.trim()})).sort((a, b) => b.y - a.y);
+    if (items.reduce((n, i) => n + i.s.length, 0) < 40) { const img = await paginaComoImagen(page); if (img) imagenes.push(img); continue; }
     const filas = [];
     items.forEach(i => { const f = filas[filas.length - 1]; if (f && f.y - i.y < 8) f.items.push(i); else filas.push({y:i.y, items:[i]}); });
     filas.forEach(f => lineas.push(f.items.sort((a, b) => a.x - b.x).map(i => i.s).join(" ‖ ")));
   }
-  return parsearLineas(lineas);
+  return {...parsearLineas(lineas), imagenes};
 }
 
 // Captura de pantalla: detecta la cuadrícula y lee celda por celda; las horas salen de la secuencia de 10 minutos.
@@ -1993,7 +2008,7 @@ async function leerImagen(file, worker, prog, n, total){
   if (hl.length < 4) throw new Error(`La imagen ${n} no parece un tee sheet: no se encontró la tabla.`);
   const raw = []; for (let k = 0; k + 1 < hl.length; k++) if (hl[k+1][0] > hl[k][1]) raw.push([hl[k][1], hl[k+1][0]]);
   const altos = raw.map(b => b[1] - b[0]).filter(v => v > 8).sort((a, b) => a - b), med = altos[Math.floor(altos.length / 2)] || 1;
-  const filas = [];
+  let filas = [];
   for (let k = 0; k < raw.length; k++) {
     const [a, b] = raw[k];
     if (b - a < 0.6*med && b - a >= 0.25*med && k + 1 < raw.length && raw[k+1][1] - a <= 1.3*med && raw[k+1][1] - raw[k+1][0] >= 0.25*med) { filas.push([a, raw[k+1][1]]); k++; continue; }
@@ -2016,6 +2031,9 @@ async function leerImagen(file, worker, prog, n, total){
     return c;
   };
   const oscuro = (x0, y0, x1, y1) => { let c = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (g[y*W + x] < 150) c++; return c / Math.max(1, (x1 - x0) * (y1 - y0)); };
+  // Una salida real tiene la celda de la hora en negro; las filas de notas debajo de una salida no.
+  filas = filas.filter(([y0, y1]) => oscuro(tc[0] + 2, y0 + 2, tc[1] - 2, y1 - 2) > 0.5);
+  if (!filas.length) throw new Error(`La imagen ${n} no parece un tee sheet: no se encontraron las horas.`);
   // Fecha del encabezado
   let fecha = null;
   if (ya > 10) { await worker.setParameters({tessedit_pageseg_mode:"6", tessedit_char_whitelist:""}); fecha = fechaTexto((await worker.recognize(recorte(0, 0, W, ya, false, 0))).data.text); }
@@ -2027,8 +2045,10 @@ async function leerImagen(file, worker, prog, n, total){
     const [y0, y1] = filas[k], m = Math.round((y1 - y0) * 0.08), jug = [];
     for (const [x0, x1] of celdas) {
       if (oscuro(x0 + m, y0 + m, x1 - m, y1 - m) < 0.004) continue;
-      const t = limpiarNombre((await worker.recognize(recorte(x0 + m, y0 + m, x1 - m, y1 - m, false, 0.08))).data.text);
-      if (t.length >= 2) jug.push(t);
+      const bruto = (await worker.recognize(recorte(x0 + m, y0 + m, x1 - m, y1 - m, false, 0.08))).data.text, t = limpiarNombre(bruto);
+      // Celda con jugador: nombre leído; reservado sin nombre (". (SHARED CRT)", "with ."); o ilegible para revisar a mano
+      if (t.length >= 2 && !/^(w\/?|with)\s*\.?$/i.test(t)) jug.push(t);
+      else jug.push(/\(/.test(bruto) || /with/i.test(bruto) ? "Sin nombre" : "(revisar)");
     }
     if (jug.length) leidas.push({k, jug});
   }
@@ -2088,10 +2108,10 @@ function abrirCargaTee(){
   $("#ctFile").onchange = async e => {
     const files = [...e.target.files]; if (!files.length) return;
     $("#ctErr").textContent = ""; $("#ctFile").disabled = true;
-    const total = {fecha:null, salidas:[], sueltas:[]}, imgs = files.filter(f => f.type.startsWith("image/")), pdfs = files.filter(f => f.type === "application/pdf");
+    const total = {fecha:null, salidas:[], sueltas:[]}, imgs = files.filter(f => f.type.startsWith("image/")), pdfs = files.filter(f => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
     let worker = null;
     try {
-      for (const f of pdfs) { const r = await leerPDF(f, prog); total.fecha = total.fecha || r.fecha; total.salidas.push(...r.salidas); total.sueltas.push(...r.sueltas); }
+      for (const f of pdfs) { const r = await leerPDF(f, prog); total.fecha = total.fecha || r.fecha; total.salidas.push(...r.salidas); total.sueltas.push(...r.sueltas); imgs.push(...r.imagenes); }
       if (imgs.length) {
         prog("Preparando el lector de imágenes (la primera vez tarda un poco más)…", 0.02);
         await cargarJS(TESS_URL, "Tesseract");
@@ -2116,7 +2136,7 @@ async function revisarCarga(r, fuente, urls, corregidos){
   openSheet(`<div class="sheet-head"><div><div class="eyebrow">Revisar antes de guardar</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Tee sheet leído</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
     <label class="f">Fecha del tee sheet<input type="date" id="rvFecha" value="${esc(fecha)}"></label>
     ${r.fecha && r.fecha !== S.tee.fecha ? `<div class="callout gold">La fecha se tomó del tee sheet: ${esc(fechaLarga(r.fecha))}.</div>` : ""}
-    ${fuente === "imagen" ? `<div class="callout gold">Leído desde captura: compare los nombres con la imagen y corrija los que salieron mal.${corregidos ? ` ${plural(corregidos, "nombre se ajustó", "nombres se ajustaron")} con jugadores de días anteriores.` : ""}</div>
+    ${fuente === "imagen" ? `<div class="callout gold">Leído como imagen: compare los nombres con la imagen y corrija los que salieron mal. Donde dice “(revisar)” no se pudo leer el nombre.${corregidos ? ` ${plural(corregidos, "nombre se ajustó", "nombres se ajustaron")} con jugadores de días anteriores.` : ""}</div>
       <div class="rvthumbs">${urls.map((u, i) => `<a href="${u}" target="_blank" rel="noopener" title="Ver imagen ${i + 1}"><img src="${u}" alt="Captura ${i + 1}"></a>`).join("")}</div>` : ""}
     <div class="stack" style="gap:6px" id="rvRows">${r.salidas.map(filaHTML).join("")}</div>
     <button class="btn small" id="rvAdd" type="button">+ Agregar salida</button>
@@ -2150,6 +2170,7 @@ async function revisarCarga(r, fuente, urls, corregidos){
     if (leer().some(x => !x.hora)) { err.textContent = "Hay una salida sin hora. Complétela o quítela."; return; }
     const rep = filas.map(x => x.hora).find((h, i, a) => a.indexOf(h) !== i); if (rep) { err.textContent = `La hora ${rep} aparece dos veces. Una las salidas o corrija la hora.`; return; }
     const vacia = filas.find(x => !x.jugadores.length); if (vacia) { err.textContent = `La salida de las ${vacia.hora} no tiene jugadores.`; return; }
+    const rev = filas.find(x => x.jugadores.includes("(revisar)")); if (rev) { err.textContent = `En la salida de las ${rev.hora} hay un jugador que no se pudo leer: escriba su nombre en lugar de “(revisar)”.`; return; }
     const llena = filas.find(x => x.jugadores.length > 4); if (llena) { err.textContent = `La salida de las ${llena.hora} tiene más de 4 jugadores. Revise si un nombre quedó partido.`; return; }
     $("#rvOk").disabled = true;
     const up = await sb.from("tee_salidas").upsert(filas.map(x => ({fecha, hora:x.hora, jugadores:x.jugadores})), {onConflict:"fecha,hora"});
