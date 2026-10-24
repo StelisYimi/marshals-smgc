@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>SMGC</title>
 <meta name="theme-color" content="#123d2a">
@@ -557,7 +558,7 @@ async function entrar(){
   if (!S.me.activo) { mostrar("blocked"); return; }
   S.esGer = GERENCIA.includes(S.me.rol); S.esCap = CAPITANIA.includes(S.me.rol);
   S.esStarter = S.me.rol === "starter";
-  S.mods = []; if (S.esStarter) S.mods.push("starter"); if (S.me.rol === "marshal" || S.esStarter || S.esGer) S.mods.push("marshals"); if (S.esCap) S.mods.push("capitanes");
+  S.mods = []; if (S.esStarter || S.esGer) S.mods.push("starter"); if (S.me.rol === "marshal" || S.esStarter || S.esGer) S.mods.push("marshals"); if (S.esCap) S.mods.push("capitanes");
   $("#whoName").textContent = S.me.nombre; $("#whoRole").textContent = S.esGer ? "Gerencia" : ROLES[S.me.rol]; $("#whoRole").classList.toggle("g", S.esGer);
   $("#menuWho").textContent = `${S.me.nombre} · ${ROLES[S.me.rol]}${S.me.usuario ? " · " + S.me.usuario : ""}`;
   try {
@@ -580,7 +581,7 @@ async function entrar(){
     suscribir();
   }
   if (S.mods.includes("capitanes")) { cargarCapitanes(); suscribirCap(); }
-  if (S.esStarter) suscribirStarter();
+  if (S.esStarter || S.esGer) suscribirStarter();
   const sw = $("#modSw"); sw.hidden = S.mods.length < 2;
   sw.innerHTML = S.mods.map(m => `<button type="button" data-mod="${m}">${MODULOS[m].nombre}</button>`).join("");
   sw.onclick = e => { const b = e.target.closest("[data-mod]"); if (b) setModulo(b.dataset.mod); };
@@ -2266,6 +2267,23 @@ async function revisarCarga(r, fuente, urls, corregidos){
     S.tee.fecha = fecha; S.tee.loaded = false; renderSalidas();
   };
 }
+
+/* ===================== Versión: avisa y recarga cuando se publica una nueva ===================== */
+const APP_VER = "202610232015";
+async function revisarVersion(){
+  try {
+    const h = await fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(r => r.ok ? r.text() : "");
+    const m = h.match(/const APP_VER = "(\d+)"/);
+    if (!m || m[1] === APP_VER) return;
+    const pend = S.me && ((S.pend && (Object.keys(S.pend.resp || {}).length || Object.keys(S.pend.rep || {}).length)) || Object.keys(S.st.pend.resp).length || Object.keys(S.st.pend.rep).length);
+    if (!pend && !document.querySelector("#ov")) { location.replace(location.pathname + "?v=" + m[1]); return; }
+    if (!$("#verBar")) { const b = document.createElement("button"); b.id = "verBar"; b.type = "button"; b.className = "btn gold";
+      b.style.cssText = "position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:999;box-shadow:0 6px 20px rgba(0,0,0,.25)";
+      b.textContent = "Hay una versión nueva · Actualizar"; b.onclick = () => location.replace(location.pathname + "?v=" + m[1]); document.body.appendChild(b); }
+  } catch(e) {}
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) revisarVersion(); });
+setInterval(revisarVersion, 5 * 60000); setTimeout(revisarVersion, 3000);
 
 /* ===================== Starter: metas del Impact Filter ===================== */
 const META_ST = {puntual:95, registro:100, cruce:90, regCruce:90, checklist:95, firmados:100, validados:100, escalado:100};
