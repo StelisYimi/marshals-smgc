@@ -2267,11 +2267,98 @@ async function revisarCarga(r, fuente, urls, corregidos){
   };
 }
 
+/* ===================== Starter: metas del Impact Filter ===================== */
+const META_ST = {puntual:95, registro:100, cruce:90, regCruce:90, checklist:95, firmados:100, validados:100, escalado:100};
+const NOV = {salida_no_coordinada:"Salida anticipada o adicional sin coordinar", ausencia_sin_relevo:"Tee sin atender sin relevo", reclamo:"Reclamo de jugador", incidente:"Incidente"};
+const pctDe = (a, b) => b ? Math.round(100 * a / b) : null;
+// Criterios de éxito medibles. L: salidas · R: reportes (v_st_resumen) o null · N: novedades
+function metasStarter(L, R, N){
+  const ahora = Date.now();
+  const sal = L.filter(x => x.estado === "salio");
+  const venc = L.filter(x => progDe(x).getTime() + 15 * 60000 < ahora), reg = venc.filter(x => x.estado !== "programada");
+  const conCr = L.filter(x => minCruce(x) != null), crOk = conCr.filter(x => minCruce(x) <= CRUCE_META_MIN);
+  const debenCr = sal.filter(x => x.salida_real && new Date(x.salida_real).getTime() + (CRUCE_META_MIN + 45) * 60000 < ahora), crReg = debenCr.filter(x => x.cruce_real);
+  const nc = N.filter(x => x.tipo === "salida_no_coordinada").length, au = N.filter(x => x.tipo === "ausencia_sin_relevo").length;
+  const esc_ = N.filter(x => x.tipo === "reclamo" || x.tipo === "incidente"), escOk = esc_.filter(x => x.escalado);
+  const M = [
+    {n:1, k:"Salidas puntuales", v:pctDe(sal.filter(puntual).length, sal.length), u:"%", meta:META_ST.puntual, t:`${sal.filter(puntual).length} de ${sal.length} salieron dentro de ${TOL_MIN} min`},
+    {n:2, k:"Salidas registradas", v:pctDe(reg.length, venc.length), u:"%", meta:META_ST.registro, t:`${reg.length} de ${venc.length} ya vencidas con hora real o no presentado`},
+    {n:3, k:"Cruce del 9 en meta", v:pctDe(crOk.length, conCr.length), u:"%", meta:META_ST.cruce, t:`${crOk.length} de ${conCr.length} grupos en ${durTxt(CRUCE_META_MIN)} o menos`},
+    {n:4, k:"Cruces registrados", v:pctDe(crReg.length, debenCr.length), u:"%", meta:META_ST.regCruce, t:`${crReg.length} de ${debenCr.length} grupos que ya debían cruzar`},
+    {n:5, k:"Salidas sin coordinar", v:nc, u:"", meta:0, t:"anticipadas o adicionales sin aviso al Marshal"},
+  ];
+  if (R) {
+    const firm = R.filter(x => x.estado === "firmado"); let resp = 0, ok = 0; firm.forEach(x => { resp += x.respondidas; ok += Math.round((x.cumplimiento_pct || 0) * x.respondidas / 100); });
+    const val = firm.filter(x => x.validado_en).length;
+    M.push({n:6, k:"Checklists firmados", v:pctDe(firm.length, R.length), u:"%", meta:META_ST.firmados, t:`${firm.length} de ${R.length} turnos iniciados`},
+           {n:7, k:"Cumplimiento del checklist", v:pctDe(ok, resp), u:"%", meta:META_ST.checklist, t:"Sí + N/A justificadas"},
+           {n:8, k:"Turnos validados", v:pctDe(val, firm.length), u:"%", meta:META_ST.validados, t:`${val} de ${firm.length} firmados, por el Capitán`});
+  }
+  M.push({n:9, k:"Ausencias sin relevo", v:au, u:"", meta:0, t:"tee sin atender sin relevo del Capitán"},
+         {n:10, k:"Reclamos escalados", v:pctDe(escOk.length, esc_.length), u:"%", meta:META_ST.escalado, t:`${escOk.length} de ${esc_.length} reclamos e incidentes informados al Capitán`});
+  return M.map(m => ({...m, c: m.v == null ? "" : m.meta === 0 ? (m.v === 0 ? "ok" : "crit") : cls(m.v, m.meta, m.meta - 10)}));
+}
+const metaTxt = m => m.meta === 0 ? "meta 0" : m.meta === 100 ? "meta 100%" : `meta ≥ ${m.meta}%`;
+const kpisMetas = M => `<div class="kpis">${M.map(m => `<div class="kpi"><div class="k">${m.n}. ${esc(m.k)}</div><div class="v ${m.c}">${m.v == null ? "—" : m.v + m.u}</div><div class="t">${esc(m.t)} · ${metaTxt(m)}</div></div>`).join("")}</div>`;
+function novedadesHTML(N, editable){
+  if (!N.length) return `<p class="hint" style="margin:0">Sin novedades registradas.</p>`;
+  return N.map(x => `<div class="ans-row"><span class="s ${x.tipo === "reclamo" || x.tipo === "incidente" ? (x.escalado ? "si" : "no") : "no"}">${hora(x.hora)}</span>
+    <span class="tx"><b>${esc(NOV[x.tipo])}</b> · Tee ${x.tee}${x.nota ? `<em>${esc(x.nota)}</em>` : ""}<em>${[x.escalado ? `Informado a ${esc(nm(x.escalado_a))}` : x.tipo === "reclamo" || x.tipo === "incidente" ? "Sin informar al Capitán" : "", `registró ${esc(nm(x.registrado_por))}`].filter(Boolean).join(" · ")}</em></span>
+    ${editable ? `<span style="display:flex;gap:6px;flex-wrap:wrap">${!x.escalado && (x.tipo === "reclamo" || x.tipo === "incidente") ? `<button class="btn small" data-nesc="${x.id}" type="button">Informé al Capitán</button>` : ""}<button class="btn small ghost" data-ndel="${x.id}" type="button">Quitar</button></span>` : ""}</div>`).join("");
+}
+function abrirNovedad(def){
+  const capSel = def.capitan_id || "";
+  const caps = Object.values(S.perfiles).filter(p => p.activo && CAPITANIA.includes(p.rol));
+  let tipo = "reclamo", tee = def.tee || 1;
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(fechaLarga(def.fecha))} · ${esc(TURNO_CORTO[def.turno])}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Registrar novedad</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <div style="display:grid;gap:14px">
+      <div><div class="hint" style="margin-bottom:6px">Tipo</div><div class="seg" id="nvTipo" style="flex-wrap:wrap">${Object.entries(NOV).map(([k, l]) => `<button type="button" data-v="na" data-t="${k}" aria-pressed="${k === tipo}">${esc(l)}</button>`).join("")}</div></div>
+      <div><div class="hint" style="margin-bottom:6px">Tee</div><div class="seg" id="nvTee">${[1, 10].map(t => `<button type="button" data-v="na" data-tee="${t}" aria-pressed="${t === tee}">Tee ${t}</button>`).join("")}</div></div>
+      <label class="f">Detalle<textarea id="nvNota" rows="3" placeholder="Qué pasó, grupo o jugador, hora…"></textarea></label>
+      <label class="f">Informado al Capitán<select id="nvCap"><option value="">Todavía no</option>${caps.map(c => `<option value="${c.id}" ${c.id === capSel ? "selected" : ""}>${esc(c.nombre)}</option>`).join("")}</select></label>
+      <p class="hint" style="margin:0">Meta: todo reclamo e incidente se informa al Capitán en el mismo turno.</p>
+      <p class="hint warn" id="nvErr" style="margin:0"></p>
+      <button class="btn primary" id="nvOk" type="button">Guardar novedad</button></div>`);
+  document.querySelectorAll("#nvTipo [data-t]").forEach(b => b.onclick = () => { tipo = b.dataset.t; document.querySelectorAll("#nvTipo [data-t]").forEach(y => y.setAttribute("aria-pressed", y === b)); });
+  document.querySelectorAll("#nvTee [data-tee]").forEach(b => b.onclick = () => { tee = +b.dataset.tee; document.querySelectorAll("#nvTee [data-tee]").forEach(y => y.setAttribute("aria-pressed", y === b)); });
+  $("#nvOk").onclick = async () => {
+    const nota = $("#nvNota").value.trim(), cap = $("#nvCap").value || null;
+    if (!nota) { $("#nvErr").textContent = "Escriba el detalle de la novedad."; return; }
+    $("#nvOk").disabled = true;
+    const { error } = await sb.from("st_novedades").insert({fecha:def.fecha, turno:def.turno, tee, tipo, nota, escalado:!!cap, escalado_a:cap, registrado_por:S.me.id});
+    if (error) { $("#nvOk").disabled = false; $("#nvErr").textContent = errMsg(error); return; }
+    closeSheet(); toast("Novedad registrada"); def.listo && def.listo();
+  };
+}
+function enlazarNovedades(root, N, capDef, listo){
+  root.querySelectorAll("[data-nesc]").forEach(b => b.onclick = async () => {
+    const cap = capDef() ; if (!cap) { toast("Indique primero el Capitán de turno."); return; }
+    const { error } = await sb.from("st_novedades").update({escalado:true, escalado_a:cap}).eq("id", b.dataset.nesc); if (error) { toast(errMsg(error)); return; } listo(); });
+  root.querySelectorAll("[data-ndel]").forEach(b => b.onclick = async () => {
+    if (!confirm("¿Quitar esta novedad?")) return;
+    const { error } = await sb.from("st_novedades").delete().eq("id", b.dataset.ndel); if (error) { toast(errMsg(error)); return; } listo(); });
+}
+
 /* ===================== Starter: Mi turno ===================== */
-S.st = {areas:[], items:[], turno: turnoPorHora(), fecha: hoyISO(), rep:null, resp:{}, val:null, prev:null, pend:{resp:{}, rep:{}}, saving:false, last:null, openAreas:null, loaded:false};
+S.st = {areas:[], items:[], turno: turnoPorHora(), fecha: hoyISO(), rep:null, resp:{}, val:null, prev:null, pend:{resp:{}, rep:{}}, saving:false, last:null, openAreas:null, loaded:false, sal:[], nov:[]};
 const stKey = () => `smgc_stpend_${S.me.id}`;
 const esFinde = f => [0, 6].includes(fechaDe(f).getDay());
 const itemsStDia = () => S.st.items.filter(i => !i.solo_fin_semana || esFinde(S.st.fecha));
+async function cargarMetasSt(){
+  const st = S.st, [a, n] = await Promise.all([sb.from("tee_salidas").select("*").eq("fecha", st.fecha), sb.from("st_novedades").select("*").eq("fecha", st.fecha).eq("turno", st.turno).order("hora")]);
+  st.sal = a.data || []; st.nov = n.data || [];
+}
+function renderMetasSt(){
+  const el = $("#stMetas"); if (!el) return; const st = S.st, tee = +draftSt().tee || 1;
+  const L = st.sal.filter(x => hoyoDe(x) === tee), N = st.nov.filter(x => +x.tee === tee);
+  el.innerHTML = `<div class="head" style="margin:0 0 10px"><div><h2 style="margin:0">Metas del turno · Tee ${tee}</h2><p class="sub" style="margin:4px 0 0">Criterios de éxito del Starter, con las salidas y novedades de hoy.</p></div></div>
+    ${kpisMetas(metasStarter(L, null, N))}
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:16px 0 8px;flex-wrap:wrap"><h2 style="margin:0">Novedades del turno</h2><button class="btn gold" id="stNov" type="button">Registrar novedad</button></div>
+    <div class="stack" style="gap:6px">${novedadesHTML(st.nov, true)}</div>`;
+  const listo = async () => { await cargarMetasSt(); renderMetasSt(); };
+  $("#stNov").onclick = () => abrirNovedad({fecha:st.fecha, turno:st.turno, tee, capitan_id:draftSt().capitan_id, listo});
+  enlazarNovedades(el, st.nov, () => draftSt().capitan_id, listo);
+}
 async function cargarTurnoSt(){
   const st = S.st; st.fecha = hoyISO();
   if (!st.areas.length) {
@@ -2283,6 +2370,7 @@ async function cargarTurnoSt(){
     sb.from("st_reportes").select("*").eq("fecha", st.fecha).eq("turno", st.turno).eq("starter_id", S.me.id).maybeSingle(),
     sb.from("st_reportes").select("id,starter_id,fecha,turno,tee,pendientes,firmado_en").eq("estado", "firmado").order("firmado_en", {ascending:false}).limit(3),
   ]);
+  await cargarMetasSt();
   st.rep = rep.data || null; st.resp = {}; st.val = null;
   if (st.rep) {
     const [r, v] = await Promise.all([sb.from("st_respuestas").select("*").eq("reporte_id", st.rep.id), sb.from("st_validaciones").select("*").eq("reporte_id", st.rep.id).maybeSingle()]);
@@ -2322,6 +2410,7 @@ function renderTurnoSt(){
   ${p ? `<div class="handoff"><div class="eyebrow">Entrega del turno anterior</div><div><b>${esc(nm(p.starter_id))}</b> · Tee ${p.tee} · ${esc(fechaCorta(p.fecha))} · ${esc(TURNO_CORTO[p.turno])} · firmado ${hora(p.firmado_en)}</div>
     <div>${p.pendientes ? esc(p.pendientes) : "<span class='hint'>Sin pendientes anotados.</span>"}</div></div>` : ""}
   ${esFinde(st.fecha) ? `<div class="callout gold">Hoy es fin de semana: de 3:00 a 7:00 p. m. cumple funciones de Marshal. Registre las incidencias en el módulo Marshals.</div>` : ""}
+  <div class="panel" id="stMetas"></div>
   <div class="progress panel" style="padding:12px 16px"><span class="mono" id="stProg">${s2.answered}/${s2.total}</span><div class="bar"><i id="stBar" style="width:${s2.total ? Math.round(100*s2.answered/s2.total) : 0}%"></i></div><span class="mono" id="stCum">${s2.cumpl}%</span></div>
   <div id="stAreas" class="stack" style="gap:10px"></div>
   <div class="panel"><h2>Cierre del turno</h2><div class="stack" style="gap:10px">
@@ -2330,7 +2419,7 @@ function renderTurnoSt(){
     ${ro ? `<div class="callout">Firmado a las ${hora(d.firmado_en)}.${st.val ? ` Validado a las ${hora(st.val.validado_en)} por ${esc(nm(st.val.validado_por))}${st.val.observaciones ? ": " + esc(st.val.observaciones) : "."}` : ""}</div>`
          : `<div id="stHint" class="hint"></div><button class="btn gold" id="stSign" type="button">Firmar reporte del turno</button>`}
   </div></div>`;
-  renderAreasSt(ro); updSaveSt(); updHintSt();
+  renderAreasSt(ro); updSaveSt(); updHintSt(); renderMetasSt();
   $("#stIr").onclick = () => { const el = $("#stAreas"); const first = itemsStDia().find(i => !st.resp[i.id]); const dd = first && el.querySelector(`details[data-a="${first.area}"]`); if (dd) dd.open = true; const t = dd || el, hd = document.querySelector("header"); window.scrollTo({top: t.getBoundingClientRect().top + scrollY - (hd ? hd.getBoundingClientRect().height : 0) - 12, behavior:"smooth"}); };
   $("#stSal").onclick = () => { S.tee.fecha = hoyISO(); S.tee.loaded = false; S.tee.hoyo = String(+draftSt().tee || 1); try { localStorage.setItem("smgc_tee_hoyo", S.tee.hoyo); } catch(e){} go("salidas"); };
   $("#stTurno").onchange = async e => { await flushSt(); st.turno = e.target.value; st.loaded = false; st.openAreas = null; renderTurnoSt(); };
@@ -2406,7 +2495,8 @@ async function firmarSt(){
 function suscribirStarter(){
   sb.channel("starter-vivo")
     .on("postgres_changes", {event:"*", schema:"public", table:"st_validaciones"}, () => { if (S.view === "turnost" && !$("#ov")) { S.st.loaded = false; renderTurnoSt(); } })
-    .on("postgres_changes", {event:"*", schema:"public", table:"tee_salidas"}, () => { clearTimeout(suscribirStarter._t); suscribirStarter._t = setTimeout(() => { if (S.view === "salidas" && !$("#ov")) cargarSalidas(); }, 400); })
+    .on("postgres_changes", {event:"*", schema:"public", table:"tee_salidas"}, () => { clearTimeout(suscribirStarter._t); suscribirStarter._t = setTimeout(async () => { if (S.view === "salidas" && !$("#ov")) cargarSalidas(); if (S.view === "turnost" && S.st.loaded) { await cargarMetasSt(); renderMetasSt(); } }, 400); })
+    .on("postgres_changes", {event:"*", schema:"public", table:"st_novedades"}, async () => { if (S.view === "turnost" && S.st.loaded && !$("#ov")) { await cargarMetasSt(); renderMetasSt(); } })
     .subscribe();
   window.addEventListener("pagehide", () => { if (S.me) lsSet(stKey(), (Object.keys(S.st.pend.resp).length || Object.keys(S.st.pend.rep).length) ? S.st.pend : null); });
 }
@@ -2418,24 +2508,28 @@ async function cargarStarters(){
   if (!g.data) v.innerHTML = `<div class="loading">Cargando checklists de Starters…</div>`;
   if (!S.st.items.length) { const [a, it] = await Promise.all([sb.from("st_areas").select("*").order("orden"), sb.from("st_items").select("*").eq("activo", true).order("orden")]);
     if (!a.error && !it.error) { S.st.areas = a.data.map(x => ({...x, items: it.data.filter(i => i.area === x.codigo)})); S.st.items = S.st.areas.flatMap(x => x.items); } }
-  const r = await sb.from("v_st_resumen").select("*").gte("fecha", g.desde).lte("fecha", g.hasta).order("fecha", {ascending:false}).order("turno");
+  const [r, sl, nv] = await Promise.all([sb.from("v_st_resumen").select("*").gte("fecha", g.desde).lte("fecha", g.hasta).order("fecha", {ascending:false}).order("turno"),
+    sb.from("tee_salidas").select("fecha,hora,hoyo,estado,salida_real,cruce_real").gte("fecha", g.desde).lte("fecha", g.hasta),
+    sb.from("st_novedades").select("*").gte("fecha", g.desde).lte("fecha", g.hasta).order("fecha", {ascending:false}).order("hora", {ascending:false})]);
+  g.sal = sl.data || []; g.nov = nv.data || [];
   if (r.error) { v.innerHTML = `<div class="empty"><strong>No se pudo cargar</strong>${esc(errMsg(r.error))}</div>`; return; }
   g.data = r.data; if (S.view === "starters" && !$("#ov")) renderStarters();
 }
 function renderStarters(){
   const v = $("#v-starters"), g = S.sts, reps = g.data;
   const firm = reps.filter(x => x.estado === "firmado"), porVal = firm.filter(x => !x.validado_en), mios = porVal.filter(x => x.capitan_id === S.me.id);
-  let resp = 0, ok = 0; firm.forEach(x => { resp += x.respondidas; ok += Math.round((x.cumplimiento_pct || 0) * x.respondidas / 100); });
+  const tee = g.tee || "todos", Lt = tee === "todos" ? g.sal : g.sal.filter(x => String(hoyoDe(x)) === tee), Nt = tee === "todos" ? g.nov : g.nov.filter(x => String(x.tee) === tee), Rt = tee === "todos" ? reps : reps.filter(x => String(x.tee) === tee);
   const totalDia = f => S.st.items.filter(i => !i.solo_fin_semana || esFinde(f)).length || "—";
   v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Starters</div><h1>Checklists de Starters</h1>
       <p class="sub">${esc(fechaCorta(g.desde))} – ${esc(fechaCorta(g.hasta))} · ${plural(reps.length, "reporte")} · ${porVal.length} por validar${mios.length ? ` (${mios.length} a su nombre)` : ""}</p></div>
       <button class="btn" id="stRef" type="button">Actualizar</button></div>
     <div class="filters panel" style="padding:12px"><label class="f">Desde<input type="date" id="stDesde" value="${g.desde}"></label><label class="f">Hasta<input type="date" id="stHasta" value="${g.hasta}"></label></div>
-    <div class="kpis">
-      ${kpi("Cumplimiento del checklist", resp ? Math.round(100*ok/resp) : null, "%", "Sí + N/A justificadas, sobre lo respondido", cls(resp ? Math.round(100*ok/resp) : null, 95, 85))}
-      ${kpi("Turnos validados", firm.length ? Math.round(100*(firm.length - porVal.length)/firm.length) : null, "%", `${firm.length - porVal.length} de ${firm.length} firmados · meta 100%`, cls(firm.length ? Math.round(100*(firm.length - porVal.length)/firm.length) : null))}
-      ${kpi("Por validar", porVal.length, "", mios.length ? `${mios.length} indicados a usted como Capitán de turno` : "Turnos firmados sin validar", porVal.length ? "warn" : "ok")}
-    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Criterios de éxito del Starter</h2>
+      <div class="chips" id="stgTee">${[["todos","Ambos tees"],["1","Tee 1"],["10","Tee 10"]].map(([k, l]) => `<button class="chip" type="button" data-t="${k}" aria-pressed="${tee === k}">${l}</button>`).join("")}</div></div>
+    ${kpisMetas(metasStarter(Lt, Rt, Nt))}
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0">Novedades (${Nt.length})</h2><button class="btn" id="stgNov" type="button">Registrar novedad</button></div>
+    <div class="panel stack" style="gap:6px">${novedadesHTML(Nt.slice(0, 30), true)}</div>
+    <h2 style="margin:0">Turnos</h2>
     ${reps.length ? `<div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Turno</th><th>Tee</th><th>Starter</th><th>Capitán</th><th>Cumpl.</th><th>No</th><th>Estado</th></tr></thead><tbody>
       ${reps.map(x => `<tr class="click" data-sr="${x.id}"><td class="num">${esc(fechaCorta(x.fecha))}</td><td>${TURNO_CORTO[x.turno]}</td><td class="num">${x.tee}</td><td>${esc(x.starter)}</td><td>${esc(x.capitan_id ? nm(x.capitan_id) : "—")}</td>
         <td class="num">${x.estado === "firmado" ? (x.cumplimiento_pct ?? 0) + "%" : `${x.respondidas}/${totalDia(x.fecha)}`}</td><td class="num">${x.no}</td>
@@ -2444,6 +2538,9 @@ function renderStarters(){
   $("#stDesde").onchange = e => { g.desde = e.target.value || g.desde; cargarStarters(); };
   $("#stHasta").onchange = e => { g.hasta = e.target.value || g.hasta; cargarStarters(); };
   $("#stRef").onclick = cargarStarters;
+  v.querySelectorAll("#stgTee [data-t]").forEach(b => b.onclick = () => { g.tee = b.dataset.t; renderStarters(); });
+  $("#stgNov").onclick = () => abrirNovedad({fecha:hoyISO(), turno:turnoPorHora(), tee: tee === "10" ? 10 : 1, capitan_id:S.me.id, listo:cargarStarters});
+  enlazarNovedades(v, Nt, () => S.me.id, cargarStarters);
   v.querySelectorAll("tr[data-sr]").forEach(tr => tr.onclick = () => abrirReporteSt(tr.dataset.sr));
 }
 async function abrirReporteSt(id){
