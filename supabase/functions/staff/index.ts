@@ -21,7 +21,7 @@ const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey(), {
 });
 
 const GERENCIA = ["gerente_operaciones", "gerente_golf", "admin"];
-const ROLES_CREABLES = ["marshal", "capitan", "gerente_operaciones", "gerente_golf"];
+const ROLES_CREABLES = ["marshal", "starter", "capitan", "gerente_operaciones", "gerente_golf"];
 const USUARIO_RE = /^[a-z0-9][a-z0-9._-]{2,29}$/;
 
 async function config(clave: string) {

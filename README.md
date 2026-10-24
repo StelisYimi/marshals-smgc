@@ -1,6 +1,6 @@
 # SMGC · Control operativo de Santa María Golf Club
 
-Plataforma web del departamento de Operación de Golf: la usan Marshals, Capitanes y Gerencia desde el teléfono, y una televisión muestra el horario del personal en tiempo real.
+Plataforma web del departamento de Operación de Golf: la usan Marshals, Starters, Capitanes y Gerencia desde el teléfono, y una televisión muestra el horario del personal en tiempo real.
 
 - **App:** https://app.smcapibara.com
 - **Tablero de TV:** `https://app.smcapibara.com/tablero/?k=<enlace>` (Gerencia obtiene el enlace en la app, pestaña **Capitanes → Horario**)
@@ -11,6 +11,9 @@ Plataforma web del departamento de Operación de Golf: la usan Marshals, Capitan
 | Módulo | Qué hace |
 |---|---|
 | **Marshals** | Checklist por turno, incidencias con fotos y prioridad, protocolo de juego lento, entrega de turno, panel de Gerencia con indicadores. |
+| **Starter · Mi turno** | Checklist diario del Starter (36 actividades en 7 áreas; la de funciones de Marshal solo sábados y domingos), tee asignado (1 o 10), Capitán de turno, entrega del turno anterior, firma. Funciona sin señal y sincroniza al volver. |
+| **Starter · Salidas** | Las salidas del día por su tee: marcar salida y **cruce por el hoyo 9** (meta de la primera vuelta: 2 h 15 min). El Starter no carga el tee sheet. |
+| **Capitanes · Starters** | Checklists de los Starters por fechas, cumplimiento, salidas puntuales y tiempos de cruce de su tee; el Capitán (o Gerencia) valida o retira la validación. |
 | **Capitanes · Mi turno** | Checklist del Capitán (55 actividades en 8 áreas), condiciones de la cancha, puestos del equipo, insumos, firma y validación de Gerencia. |
 | **Capitanes · Salidas** | Salidas del tee sheet del día, con **salida simultánea por los hoyos 1 y 10** (filtro Ambos / Hoyo 1 / Hoyo 10, próxima salida y % puntual por hoyo). Botón **Cargar tee sheet**: PDF del sistema (lectura exacta por columnas, incluida la columna Hole), PDF hecho de capturas o capturas de pantalla (lectura de imagen en el propio teléfono) o texto pegado, siempre con revisión antes de guardar. Hora real de salida, no presentados y % de salidas puntuales (tolerancia 5 min). |
 | **Capitanes · Horario** | Horario semanal del personal: turno, función (letra), almuerzo, descanso, vacaciones y compensatorio. Copiar semana anterior, personal y funciones editables. |
@@ -64,5 +67,6 @@ Después, en la tabla `config_sistema`, cargar `dominio_usuarios`, `correo_geren
 | Rol | Acceso |
 |---|---|
 | Marshal | Módulo Marshals |
+| Starter | Módulo Starter y módulo Marshals (fines de semana de 3 a 7 p. m. cumple funciones de Marshal) |
 | Capitán | Módulo Capitanes; en Horario puede ajustar solo el día de hoy |
 | Gerente de Operaciones / de Golf, Administrador | Ambos módulos, supervisión, validación, horario semanal, cuentas del staff y enlace de la TV |
