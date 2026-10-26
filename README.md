@@ -17,7 +17,7 @@ Plataforma web del departamento de Operación de Golf: la usan Marshals, Starter
 | **Capitanes · Starters** | Checklists de los Starters por fechas, cumplimiento, salidas puntuales y tiempos de cruce de su tee; los 10 criterios de éxito por tee y periodo (incluye checklists firmados 100%, cumplimiento ≥ 95% y turnos validados 100%), novedades, y el Capitán (o Gerencia) valida o retira la validación. |
 | **Capitanes · Mi turno** | Checklist del Capitán (55 actividades en 8 áreas), condiciones de la cancha, puestos del equipo, insumos, firma y validación de Gerencia. |
 | **Capitanes · Salidas** | Salidas del tee sheet del día, con **salida simultánea por los hoyos 1 y 10** (filtro Ambos / Hoyo 1 / Hoyo 10, próxima salida y % puntual por hoyo). Botón **Cargar tee sheet**: PDF del sistema (lectura exacta por columnas, incluida la columna Hole), PDF hecho de capturas o capturas de pantalla (lectura de imagen en el propio teléfono) o texto pegado, siempre con revisión antes de guardar. Hora real de salida, no presentados y % de salidas puntuales (tolerancia 5 min). |
-| **Capitanes · Horario** | Horario semanal del personal: turno, función (letra), almuerzo, descanso, vacaciones y compensatorio. Copiar semana anterior, personal y funciones editables. |
+| **Capitanes · Horario** | Horario semanal del personal: turno, función (letra), almuerzo, descanso, vacaciones y compensatorio. Botón **Cargar horarios** (Capitanes y Gerencia): Excel, PDF, capturas de pantalla o texto pegado, con la fila de los días y un colaborador por fila; cada día se lee como horario y letra (`5-1 S`, `11-7 F`, `1-9 ER`, `9:30-6 P`), `D`/`Libre`, `VAC` o `COMP`. Empareja los nombres con el personal, permite agregar personas nuevas y siempre muestra la revisión antes de guardar (función `cargar_horario`). Copiar semana anterior, personal y funciones editables. |
 | **Capitanes · Palos de alquiler** | Entrega con revisión de piezas y firma del huésped, devolución, historial y correos de confirmación. |
 | **Capitanes · Bolsas** | Bolsas de miembros por casilla: entrega y recepción. |
 | **Tablero de TV** | Quién está en cada función ahora, próximas entradas con instrucciones, almuerzos y libres del día. Sin inicio de sesión; se actualiza cada 30 s. |
@@ -69,5 +69,5 @@ Después, en la tabla `config_sistema`, cargar `dominio_usuarios`, `correo_geren
 |---|---|
 | Marshal | Módulo Marshals |
 | Starter | Módulo Starter y módulo Marshals (fines de semana de 3 a 7 p. m. cumple funciones de Marshal) |
-| Capitán | Módulo Capitanes; en Horario puede ajustar solo el día de hoy |
+| Capitán | Módulo Capitanes; en Horario puede ajustar a mano solo el día de hoy y cargar la semana completa con **Cargar horarios** |
 | Gerente de Operaciones / de Golf, Administrador | Ambos módulos, supervisión, validación, horario semanal, cuentas del staff y enlace de la TV |

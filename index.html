@@ -245,6 +245,24 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .hleyenda{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--muted)}
 .hleyenda span{display:inline-flex;gap:6px;align-items:center}
 .hleyenda i{font-style:normal;font-family:var(--f-mono);font-weight:600;color:#fff;background:var(--c);border-radius:5px;padding:0 6px}
+/* Capitanes · cargar horarios */
+.hrv{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--paper);display:grid;gap:8px}
+.hrv-h{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 8px;align-items:center}
+.hrv-h select{min-width:0;grid-column:1;grid-row:1}
+.hrv-h [data-rm]{grid-column:2;grid-row:1}
+.hrv-h .hint{grid-column:1/-1;grid-row:2;font-size:12px;margin:0}
+.hrv-h .hrv-nom{grid-column:1/-1;grid-row:3}
+.hrv-d{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+@media (max-width:700px){.hrv-d{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:440px){.hrv-d{gap:4px}.hrv-c input{font-size:14px;padding:7px 4px;letter-spacing:-.02em}}
+@media (max-width:330px){.hrv-d{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.hrv-c{display:grid;gap:2px;min-width:0}
+.hrv-c span{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--muted);text-transform:uppercase}
+.hrv-c input{font-family:var(--f-mono);font-size:16px;padding:8px;min-width:0;width:100%}
+.hrv-c small{font-size:11px;color:var(--muted);line-height:1.25;overflow-wrap:anywhere;min-height:14px}
+.hrv-c.err input{border-color:var(--crit);background:var(--crit-soft,#fbeaea)}
+.hrv-c.err small{color:var(--crit)}
+.hrv-c.vac input{background:var(--ground)}
 /* Capitanes · salidas */
 .tee-list{display:grid;gap:8px}
 .tee{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--line-strong);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;min-width:0}
@@ -1700,8 +1718,9 @@ function renderHorario(){
   const grupos = [...new Set(h.personal.map(p => p.grupo))];
   const vacios = h.personal.length * 7 - h.turnos.filter(t => h.personal.some(p => p.id === t.personal_id)).length;
   v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Operación de golf</div><h1>Horario del personal</h1>
-      <p class="sub">Semana del ${esc(fechaCorta(dias[0]))} al ${esc(fechaCorta(dias[6]))} · ${plural(h.personal.length, "persona")}${vacios > 0 ? ` · ${plural(vacios, "día sin asignar", "días sin asignar")}` : ""}${S.esGer ? "" : " · usted puede ajustar solo el día de hoy"}</p></div>
+      <p class="sub">Semana del ${esc(fechaCorta(dias[0]))} al ${esc(fechaCorta(dias[6]))} · ${plural(h.personal.length, "persona")}${vacios > 0 ? ` · ${plural(vacios, "día sin asignar", "días sin asignar")}` : ""}${S.esGer ? "" : " · a mano puede ajustar solo el día de hoy; la semana completa se sube con Cargar horarios"}</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${S.esCap ? `<button class="btn primary" id="hCargar" type="button">Cargar horarios</button>` : ""}
         <button class="btn small" id="hPrev" type="button">← Semana anterior</button><button class="btn small" id="hHoy" type="button">Esta semana</button><button class="btn small" id="hNext" type="button">Semana siguiente →</button></div></div>
     ${S.esGer ? `<div class="callout gold" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Tablero de TV:</b> ${h.token ? `abra este enlace en el navegador de la Smart TV.` : "no hay enlace activo."}</span>
       ${h.token ? `<code style="font-family:var(--f-mono);font-size:12px;overflow-wrap:anywhere;flex:1 1 260px">${esc(urlTablero())}</code><button class="btn small" id="hCopy" type="button">Copiar enlace</button><a class="btn small" style="color:var(--ink)" href="${esc(urlTablero())}" target="_blank" rel="noopener">Abrir tablero</a>` : ""}
@@ -1711,11 +1730,12 @@ function renderHorario(){
       <tbody>${grupos.map(g => `<tr><td colspan="8" class="eyebrow" style="padding:10px 10px 4px;background:var(--ground)">${esc(g)}</td></tr>` +
         h.personal.filter(p => p.grupo === g).map(p => `<tr><td class="pn">${esc(p.nombre)}</td>${dias.map(f => `<td>${celdaHor(idx[f + "|" + p.id], f, p.id)}</td>`).join("")}</tr>`).join("")).join("")}
       </tbody></table></div>
-    ${h.personal.length ? "" : `<div class="empty"><strong>Aún no hay personal cargado</strong>${S.esGer ? "Agréguelo con el botón Personal." : "Gerencia debe cargar el personal."}</div>`}
+    ${h.personal.length ? "" : `<div class="empty"><strong>Aún no hay personal cargado</strong>${S.esGer ? "Agréguelo con el botón Personal o con Cargar horarios." : "Use Cargar horarios o pídale a Gerencia que cargue el personal."}</div>`}
     <div class="hleyenda">${h.puestos.map(p => `<span><i style="--c:${esc(p.color)}">${esc(p.codigo)}</i>${esc(p.nombre)}</span>`).join("")}</div>`;
   $("#hPrev").onclick = () => { h.lunes = masDias(h.lunes, -7); renderHorario(); };
   $("#hNext").onclick = () => { h.lunes = masDias(h.lunes, 7); renderHorario(); };
   $("#hHoy").onclick = () => { h.lunes = lunesDe(hoyISO()); renderHorario(); };
+  if ($("#hCargar")) $("#hCargar").onclick = abrirCargaHorario;
   v.querySelectorAll("[data-hf]").forEach(b => b.onclick = () => editarTurno(b.dataset.hf, b.dataset.hp));
   const th = v.querySelector(".hgrid th.hoy"), tw = v.querySelector(".tablewrap");
   if (th && tw && tw.scrollWidth > tw.clientWidth) { const pn = v.querySelector(".hgrid td.pn"); tw.scrollLeft = Math.max(0, th.offsetLeft - (pn ? pn.offsetWidth : 0) - 8); }
@@ -1836,6 +1856,353 @@ function editarFunciones(){
     const p = h.puestos.find(x => x.codigo === c); if (p) p[i.dataset.k] = val; toast("Guardado");
     if (i.dataset.k === "color") i.closest("[data-pc]").querySelector(".pill").style.background = val;
   });
+}
+
+/* ---------- Cargar horarios: Excel, PDF, captura de pantalla o texto pegado ---------- */
+const DIA_CLAVES = [["lunes","lun","mon","monday"],["martes","mar","tue","tues","tuesday"],["miercoles","mie","mier","wed","wednesday"],["jueves","jue","thu","thur","thursday"],["viernes","vie","fri","friday"],["sabado","sab","sat","saturday"],["domingo","dom","sun","sunday"]];
+const MESES_ES = {ene:1, jan:1, feb:2, mar:3, abr:4, apr:4, may:5, jun:6, jul:7, ago:8, aug:8, sep:9, set:9, oct:10, nov:11, dic:12, dec:12};
+// "Lunes", "LUN 26/10", "Mon 10/26" → índice del día (0 = lunes) o -1
+function diaDeTexto(s){
+  const w = norm(s).replace(/[^a-z0-9/\- ]/g, " ").trim().split(/\s+/)[0] || "";
+  return DIA_CLAVES.findIndex(ks => ks.includes(w) || (w.length >= 5 && ks[0].startsWith(w)));
+}
+// Fecha dentro de un encabezado ("26/10", "26-oct", "10/26/26"); dia = índice del día de esa columna para resolver d/m o m/d
+function fechaEnTexto(s, dia){
+  const t = norm(s), hoy = new Date(), cands = [];
+  let m = t.match(/(\d{1,2})[\/\-.](\d{1,2})(?:[\/\-.](\d{2,4}))?/);
+  if (m) { const a = +m[1], b = +m[2], y = m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : null; cands.push([a, b, y], [b, a, y]); }
+  m = t.match(/(\d{1,2})\s*(?:de\s*)?[\-\s]?\s*([a-z]{3})[a-z]*\.?(?:\s*(?:de\s*)?(\d{4}))?/);
+  if (m && MESES_ES[m[2]]) cands.push([+m[1], MESES_ES[m[2]], m[3] ? +m[3] : null]);
+  m = t.match(/([a-z]{3})[a-z]*\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?/);
+  if (m && MESES_ES[m[1]]) cands.push([+m[2], MESES_ES[m[1]], m[3] ? +m[3] : null]);
+  for (const [d, mo, y0] of cands) {
+    if (d < 1 || d > 31 || mo < 1 || mo > 12) continue;
+    for (const y of y0 ? [y0] : [hoy.getFullYear(), hoy.getFullYear() + 1, hoy.getFullYear() - 1]) {
+      const f = new Date(y, mo - 1, d); if (f.getMonth() !== mo - 1) continue;
+      if (!y0 && Math.abs(f - hoy) > 200 * 864e5) continue;   // sin año: solo fechas cercanas a hoy
+      if (dia < 0 || (f.getDay() + 6) % 7 === dia) return hoyISO(f);
+    }
+  }
+  return null;
+}
+// Hora suelta → minutos. Sin a. m./p. m.: la entrada de 1 a 4 es de la tarde (ej. 1-9 = Range nocturno)
+function horaCelda(h, mm, ap, minimo){
+  let t = (+h) * 60 + (+mm || 0);
+  if (+h > 23 || (+mm || 0) > 59) return null;
+  if (ap) { const p = /p/i.test(ap); t = ((+h % 12) + (p ? 12 : 0)) * 60 + (+mm || 0); return t; }
+  if (+h > 12) return t;
+  if (minimo == null) return (+h >= 1 && +h <= 4) ? t + 720 : t;
+  while (t <= minimo && t + 720 < 24 * 60) t += 720;
+  return t;
+}
+const mm2hm = t => `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
+const RE_RANGO = /(\d{1,2})(?:\s*[:.h]\s*(\d{2}))?\s*([ap]\.?\s*m\.?)?\s*(?:-|–|—|\bal?\b|\bto\b|\bhasta\b)\s*(\d{1,2})(?:\s*[:.h]\s*(\d{2}))?\s*([ap]\.?\s*m\.?)?/i;
+// Celda del horario → {tipo, inicio, fin, puesto, nota} | {vacio} | {error}
+function parsearCelda(txt, puestos){
+  let s = String(txt == null ? "" : txt).replace(/ /g, " ").trim();
+  if (!s || /^[-–—.·_]+$/.test(s)) return {vacio:true};
+  let nota = null; const pn = s.match(/\(([^)]*)\)/); if (pn) { nota = pn[1].trim() || null; s = s.replace(pn[0], " ").trim(); }
+  const n = norm(s).replace(/\s+/g, " ").trim(), n0 = n.replace(/[^a-z]/g, "");
+  if (/^(d|desc|descanso|libre|lib|off|dl|day off|franco)$/.test(n) || /^descanso|^libre/.test(n)) return {tipo:"descanso", nota};
+  if (/^(v|vac|vacacion|vacaciones)$/.test(n0) || /^vacac/.test(n)) return {tipo:"vacaciones", nota};
+  if (/^(cp|comp|compe|compen|compensatorio|compensado)$/.test(n0) || /^compens/.test(n)) return {tipo:"compensatorio", nota};
+  const r = s.match(RE_RANGO);
+  let resto = r ? (s.slice(0, r.index) + " " + s.slice(r.index + r[0].length)) : s;
+  // Función: código exacto (S/7, ER, 7…) o nombre de la función
+  const cods = puestos.map(p => p.codigo).sort((a, b) => b.length - a.length);
+  const tokens = resto.toUpperCase().replace(/[,;]/g, " ").split(/\s+/).filter(Boolean);
+  let puesto = null;
+  const unido = tokens.join("").replace(/\s+/g, "");
+  puesto = cods.find(c => unido === c.toUpperCase()) || null;
+  if (!puesto) for (const tk of tokens) { const c = cods.find(c => c.toUpperCase() === tk); if (c) { puesto = c; break; } }
+  if (!puesto && unido) { const nr = norm(resto).replace(/[^a-z ]/g, " ").trim(); const p = nr && puestos.find(p => norm(p.nombre) === nr || (nr.length >= 4 && norm(p.nombre).startsWith(nr))); if (p) puesto = p.codigo; }
+  if (!r) {
+    if (puesto) return {error:`Falta la hora de la función ${puesto}`};
+    return {error:"No se entiende"};
+  }
+  const ini = horaCelda(r[1], r[2], r[3], null), fin = horaCelda(r[4], r[5], r[6], ini);
+  if (ini == null || fin == null || fin <= ini) return {error:"Hora no válida"};
+  if (!puesto) return {error: unido ? `Función “${resto.trim()}” desconocida` : "Falta la función"};
+  return {tipo:"trabajo", inicio:mm2hm(ini), fin:mm2hm(fin), puesto, nota};
+}
+const textoCelda = c => !c || c.vacio ? "" : c.error ? "" : c.tipo !== "trabajo" ? ({descanso:"D", vacaciones:"VAC", compensatorio:"COMP"})[c.tipo] + (c.nota ? ` (${c.nota})` : "")
+  : `${hcorta(c.inicio).replace(/[ap]$/, "")}-${hcorta(c.fin).replace(/[ap]$/, "")} ${c.puesto}${c.nota ? ` (${c.nota})` : ""}`;
+
+// Tabla (filas de celdas de texto) → {semana, filas:[{nombre, celdas:[7 textos]}]}
+function horarioDeTabla(tabla){
+  let mejor = null;
+  tabla.forEach((fila, i) => {
+    const dias = fila.map((c, j) => ({j, d: diaDeTexto(c)})).filter(x => x.d >= 0);
+    const distintos = new Set(dias.map(x => x.d)).size;
+    if (distintos >= 4 && (!mejor || distintos > mejor.n)) mejor = {i, n:distintos, dias};
+  });
+  if (!mejor) tabla.forEach((fila, i) => {   // encabezado solo con fechas (26/10, 27/10…)
+    if (mejor) return;
+    const dias = fila.map((c, j) => { const fe = /\d/.test(c || "") && !RE_RANGO.test(c) ? fechaEnTexto(c, -1) : null; return fe ? {j, d:(fechaDe(fe).getDay() + 6) % 7, fe} : null; }).filter(Boolean);
+    if (new Set(dias.map(x => x.d)).size >= 4 && dias.every(x => lunesDe(x.fe) === lunesDe(dias[0].fe))) mejor = {i, n:dias.length, dias};
+  });
+  if (!mejor) return null;
+  const enc = tabla[mejor.i], cols = [];   // por día: columnas que le pertenecen (un día puede ocupar varias: hora y función)
+  const dias = []; mejor.dias.forEach(x => { if (!dias.some(y => y.d === x.d)) dias.push(x); });
+  dias.forEach((x, k) => { const hasta = k + 1 < dias.length ? dias[k + 1].j : Math.max(enc.length, ...tabla.map(f => f.length)); cols[x.d] = []; for (let j = x.j; j < hasta; j++) cols[x.d].push(j); });
+  // Una columna extra después del último día solo se une si en el encabezado está vacía y no lleva totales
+  const ult = dias[dias.length - 1]; if (cols[ult.d].length > 2) cols[ult.d] = cols[ult.d].slice(0, 2);
+  const primera = dias[0].j;
+  // Semana: fecha en el encabezado del día o en la fila de abajo / arriba
+  let semana = null;
+  // La fila de abajo solo cuenta como fila de fechas si casi todas sus columnas son fechas (no "5-1")
+  const esFilaFechas = f => { if (!f) return false; const ls = dias.map(x => fechaEnTexto(f[x.j] || "", x.d)).filter(Boolean).map(lunesDe);
+    return ls.length >= Math.min(4, dias.length) && ls.every(l => l === ls[0]); };
+  for (const fi of [mejor.i, mejor.i - 1, mejor.i + 1]) { const f = tabla[fi]; if (!f || (fi !== mejor.i && !esFilaFechas(f))) continue;
+    for (const x of dias) { const fe = fechaEnTexto(f[x.j] || "", x.d); if (fe) { semana = lunesDe(fe); break; } } if (semana) break; }
+  if (!semana) for (const f of tabla.slice(0, mejor.i)) { for (const c of f) { const fe = fechaEnTexto(c, -1); if (fe) { semana = lunesDe(fe); break; } } if (semana) break; }
+  const filas = [];
+  for (const f of tabla.slice(mejor.i + 1)) {
+    const nombre = f.slice(0, primera).map(c => String(c || "").trim()).filter(c => /[a-záéíóúñ]{2}/i.test(c)).sort((a, b) => b.length - a.length)[0];
+    if (!nombre || /^(nombre|colaborador|personal|empleado|total|leyenda|nota)/i.test(norm(nombre))) continue;
+    const celdas = [0,1,2,3,4,5,6].map(d => cols[d] ? cols[d].map(j => String(f[j] == null ? "" : f[j]).trim()).filter(Boolean).join(" ") : "");
+    if (celdas.every(c => !c) || esFilaFechas(f)) continue;
+    filas.push({nombre: nombre.replace(/\s+/g, " "), celdas});
+  }
+  return {semana, filas};
+}
+// Línea de texto sin columnas: "Alfredo Córdoba 5-1 C 5-1 C D 11-7 S …" → nombre y 7 celdas en orden
+const RE_CELDA_LINEA = new RegExp(`(?:${RE_RANGO.source})(?:\\s*(?:S\\/7|S\\/R|F\\/R|ER|[A-Z]|7)\\b)?|\\b(?:DESCANSO|LIBRE|OFF|VACACIONES|VAC|COMPENSATORIO|COMP|CP|D|V)\\b`, "gi");
+function horarioDeLineas(lineas){
+  const enc = lineas.findIndex(l => new Set(l.split(/\s+/).map(diaDeTexto).filter(d => d >= 0)).size >= 4);
+  let semana = null;
+  if (enc >= 0) { const ds = lineas[enc].split(/\s+/); for (let k = 0; k < ds.length; k++) { const d = diaDeTexto(ds[k]); if (d >= 0) { const fe = fechaEnTexto(ds.slice(k, k + 3).join(" "), d); if (fe) { semana = lunesDe(fe); break; } } } }
+  const filas = [];
+  lineas.slice(enc + 1).forEach(l => {
+    if (/\t/.test(l)) return;
+    const ms = [...l.matchAll(RE_CELDA_LINEA)]; if (!ms.length) return;
+    const nombre = l.slice(0, ms[0].index).replace(/[^A-Za-zÁ-úñÑ.' ]/g, " ").replace(/\s+/g, " ").trim();
+    if (nombre.length < 3) return;
+    const celdas = ms.slice(0, 7).map(m => m[0].trim()); while (celdas.length < 7) celdas.push("");
+    filas.push({nombre, celdas});
+  });
+  return {semana, filas};
+}
+// Piezas de texto con posición (PDF o palabras de la imagen; y hacia arriba) → tabla con una columna por día
+function tablaDeItems(items, tolY){
+  const filas = [];
+  items.slice().sort((a, b) => b.y - a.y || a.x - b.x).forEach(i => { const f = filas[filas.length - 1]; if (f && Math.abs(f.y - i.y) <= tolY) f.items.push(i); else filas.push({y:i.y, items:[i]}); });
+  filas.forEach(f => f.items.sort((a, b) => a.x - b.x));
+  let enc = null;
+  for (const f of filas) { const ds = f.items.map(i => ({i, d: diaDeTexto(i.s)})).filter(x => x.d >= 0); if (new Set(ds.map(x => x.d)).size >= 4) { enc = {f, ds}; break; } }
+  if (!enc) return null;
+  const vistos = new Set(), dias = enc.ds.filter(x => !vistos.has(x.d) && vistos.add(x.d)).map(x => ({d:x.d, c:x.i.x + (x.i.w || 0) / 2}));
+  const gaps = dias.slice(1).map((x, k) => x.c - dias[k].c), gap = gaps.length ? Math.min(...gaps) : 80;
+  const lim = dias.map((x, k) => k + 1 < dias.length ? (x.c + dias[k + 1].c) / 2 : x.c + gap / 2), ini = dias[0].c - gap / 2;
+  const tabla = [];
+  for (const f of filas.slice(filas.indexOf(enc.f))) {
+    const fila = ["", "", "", "", "", "", "", ""];
+    for (const i of f.items) {
+      const cx = i.x + (i.w || 0) / 2;
+      if (i.x + (i.w || 0) <= ini + 4) { fila[0] += (fila[0] ? " " : "") + i.s; continue; }
+      let k = lim.findIndex(l => cx < l); if (k < 0) continue;
+      fila[1 + dias[k].d] += (fila[1 + dias[k].d] ? " " : "") + i.s;
+    }
+    tabla.push(fila);
+  }
+  tabla[0] = ["", ...DIAS.map((n, d) => { const x = dias.find(y => y.d === d); return x ? tabla[0][1 + d] || n : ""; })];
+  return tabla;
+}
+async function leerHorExcel(file){
+  await cargarJS(XLSX_URL, "XLSX");
+  const wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
+  let mejor = null;
+  for (const n of wb.SheetNames) {
+    const tabla = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:false, defval:"", blankrows:false}).map(f => f.map(c => String(c == null ? "" : c)));
+    const r = horarioDeTabla(tabla); if (r && (!mejor || r.filas.length > mejor.filas.length)) mejor = r;
+  }
+  if (!mejor || !mejor.filas.length) throw new Error(`No se encontró el horario en “${file.name}”. La hoja debe tener una fila con los días (Lunes, Martes…) y un colaborador por fila.`);
+  return mejor;
+}
+async function leerHorPDF(file, prog){
+  await cargarJS(PDFJS_URL, "pdfjsLib"); pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+  const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise, out = {semana:null, filas:[]}, imagenes = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    prog(`Abriendo el PDF: página ${p} de ${pdf.numPages}…`, 0.05 + 0.3 * p / pdf.numPages);
+    const page = await pdf.getPage(p);
+    const items = (await page.getTextContent()).items.filter(i => i.str && i.str.trim()).map(i => ({x:i.transform[4], y:i.transform[5], w:i.width, s:i.str.trim()}));
+    if (items.reduce((n, i) => n + i.s.length, 0) < 40) { const img = await paginaComoImagen(page); if (img) imagenes.push(img); continue; }
+    const tabla = tablaDeItems(items, 3);
+    let r = tabla && horarioDeTabla(tabla);
+    if (!r || !r.filas.length) { const lin = []; tablaLineas(items, 3).forEach(l => lin.push(l)); r = horarioDeLineas(lin); }
+    out.semana = out.semana || r.semana; out.filas.push(...r.filas);
+  }
+  return {...out, imagenes};
+}
+function tablaLineas(items, tolY){
+  const filas = [];
+  items.slice().sort((a, b) => b.y - a.y || a.x - b.x).forEach(i => { const f = filas[filas.length - 1]; if (f && Math.abs(f.y - i.y) <= tolY) f.items.push(i); else filas.push({y:i.y, items:[i]}); });
+  return filas.map(f => f.items.sort((a, b) => a.x - b.x).map(i => i.s).join(" "));
+}
+async function leerHorImagen(file, worker, prog, n, total){
+  prog(`Leyendo imagen ${n} de ${total}…`, 0.1 + 0.8 * (n - 1) / total);
+  const bmp = await createImageBitmap(file);
+  const s = Math.min(3, Math.max(1, 2200 / bmp.width)), cv = document.createElement("canvas");
+  cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s);
+  const k = cv.getContext("2d"); k.fillStyle = "#fff"; k.fillRect(0, 0, cv.width, cv.height); k.imageSmoothingQuality = "high"; k.filter = "grayscale(1) contrast(1.3)"; k.drawImage(bmp, 0, 0, cv.width, cv.height);
+  await worker.setParameters({tessedit_pageseg_mode:"6", tessedit_char_whitelist:"", preserve_interword_spaces:"1"});
+  const { data } = await worker.recognize(cv);
+  const words = (data.words || []).filter(w => w.text && w.text.trim() && w.confidence > 20).map(w => ({s:w.text.trim(), x:w.bbox.x0, w:w.bbox.x1 - w.bbox.x0, y:-(w.bbox.y0 + w.bbox.y1) / 2, h:w.bbox.y1 - w.bbox.y0}));
+  const alto = words.map(w => w.h).sort((a, b) => a - b)[Math.floor(words.length / 2)] || 20;
+  const tabla = words.length ? tablaDeItems(words, alto * 0.6) : null;
+  let r = tabla && horarioDeTabla(tabla);
+  if (!r || !r.filas.length) r = horarioDeLineas(String(data.text || "").split(/\r?\n/));
+  return r;
+}
+
+// Nombre leído → persona del horario
+function emparejarPersona(nombre, personal){
+  const a = clave(nombre); if (!a) return null;
+  const tk = s => norm(s).replace(/[^a-z ]/g, " ").split(/\s+/).filter(Boolean);
+  const t = tk(nombre);
+  let p = personal.find(x => clave(x.nombre) === a); if (p) return p;
+  p = personal.filter(x => { const u = tk(x.nombre); return t.length === u.length && t.every(w => u.includes(w)); }); if (p.length === 1) return p[0];
+  // Todas las palabras leídas (o sus iniciales) aparecen en el nombre: "Alfredo", "A. Córdoba", "Córdoba Alfredo"
+  const cubre = x => { const u = tk(x.nombre); return t.length && t.every(w => w.length === 1 ? u.some(v => v[0] === w) : u.some(v => v === w || (w.length >= 4 && lev(v, w) <= 1))) && t.some(w => w.length > 1); };
+  p = personal.filter(cubre); if (p.length === 1) return p[0];
+  let mejor = null, r = 0;
+  for (const x of personal) { const b = clave(x.nombre); const q = 1 - lev(a, b) / Math.max(a.length, b.length); if (q > r) { r = q; mejor = x; } }
+  return r >= 0.8 ? mejor : null;
+}
+
+function abrirCargaHorario(){
+  const sem = S.hor.lunes;
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">Horario · semana del ${esc(fechaCorta(sem))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Cargar horarios</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <p class="hint" style="margin:0;font-size:14px">Elija el horario de la semana en Excel, PDF o capturas de pantalla. La app lee a cada colaborador y su turno de cada día, y le muestra todo para revisarlo antes de guardar.</p>
+    <label class="btn primary" style="cursor:pointer;padding:14px 18px"><input type="file" id="chFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/pdf,image/*" multiple hidden>Elegir Excel, PDF o capturas</label>
+    <details><summary style="cursor:pointer;font-weight:600">O pegar el texto del horario</summary>
+      <div style="display:grid;gap:8px;margin-top:8px"><textarea id="chTxt" rows="6" placeholder="Copie la tabla desde Excel y péguela aquí, o escriba una línea por persona:&#10;Nombre  Lunes  Martes  Miércoles  Jueves  Viernes  Sábado  Domingo&#10;Alfredo Córdoba  5-1 C  5-1 C  D  11-7 C  11-7 C  VAC  COMP"></textarea>
+      <button class="btn" id="chTxtOk" type="button">Leer texto</button></div></details>
+    <div id="chProg" hidden style="display:grid;gap:6px"><div class="hint" id="chProgTxt" style="font-size:14px"></div><div class="ocrbar"><i id="chBar"></i></div></div>
+    <p class="hint warn" id="chErr" style="margin:0"></p>
+    <div class="callout"><b>Cómo se lee cada día:</b> horario y letra de la función, por ejemplo <span class="mono">5-1 S</span>, <span class="mono">11-7 F</span>, <span class="mono">1-9 ER</span> o <span class="mono">9:30-6 P</span>. Libre: <span class="mono">D</span> o <span class="mono">Libre</span>; vacaciones: <span class="mono">VAC</span>; compensatorio: <span class="mono">COMP</span>. Una celda vacía no cambia lo que ya está cargado.</div>`);
+  const prog = (t, f) => { $("#chProg").hidden = false; $("#chProgTxt").textContent = t; if (f != null) $("#chBar").style.width = Math.round(Math.min(1, f) * 100) + "%"; };
+  const fallo = e => { $("#chProg").hidden = true; $("#chErr").textContent = errMsg(e); $("#chFile").disabled = false; $("#chFile").value = ""; };
+  $("#chTxtOk").onclick = () => {
+    const t = $("#chTxt").value.replace(/\r/g, "").trim(); if (!t) return;
+    const lineas = t.split("\n");
+    let r = lineas.some(l => l.includes("\t")) ? horarioDeTabla(lineas.map(l => l.split("\t"))) : null;
+    if (!r || !r.filas.length) r = horarioDeLineas(lineas);
+    if (!r.filas.length) { $("#chErr").textContent = "No se encontró ningún colaborador con turnos. Pegue la tabla con la fila de los días o una línea por persona con sus 7 días."; return; }
+    revisarHorario(r, "texto", []);
+  };
+  $("#chFile").onchange = async e => {
+    const files = [...e.target.files]; if (!files.length) return;
+    $("#chErr").textContent = ""; $("#chFile").disabled = true;
+    const total = {semana:null, filas:[]}, esX = f => /\.(xlsx|xls|csv)$/i.test(f.name) || /sheet|excel|csv/i.test(f.type);
+    const imgs = files.filter(f => f.type.startsWith("image/")), pdfs = files.filter(f => f.type === "application/pdf" || /\.pdf$/i.test(f.name)), xls = files.filter(esX);
+    let worker = null;
+    try {
+      for (const f of xls) { prog(`Leyendo ${f.name}…`, 0.3); const r = await leerHorExcel(f); total.semana = total.semana || r.semana; total.filas.push(...r.filas); }
+      for (const f of pdfs) { const r = await leerHorPDF(f, prog); total.semana = total.semana || r.semana; total.filas.push(...r.filas); imgs.push(...r.imagenes); }
+      if (imgs.length) {
+        prog("Preparando el lector de imágenes (la primera vez tarda un poco más)…", 0.05);
+        await cargarJS(TESS_URL, "Tesseract");
+        worker = await Tesseract.createWorker("spa+eng", 1);
+        for (let i = 0; i < imgs.length; i++) { const r = await leerHorImagen(imgs[i], worker, prog, i + 1, imgs.length); total.semana = total.semana || r.semana; total.filas.push(...r.filas); }
+      }
+      if (!xls.length && !pdfs.length && !imgs.length) throw new Error("Elija un archivo de Excel, un PDF o una imagen.");
+      if (!total.filas.length) throw new Error("No se encontró ningún colaborador con turnos. Revise que el archivo tenga la fila de los días (Lunes, Martes…) y un colaborador por fila.");
+      prog("Revisando nombres…", 0.97);
+      revisarHorario(total, imgs.length ? "imagen" : xls.length ? "excel" : "pdf", imgs.map(f => URL.createObjectURL(f)));
+    } catch(err) { fallo(err); }
+    finally { if (worker) worker.terminate(); }
+  };
+}
+
+async function revisarHorario(r, fuente, urls){
+  const h = S.hor, personal = h.personal, puestos = h.puestos;
+  let semana = r.semana || h.lunes, existentes = [];
+  // Empareja cada fila con una persona; si dos filas caen en la misma, la segunda queda para elegir
+  const usados = new Set(), nombreP = id => (personal.find(p => p.id === id) || {}).nombre || "";
+  const filas = r.filas.map(f => { const p = emparejarPersona(f.nombre, personal); const ok = p && !usados.has(p.id); if (ok) usados.add(p.id); return {...f, pid: ok ? p.id : ""}; });
+  const opciones = f => `<option value="">¿Quién es? Elija…</option>${personal.map(p => `<option value="${p.id}" ${f.pid === p.id ? "selected" : ""}>${esc(p.nombre)}</option>`).join("")}<option value="nuevo">➕ Agregar como persona nueva</option><option value="omitir">No cargar esta fila</option>`;
+  const celdaHTML = (c, d) => `<label class="hrv-c"><span>${DIAS[d].slice(0, 3)}</span><input type="text" value="${esc(c)}" data-d="${d}" autocomplete="off" autocapitalize="characters" spellcheck="false"><small></small></label>`;
+  const filaHTML = (f = {nombre:"", celdas:["","","","","","",""], pid:""}) => `<div class="hrv" data-n="${esc(f.nombre)}">
+      <div class="hrv-h"><select aria-label="Colaborador">${opciones(f)}</select>${f.nombre && f.nombre !== nombreP(f.pid) ? `<span class="hint">Leído: “${esc(f.nombre)}”</span>` : ""}<input type="text" class="hrv-nom" placeholder="Nombre y apellido de la persona nueva" value="${esc(f.nombre)}" hidden><button class="btn small ghost" type="button" data-rm aria-label="Quitar fila">✕</button></div>
+      <div class="hrv-d">${f.celdas.map(celdaHTML).join("")}</div></div>`;
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">Revisar antes de guardar</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Horario leído</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <label class="f">Semana (lunes)<input type="date" id="hvSem" value="${esc(semana)}"></label>
+    <div class="hint" id="hvSemTxt" style="margin-top:-6px"></div>
+    ${r.semana && r.semana !== h.lunes ? `<div class="callout gold">La semana se tomó del archivo: del ${esc(fechaCorta(r.semana))} al ${esc(fechaCorta(masDias(r.semana, 6)))}.</div>` : !r.semana ? `<div class="callout gold">El archivo no indica la fecha: confirme la semana arriba.</div>` : ""}
+    ${fuente === "imagen" ? `<div class="callout gold">Leído como imagen: compare cada día con la captura y corrija lo que salió mal antes de guardar.</div>
+      <div class="rvthumbs">${urls.map((u, i) => `<a href="${u}" target="_blank" rel="noopener" title="Ver imagen ${i + 1}"><img src="${u}" alt="Captura ${i + 1}"></a>`).join("")}</div>` : ""}
+    <div class="stack" style="gap:8px" id="hvRows">${filas.map(filaHTML).join("")}</div>
+    <button class="btn small" id="hvAdd" type="button">+ Agregar colaborador</button>
+    <div class="callout" id="hvResumen">Comparando con el horario cargado…</div>
+    <label class="terms"><input type="checkbox" id="hvReemp" checked><span>Reemplazar los días que ya tienen horario en esa semana</span></label>
+    <p class="hint warn" id="hvErr" style="margin:0"></p>
+    <button class="btn primary" id="hvOk" type="button" style="padding:14px 18px">Guardar</button>`);
+  const pintaCelda = inp => {
+    const c = parsearCelda(inp.value, puestos), sm = inp.parentElement.querySelector("small");
+    inp.parentElement.classList.toggle("err", !!c.error); inp.parentElement.classList.toggle("vac", !!c.vacio);
+    sm.textContent = c.error ? c.error : c.vacio ? "sin cambio" : c.tipo === "trabajo" ? `${hcorta(c.inicio)}–${hcorta(c.fin)} · ${puestoDe(c.puesto).nombre}` : TIPO_T[c.tipo];
+    return c;
+  };
+  const leer = () => [...document.querySelectorAll("#hvRows .hrv")].map(row => {
+    const sel = row.querySelector("select"), nom = row.querySelector(".hrv-nom");
+    nom.hidden = sel.value !== "nuevo";
+    return {row, pid: sel.value, nuevo: sel.value === "nuevo" ? nom.value.replace(/\s+/g, " ").trim() : "", leido: row.dataset.n,
+      celdas: [...row.querySelectorAll(".hrv-c input")].map(pintaCelda)};
+  });
+  const resumen = () => {
+    const ls = leer(), sem = semana, act = ls.filter(x => x.pid && x.pid !== "omitir"), idx = {};
+    existentes.forEach(t => idx[t.fecha + "|" + t.personal_id] = t);
+    let nuevos = 0, cambian = 0, iguales = 0, errs = 0, vacias = 0;
+    act.forEach(x => x.celdas.forEach((c, d) => {
+      if (c.error) { errs++; return; } if (c.vacio) { vacias++; return; }
+      const t = x.pid !== "nuevo" && idx[masDias(sem, d) + "|" + x.pid];
+      if (!t) nuevos++; else if (t.tipo === c.tipo && hm(t.inicio) === (c.inicio || "") && hm(t.fin) === (c.fin || "") && (t.puesto || null) === (c.puesto || null)) iguales++; else cambian++;
+    }));
+    const sinFila = personal.filter(p => !act.some(x => x.pid === p.id)), pend = ls.filter(x => !x.pid).length;
+    $("#hvResumen").innerHTML = `<b>${plural(act.length, "colaborador", "colaboradores")}</b> · ${plural(nuevos, "día nuevo", "días nuevos")} · ${plural(cambian, "día con cambios", "días con cambios")}${iguales ? ` · ${plural(iguales, "igual", "iguales")}` : ""}${vacias ? ` · ${plural(vacias, "celda vacía", "celdas vacías")} (no se tocan)` : ""}` +
+      (errs ? `<br><span style="color:var(--crit)"><b>${plural(errs, "día por corregir", "días por corregir")}</b> (en rojo).</span>` : "") +
+      (pend ? `<br><span style="color:var(--crit)"><b>${plural(pend, "fila", "filas")} sin persona asignada.</b></span>` : "") +
+      (sinFila.length ? `<br><span class="hint">No vienen en el archivo (se dejan como están): ${sinFila.map(p => esc(p.nombre)).join(", ")}.</span>` : "");
+    $("#hvOk").textContent = `Guardar horario`;
+    return {ls, act, errs, pend, cambian};
+  };
+  const cargarEx = async () => {
+    let v = $("#hvSem").value; if (!v) return;
+    const l = lunesDe(v); if (l !== v) $("#hvSem").value = l; semana = l;
+    $("#hvSemTxt").textContent = `Del lunes ${fechaCorta(l)} al domingo ${fechaCorta(masDias(l, 6))}`;
+    const { data } = await sb.from("hor_turnos").select("fecha,personal_id,tipo,inicio,fin,puesto").gte("fecha", l).lte("fecha", masDias(l, 6));
+    existentes = data || []; resumen();
+  };
+  const rows = $("#hvRows");
+  rows.addEventListener("click", e => { if (e.target.closest("[data-rm]")) { e.target.closest(".hrv").remove(); resumen(); } });
+  rows.addEventListener("input", resumen); rows.addEventListener("change", resumen);
+  $("#hvAdd").onclick = () => { rows.insertAdjacentHTML("beforeend", filaHTML()); resumen(); };
+  $("#hvSem").onchange = cargarEx;
+  await cargarEx();
+  $("#hvOk").onclick = async () => {
+    const err = $("#hvErr"), {act, errs, pend} = resumen(); err.textContent = "";
+    if (pend) { err.textContent = "Indique a quién corresponde cada fila, o elija “No cargar esta fila”."; return; }
+    if (errs) { err.textContent = "Hay días en rojo que no se entienden. Corríjalos (ej. 5-1 S, D, VAC, COMP) o déjelos vacíos."; return; }
+    const sinNombre = act.find(x => x.pid === "nuevo" && x.nuevo.length < 3); if (sinNombre) { err.textContent = "Escriba el nombre completo de la persona nueva."; return; }
+    const rep = act.filter(x => x.pid !== "nuevo").map(x => x.pid).find((p, i, a) => a.indexOf(p) !== i); if (rep) { err.textContent = `${nombreP(rep)} aparece en dos filas. Quite una o asígnela a otra persona.`; return; }
+    const data = [];
+    act.forEach(x => x.celdas.forEach((c, d) => {
+      if (c.vacio || c.error) return;
+      const [ai, af] = c.tipo === "trabajo" ? almuerzoPara(c.inicio) : [null, null];
+      data.push({fecha: masDias(semana, d), personal_id: x.pid === "nuevo" ? null : x.pid, nombre_nuevo: x.pid === "nuevo" ? x.nuevo : null,
+        tipo:c.tipo, inicio:c.inicio || null, fin:c.fin || null, puesto:c.puesto || null, almuerzo_inicio:ai, almuerzo_fin:af, nota:c.nota || null});
+    }));
+    if (!data.length) { err.textContent = "No hay días para guardar."; return; }
+    $("#hvOk").disabled = true; $("#hvOk").textContent = "Guardando…";
+    const { data: res, error } = await sb.rpc("cargar_horario", {p_lunes: semana, p_filas: data, p_reemplazar: $("#hvReemp").checked});
+    $("#hvOk").disabled = false; $("#hvOk").textContent = "Guardar horario";
+    if (error) { err.textContent = errMsg(error); return; }
+    urls.forEach(u => URL.revokeObjectURL(u));
+    closeSheet();
+    toast(`Horario cargado: ${plural(res.creadas + res.actualizadas, "día guardado", "días guardados")}${res.omitidas ? ` · ${res.omitidas} ya tenían horario` : ""}${res.personas_nuevas ? ` · ${plural(res.personas_nuevas, "persona nueva", "personas nuevas")}` : ""}`);
+    h.lunes = semana; h.loaded = false; renderHorario();
+  };
 }
 
 /* ===================== Capitanes: salidas del día (tee sheet) ===================== */
@@ -2269,7 +2636,7 @@ async function revisarCarga(r, fuente, urls, corregidos){
 }
 
 /* ===================== Versión: avisa y recarga cuando se publica una nueva ===================== */
-const APP_VER = "202610232015";
+const APP_VER = "202610261130";
 async function revisarVersion(){
   try {
     const h = await fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(r => r.ok ? r.text() : "");
