@@ -438,6 +438,8 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-supervision" hidden></section>
     <section class="view" id="v-hoy" hidden></section>
     <section class="view" id="v-directorio" hidden></section>
+    <section class="view" id="v-mipuesto" hidden></section>
+    <section class="view" id="v-puestos" hidden></section>
   </main>
 </div>
 
@@ -457,14 +459,14 @@ const CATS = {ritmo_juego:"Ritmo de juego", campo_carritos:"Campo y carritos", a
 const ETAPAS = {deteccion:"Detección", comunicacion:"Comunicación", seguimiento:"Seguimiento", escalamiento:"Escalamiento"};
 const NOTIF = {gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Operaciones de Golf", starter:"Starter", mantenimiento:"Mantenimiento", ninguno:"Ninguno aún"};
 const PRIO = {critica:{l:"Crítica",c:"p-crit"}, alta:{l:"Alta",c:"p-alta"}, ordinaria:{l:"Ordinaria",c:"p-ord"}};
-const ROLES = {marshal:"Marshal", starter:"Starter", capitan:"Capitán", gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Op. de Golf", admin:"Administrador"};
+const ROLES = {colaborador:"Personal de campo", marshal:"Marshal", starter:"Starter", capitan:"Capitán", gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Op. de Golf", admin:"Administrador"};
 const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
 const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
   marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["equipo","Equipo","ger"]]},
   starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"]]},
-  staff:    {nombre:"Staff", tabs:[["hoy","Hoy","cap"],["horario","Horario"],["directorio","Directorio","cap"]]},
-  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
+  staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["horario","Horario"],["directorio","Directorio","cap"]]},
+  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
 
@@ -619,6 +621,7 @@ async function entrar(){
   if (S.mods.includes("capitanes")) { cargarCapitanes(); suscribirCap(); }
   if (S.esStarter || S.esGer) suscribirStarter();
   suscribirStaff();
+  { const r = await sb.from("hor_personal").select("id,nombre,perfil_id").eq("perfil_id", S.me.id).eq("activo", true).maybeSingle(); S.miPer = r.data || null; }
   const sw = $("#modSw"); sw.hidden = S.mods.length < 2;
   sw.innerHTML = S.mods.map(m => `<button type="button" data-mod="${m}">${MODULOS[m].nombre}</button>`).join("");
   sw.onclick = e => { const b = e.target.closest("[data-mod]"); if (b) setModulo(b.dataset.mod); };
@@ -626,7 +629,7 @@ async function entrar(){
   setModulo(m);
   if (S.mods.includes("marshals") && (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length)) flush();
 }
-function tabsDe(m){ return MODULOS[m].tabs.filter(t => (t[2] !== "ger" || S.esGer) && (t[2] !== "cap" || S.esCap)); }
+function tabsDe(m){ return MODULOS[m].tabs.filter(t => (t[2] !== "ger" || S.esGer) && (t[2] !== "cap" || S.esCap) && (t[2] !== "pos" || (!S.esCap && !!S.miPer))); }
 function setModulo(m){
   S.modulo = m; $("#modName").textContent = MODULOS[m].nombre;
   document.querySelectorAll("#modSw [data-mod]").forEach(b => b.setAttribute("aria-pressed", b.dataset.mod === m));
@@ -643,8 +646,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","supervision","hoy","directorio"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","supervision","hoy","directorio","mipuesto","puestos"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -1160,7 +1163,7 @@ async function renderEquipo(){
   const { data } = await sb.from("perfiles").select("id,nombre,usuario,rol,activo").order("activo", {ascending:false}).order("nombre");
   if (data) S.perfiles = Object.fromEntries(data.map(p => [p.id, p]));
   const list = data || [];
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia</div><h1>Equipo</h1><p class="sub">${plural(list.filter(p => p.activo).length,"cuenta activa","cuentas activas")}. Cree aquí el usuario de cada Marshal, Starter o Capitán y entréguele su contraseña temporal.</p></div></div>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia</div><h1>Equipo</h1><p class="sub">${plural(list.filter(p => p.activo).length,"cuenta activa","cuentas activas")}. Cree aquí el usuario de cada colaborador de campo, Marshal, Starter o Capitán y entréguele su contraseña temporal.</p></div></div>
     <div class="grid2">
       <div class="stack">
         ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>
@@ -1175,7 +1178,9 @@ async function renderEquipo(){
           <label class="f">Nombre completo<input type="text" id="eNombre" autocomplete="off" placeholder="Ej. Juan Pérez"></label>
           <label class="f">Usuario para entrar<input type="text" id="eUser" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Ej. jperez"></label>
           <label class="f">Contraseña temporal<input type="text" id="ePass" autocomplete="off" value="${tempPass()}"></label>
-          <label class="f">Rol<select id="eRol"><option value="marshal">Marshal</option><option value="starter">Starter</option><option value="capitan">Capitán</option><option value="gerente_operaciones">Gerente de Operaciones</option><option value="gerente_golf">Gerente de Op. de Golf</option></select></label>
+          <label class="f">Rol<select id="eRol"><option value="colaborador">Personal de campo (Frente, Carritos, Range)</option><option value="marshal" selected>Marshal</option><option value="starter">Starter</option><option value="capitan">Capitán</option><option value="gerente_operaciones">Gerente de Operaciones</option><option value="gerente_golf">Gerente de Op. de Golf</option></select></label>
+          <label class="f">Su nombre en el horario<select id="eHor"><option value="">Vincular por nombre automáticamente</option></select></label>
+          <p class="hint" style="margin:-4px 0 0">Con la cuenta vinculada ve su semana en Staff → Horario y, en Frente, Carritos o Range, llena su checklist en Staff → Mi puesto.</p>
           <div class="err" id="eErr"></div>
           <button class="btn primary" id="eCrear" type="button">Crear cuenta</button>
           <div id="eCred"></div>
@@ -1184,13 +1189,16 @@ async function renderEquipo(){
     </div>`;
   $("#eNombre").oninput = e => { const u = $("#eUser"); if (u.dataset.touched) return; const p = e.target.value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").split(/\s+/).filter(Boolean); const ap = p.length >= 3 ? p[p.length-2] : p[p.length-1]; u.value = p.length > 1 ? (p[0][0] + ap).replace(/[^a-z0-9]/g, "") : (p[0] || "").replace(/[^a-z0-9]/g, ""); };
   $("#eUser").oninput = e => e.target.dataset.touched = "1";
+  sb.from("hor_personal").select("id,nombre").is("perfil_id", null).eq("activo", true).order("nombre").then(({ data }) => { const sel = $("#eHor"); if (!sel || !data) return;
+    sel.innerHTML += data.map(p => `<option value="${p.id}">${esc(p.nombre)}</option>`).join("");
+    sel.onchange = () => { const p = data.find(x => x.id === sel.value); if (p && !$("#eNombre").value.trim()) { $("#eNombre").value = p.nombre; $("#eNombre").oninput({target: $("#eNombre")}); } }; });
   $("#eCrear").onclick = async () => {
     const nombre = $("#eNombre").value.trim(), usuario = $("#eUser").value.trim().toLowerCase(), password = $("#ePass").value.trim(), rol = $("#eRol").value;
     $("#eErr").textContent = ""; $("#eCrear").disabled = true;
     try {
-      await fnStaff({accion:"crear", nombre, usuario, password, rol});
+      const r = await fnStaff({accion:"crear", nombre, usuario, password, rol, personal_id: $("#eHor").value || null});
       await renderEquipo();
-      $("#eCred").innerHTML = credCard(nombre, usuario, password);
+      $("#eCred").innerHTML = credCard(nombre, usuario, password) + (r && r.vinculado ? "" : `<p class="hint warn">No se encontró su nombre en el horario. Vincúlelo en Staff → Directorio.</p>`);
       toast("Cuenta creada");
     } catch(x){ $("#eErr").textContent = errMsg(x); $("#eCrear").disabled = false; }
   };
@@ -3282,6 +3290,8 @@ function suscribirStaff(){
       if (S.view === "horario" && !$("#ov")) cargarHorario();
       if (S.view === "hoy") cargarHoy();
     }, "_t"))
+    .on("postgres_changes", {event:"*", schema:"public", table:"op_reportes"}, re(() => { if (S.view === "puestos" && !$("#ov")) cargarPuestos(); }, "_o"))
+    .on("postgres_changes", {event:"*", schema:"public", table:"op_danos"}, re(() => { if (S.view === "puestos" && !$("#ov")) cargarPuestos(); }, "_d"))
     .on("postgres_changes", {event:"*", schema:"public", table:"hor_asistencia"}, re(() => { if (S.view === "hoy") cargarHoy(); }, "_a"))
     .on("postgres_changes", {event:"*", schema:"public", table:"hor_personal"}, re(() => { S.dir.loaded = false; S.hor.loaded = false; if (S.view === "directorio" && !$("#ov")) renderDirectorio(); if (S.view === "hoy") cargarHoy(); }, "_p"))
     .subscribe();
@@ -3491,6 +3501,297 @@ function editarPersona(p){
   };
   if ($("#ppBaja")) $("#ppBaja").onclick = () => activo(false, `${p.nombre} dado de baja`);
   if ($("#ppAlta")) $("#ppAlta").onclick = () => activo(true, `${p.nombre} reactivado`);
+}
+
+/* ===================== Puestos: Frente, Carritos y Driving Range ===================== */
+const POS = {F:"Frente", L:"Carritos", R:"Driving Range"};
+const POS_DE_PUESTO = {F:["F"], L:["L"], R:["R"], ER:["R"], "F/R":["F","R"], "S/R":["R"]};   // letra del horario → checklist(s)
+const NIVEL_BOLAS = {suficientes:"Suficientes", bajas:"Bajas", agotadas:"Agotadas"};
+const META_CARRITOS = 20;
+const POS_COLOR = {F:"#9a6410", L:"#5b4b8a", R:"#2e7d4f"};
+const DIAS_CORTOS = ["", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+const isoDia = f => ((fechaDe(f).getDay() + 6) % 7) + 1;
+S.op = {areas:[], items:[], loaded:false};
+S.mp = {fecha:null, turno:null, reps:{}, resp:{}, val:{}, danos:[], pos:null, loaded:false};
+S.pu = {fecha: hoyISO(), loaded:false, fechaCargada:null};
+
+async function cargarCatalogoOp(){
+  const [a, i] = await Promise.all([sb.from("op_areas").select("*").order("orden"), sb.from("op_items").select("*").order("orden")]);
+  if (a.error || i.error) throw (a.error || i.error);
+  S.op.areas = a.data; S.op.items = i.data; S.op.loaded = true;
+}
+function itemsOp(pos, fecha){
+  const d = isoDia(fecha), areas = S.op.areas.filter(a => a.posicion === "C" || a.posicion === pos);
+  return areas.map(a => ({...a, items: S.op.items.filter(i => i.area === a.codigo && i.activo && (i.dia_semana == null || i.dia_semana === d))})).filter(a => a.items.length);
+}
+function statsOp(pos, fecha, resp){
+  const its = itemsOp(pos, fecha).flatMap(a => a.items); let si = 0, ok = 0, sinJ = 0, n = 0;
+  its.forEach(i => { const r = resp[i.id]; if (!r) return; n++; if (r.valor === "si") { si++; ok++; } else { if ((r.nota || "").trim()) { if (r.valor === "na") ok++; } else sinJ++; } });
+  return {total: its.length, n, si, sinJ, cumpl: n ? Math.round(100 * ok / n) : 0};
+}
+function itemOpHTML(it, r, ro){
+  const v = r && r.valor, show = v === "na" || v === "no" || (r && r.nota), falta = (v === "no" || v === "na") && !(r.nota || "").trim();
+  return `<div class="item" data-i="${it.id}"><div class="item-row"><div class="item-text">${esc(it.texto)}<span class="item-time">${it.id}${it.dia_semana ? ` · tarea de los ${DIAS_CORTOS[it.dia_semana]}` : ""}${r ? " · " + hora(r.respondido_en) : ""}</span></div>
+    <div class="seg" role="group" aria-label="Respuesta">${Object.entries(VAL).map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${v===k}" ${ro?"disabled":""}>${l}</button>`).join("")}</div></div>
+    ${show ? `<input type="text" class="note ${falta ? "req" : ""}" id="on-${it.id}" value="${esc(r.nota||"")}" placeholder="${v === "na" ? "Por qué no aplica (obligatorio)" : "Por qué no se hizo y a quién se avisó (obligatorio)"}" ${ro?"disabled":""}>` : ""}</div>`;
+}
+
+/* ---------- Staff · Mi puesto (el colaborador, en su teléfono) ---------- */
+async function cargarMiPuesto(){
+  const m = S.mp, f = hoyISO(), pid = S.miPer && S.miPer.id;
+  if (!S.op.loaded) await cargarCatalogoOp();
+  const [tu, re, pu] = await Promise.all([
+    sb.from("hor_turnos").select("*").eq("fecha", f).eq("personal_id", pid).maybeSingle(),
+    sb.from("op_reportes").select("*").eq("fecha", f).eq("personal_id", pid),
+    sb.from("hor_puestos").select("codigo,nombre,color"),
+  ]);
+  if (tu.error || re.error) throw (tu.error || re.error);
+  m.puestos = pu.data || [];
+  const ids = re.data.map(r => r.id);
+  const [rs, va, da] = await Promise.all([
+    ids.length ? sb.from("op_respuestas").select("*").in("reporte_id", ids) : {data:[]},
+    ids.length ? sb.from("op_validaciones").select("*").in("reporte_id", ids) : {data:[]},
+    sb.from("op_danos").select("*").eq("fecha", f).eq("reportado_por", S.me.id).order("creado_en", {ascending:false}),
+  ]);
+  m.fecha = f; m.turno = tu.data; m.reps = {}; m.resp = {}; m.val = {}; m.danos = da.data || [];
+  re.data.forEach(r => { m.reps[r.posicion] = r; m.resp[r.posicion] = {}; });
+  (rs.data || []).forEach(x => { const r = re.data.find(y => y.id === x.reporte_id); if (r) m.resp[r.posicion][x.item_id] = x; });
+  (va.data || []).forEach(x => { const r = re.data.find(y => y.id === x.reporte_id); if (r) m.val[r.posicion] = x; });
+  const asign = m.turno && m.turno.tipo === "trabajo" ? (POS_DE_PUESTO[m.turno.puesto] || []) : [];
+  if (!m.pos || !(asign.includes(m.pos) || m.reps[m.pos])) m.pos = asign[0] || Object.keys(m.reps)[0] || null;
+  m.loaded = true;
+}
+function renderMiPuesto(){
+  const v = $("#v-mipuesto"), m = S.mp;
+  if (!S.miPer) { v.innerHTML = `<div class="empty"><strong>Su cuenta no está vinculada a su nombre en el horario</strong>Pídale al Capitán o a Gerencia que la vincule en Staff → Directorio.</div>`; return; }
+  if (!m.loaded || m.fecha !== hoyISO()) { v.innerHTML = `<div class="loading">Cargando su puesto…</div>`; cargarMiPuesto().then(() => S.view === "mipuesto" && renderMiPuesto()).catch(x => { v.innerHTML = `<div class="empty"><strong>No se pudo cargar</strong>${esc(errMsg(x))}</div>`; }); return; }
+  const t = m.turno, trab = t && t.tipo === "trabajo", asign = trab ? (POS_DE_PUESTO[t.puesto] || []) : [], pos = m.pos;
+  const ex = v.querySelectorAll("#mpAreas details"); const abiertas = ex.length ? [...ex].filter(x => x.open).map(x => x.dataset.a) : null;
+  const rep = pos && m.reps[pos], resp = (pos && m.resp[pos]) || {}, val = pos && m.val[pos], ro = !!(rep && rep.estado === "firmado"), dis = ro ? "disabled" : "";
+  const st = pos ? statsOp(pos, m.fecha, resp) : null, datos = (rep && rep.datos) || {};
+  const pu = trab ? ((m.puestos || []).find(p => p.codigo === t.puesto) || {nombre:t.puesto}) : null;
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Staff · Mi puesto</div><h1>${esc(fechaLarga(m.fecha))}</h1>
+      <p class="sub">${trab ? `Turno ${hora12(t.inicio)} – ${hora12(t.fin)} · ${esc(t.puesto)} ${esc(pu.nombre)}` : t ? `Hoy está de ${esc(TIPO_T[t.tipo].toLowerCase())}.` : "Hoy no tiene turno en el horario."}</p></div>
+      ${pos ? `<div class="statusbar">${ro ? `<span class="pill ${val ? "p-ok" : "p-gold"}">${val ? "Validado" : "Firmado"}</span>` : `<span class="pill p-draft">Borrador</span><span class="saved" id="mpSave"></span>`}</div>` : ""}</div>
+    <div class="panel"><div class="hint" style="margin-bottom:6px;font-weight:600">Posición${asign.length ? " asignada" : ""}</div>
+      <div class="chips" id="mpPos">${Object.entries(POS).map(([k, l]) => `<button type="button" class="chip" data-p="${k}" aria-pressed="${pos === k}">${l}${asign.includes(k) ? " · asignada" : ""}${m.reps[k] ? (m.reps[k].estado === "firmado" ? " ✓" : " · en curso") : ""}</button>`).join("")}</div>
+      <p class="hint" style="margin:8px 0 0">${asign.length ? "Si el Capitán lo cambia de posición durante el turno, elija la nueva y anote la entrega en la anterior." : trab ? `Su función de hoy (${esc(t.puesto)}) no tiene checklist de Frente, Carritos o Range. Si el Capitán le asigna una de esas posiciones, elíjala aquí.` : "Si el Capitán le asigna una posición, elíjala aquí."}</p></div>
+    ${!pos ? "" : `
+    ${pos === "L" ? `<div class="panel"><h2>Carritos</h2><div class="fields">
+      <label class="f">Carritos listos ahora (meta ${META_CARRITOS})<input type="number" inputmode="numeric" min="0" max="200" id="mpListos" value="${datos.carritos_listos ?? ""}" ${dis}></label>
+      <label class="f">Fuera de servicio<input type="number" inputmode="numeric" min="0" max="200" id="mpFuera" value="${datos.carritos_fuera ?? ""}" ${dis}></label></div>
+      ${datos.carritos_listos != null && +datos.carritos_listos < META_CARRITOS ? `<p class="hint warn" style="margin:8px 0 0">Por debajo de la meta de ${META_CARRITOS}: avise al Capitán.</p>` : ""}</div>` : ""}
+    ${pos === "R" ? `<div class="panel"><h2>Bolas de práctica</h2><div class="chips" id="mpBolas">${Object.entries(NIVEL_BOLAS).map(([k, l]) => `<button type="button" class="chip" data-b="${k}" aria-pressed="${datos.nivel_bolas === k}" ${dis}>${l}</button>`).join("")}</div></div>` : ""}
+    <div class="progress panel" style="padding:12px 16px"><span class="mono" id="mpProg">${st.n}/${st.total}</span><div class="bar"><i id="mpBar" style="width:${st.total ? Math.round(100 * st.n / st.total) : 0}%"></i></div><span class="mono" id="mpCum">${st.cumpl}%</span></div>
+    <div id="mpAreas" class="stack" style="gap:10px">${itemsOp(pos, m.fecha).map((a, ai, arr) => { const n = a.items.filter(i => resp[i.id]).length;
+      const open = abiertas ? abiertas.includes(a.codigo) : (!ro && n < a.items.length && arr.slice(0, ai).every(q => q.items.every(i => resp[i.id])));
+      return `<details class="area" data-a="${a.codigo}" ${open ? "open" : ""}><summary><span class="letter">${a.codigo}</span><span class="aname">${esc(a.nombre)}</span><span class="acount ${n === a.items.length ? "done" : ""}" data-ocnt="${a.codigo}">${n}/${a.items.length}</span><span class="chev">›</span></summary>
+        ${a.nota ? `<div class="note-area">${esc(a.nota)}</div>` : ""}${a.items.map(i => itemOpHTML(i, resp[i.id], ro)).join("")}</details>`; }).join("")}</div>
+    <div class="panel"><h2>Daños a carritos</h2>
+      <p class="hint" style="margin:0 0 10px">Todo daño se reporta por escrito aquí en el momento. Llega a Gerencia y al Capitán.</p>
+      ${m.danos.length ? `<div class="stack" style="gap:6px;margin-bottom:10px">${m.danos.map(d => `<div class="callout"><b>Carrito ${esc(d.carrito)}</b> · ${hora(d.creado_en)}${d.fuera_servicio ? " · fuera de servicio" : ""}<br>${esc(d.descripcion)}${d.estado === "cerrado" ? `<br><span class="pill p-ok">Atendido</span>` : ""}</div>`).join("")}</div>` : ""}
+      <button class="btn ${pos === "L" ? "primary" : ""}" id="mpDano" type="button">Reportar daño de carrito</button></div>
+    <div class="panel"><h2>Cierre y entrega</h2><div class="stack" style="gap:10px">
+      <label class="f">Observaciones<textarea id="mpObs" ${dis} placeholder="Novedades, quejas o necesidades del turno">${esc((rep && rep.observaciones) || "")}</textarea></label>
+      <label class="f">Entrega de pendientes (al compañero o al Capitán)<textarea id="mpEnt" ${dis} placeholder="Qué queda pendiente y a quién lo entregó">${esc((rep && rep.entrega) || "")}</textarea></label>
+      ${ro ? `<div class="callout">Firmado a las ${hora(rep.firmado_en)}.${val ? ` Validado por ${esc(nm(val.validado_por))} a las ${hora(val.validado_en)}${val.observaciones ? ": " + esc(val.observaciones) : "."}` : " Pendiente de validación del Capitán."}</div>`
+        : `<div class="hint" id="mpHint"></div><button class="btn gold" id="mpFirmar" type="button">Firmar mi checklist</button>`}
+    </div></div>`}`;
+  v.querySelectorAll("#mpPos [data-p]").forEach(b => b.onclick = () => { m.pos = b.dataset.p; renderMiPuesto(); });
+  if (!pos) return;
+  $("#mpDano").onclick = () => reportarDano(pos);
+  if (ro) return;
+  updHintMp();
+  const areas = $("#mpAreas");
+  areas.onclick = async e => { const b = e.target.closest(".seg button"); if (!b) return; const id = b.closest(".item").dataset.i, prev = resp[id] || {};
+    const row = {item_id:id, valor:b.dataset.v, nota: b.dataset.v === "si" ? (prev.nota || null) : (prev.nota || null), respondido_en:new Date().toISOString()};
+    resp[id] = row; m.resp[pos] = resp;
+    const old = b.closest(".item"), w = document.createElement("div"); w.innerHTML = itemOpHTML(S.op.items.find(x => x.id === id), row, false); old.replaceWith(w.firstElementChild);
+    if (b.dataset.v !== "si") { const n = $("#on-" + id); if (n && !n.value) n.focus(); }
+    updProgMp(); guardarRespOp(pos, id); };
+  areas.oninput = e => { if (!e.target.classList.contains("note")) return; const id = e.target.closest(".item").dataset.i, r = resp[id]; if (!r) return;
+    r.nota = e.target.value; e.target.classList.toggle("req", !e.target.value.trim()); updProgMp();
+    clearTimeout(guardarRespOp["_" + id]); guardarRespOp["_" + id] = setTimeout(() => guardarRespOp(pos, id), 600); };
+  const campo = (k, val) => { clearTimeout(campo["_" + k]); campo["_" + k] = setTimeout(() => guardarRepOp(pos, k, val), 600); };
+  $("#mpObs").oninput = e => campo("observaciones", e.target.value);
+  $("#mpEnt").oninput = e => campo("entrega", e.target.value);
+  if ($("#mpListos")) { $("#mpListos").onchange = e => guardarDatosOp(pos, {carritos_listos: e.target.value === "" ? null : +e.target.value}); $("#mpFuera").onchange = e => guardarDatosOp(pos, {carritos_fuera: e.target.value === "" ? null : +e.target.value}); }
+  v.querySelectorAll("#mpBolas [data-b]").forEach(b => b.onclick = () => guardarDatosOp(pos, {nivel_bolas: b.dataset.b}).then(renderMiPuesto));
+  $("#mpFirmar").onclick = () => firmarOp(pos);
+}
+function updProgMp(){ const m = S.mp, st = statsOp(m.pos, m.fecha, m.resp[m.pos] || {});
+  $("#mpProg").textContent = `${st.n}/${st.total}`; $("#mpBar").style.width = (st.total ? Math.round(100 * st.n / st.total) : 0) + "%"; $("#mpCum").textContent = st.cumpl + "%";
+  itemsOp(m.pos, m.fecha).forEach(a => { const n = a.items.filter(i => (m.resp[m.pos] || {})[i.id]).length, c = document.querySelector(`[data-ocnt="${a.codigo}"]`); if (c) { c.textContent = `${n}/${a.items.length}`; c.classList.toggle("done", n === a.items.length); } });
+  updHintMp(); }
+function faltaMp(){ const m = S.mp, st = statsOp(m.pos, m.fecha, m.resp[m.pos] || {}), d = (m.reps[m.pos] && m.reps[m.pos].datos) || {}, f = [];
+  if (st.n < st.total) f.push(plural(st.total - st.n, "actividad por responder", "actividades por responder"));
+  if (st.sinJ) f.push(plural(st.sinJ, "justificación", "justificaciones") + " de No o N/A");
+  if (m.pos === "L" && d.carritos_listos == null) f.push("cuántos carritos quedaron listos");
+  if (m.pos === "R" && !d.nivel_bolas) f.push("el nivel de bolas");
+  return f; }
+function updHintMp(){ const h = $("#mpHint"); if (!h) return; const f = faltaMp(); h.textContent = f.length ? "Para firmar falta: " + f.join(", ") + "." : "Todo listo. Al firmar pasa a validación del Capitán y ya no se puede editar."; $("#mpFirmar").disabled = !!f.length; }
+function marcaGuardado(txt){ const el = $("#mpSave"); if (el) el.textContent = txt; }
+async function asegurarRepOp(pos){
+  const m = S.mp; if (m.reps[pos]) return m.reps[pos];
+  if (asegurarRepOp._p) return asegurarRepOp._p;
+  asegurarRepOp._p = (async () => {
+    const { data, error } = await sb.from("op_reportes").insert({fecha: m.fecha, personal_id: S.miPer.id, posicion: pos}).select("*").single();
+    if (error) { const r2 = await sb.from("op_reportes").select("*").eq("fecha", m.fecha).eq("personal_id", S.miPer.id).eq("posicion", pos).maybeSingle(); if (r2.data) return m.reps[pos] = r2.data; throw error; }
+    m.reps[pos] = data; m.resp[pos] = m.resp[pos] || {}; return data;
+  })().finally(() => { asegurarRepOp._p = null; });
+  return asegurarRepOp._p;
+}
+async function guardarRespOp(pos, id){
+  marcaGuardado("Guardando…");
+  try { const rep = await asegurarRepOp(pos), r = S.mp.resp[pos][id];
+    const { error } = await sb.from("op_respuestas").upsert({reporte_id: rep.id, item_id: id, valor: r.valor, nota: (r.nota || "").trim() || null, respondido_en: r.respondido_en}, {onConflict:"reporte_id,item_id"});
+    if (error) throw error; marcaGuardado("Guardado " + hora(new Date().toISOString()));
+  } catch(x){ marcaGuardado("Sin guardar"); toast(errMsg(x)); }
+}
+async function guardarRepOp(pos, k, val){
+  try { const rep = await asegurarRepOp(pos); const { error } = await sb.from("op_reportes").update({[k]: val.trim() || null}).eq("id", rep.id); if (error) throw error; rep[k] = val; marcaGuardado("Guardado " + hora(new Date().toISOString())); }
+  catch(x){ toast(errMsg(x)); }
+}
+async function guardarDatosOp(pos, patch){
+  try { const rep = await asegurarRepOp(pos), datos = {...(rep.datos || {}), ...patch};
+    const { error } = await sb.from("op_reportes").update({datos}).eq("id", rep.id); if (error) throw error; rep.datos = datos; updHintMp(); marcaGuardado("Guardado " + hora(new Date().toISOString())); }
+  catch(x){ toast(errMsg(x)); }
+}
+async function firmarOp(pos){
+  if (faltaMp().length) { updHintMp(); return; }
+  if (!confirm("¿Firmar su checklist? Después ya no podrá modificarlo.")) return;
+  const b = $("#mpFirmar"); b.disabled = true;
+  try { const rep = await asegurarRepOp(pos); const { error } = await sb.rpc("firmar_reporte_op", {p_reporte: rep.id}); if (error) throw error;
+    toast("Checklist firmado"); S.mp.loaded = false; renderMiPuesto(); }
+  catch(x){ toast(errMsg(x)); b.disabled = false; }
+}
+function reportarDano(pos){
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Daño de carrito</h2><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <label class="f">Número de carrito<input type="text" id="dnCar" inputmode="numeric" placeholder="Ej. 14"></label>
+    <label class="f">Qué daño tiene<textarea id="dnDesc" rows="3" placeholder="Ej. Llanta trasera derecha baja, freno suelto"></textarea></label>
+    <label class="permrow" style="border:0;padding:0"><span>Lo retiré de servicio</span><input type="checkbox" id="dnFuera" checked></label>
+    <p class="hint warn" id="dnErr" style="margin:0"></p><button class="btn primary" id="dnOk" type="button">Enviar reporte</button>`);
+  $("#dnOk").onclick = async () => {
+    const carrito = $("#dnCar").value.trim(), descripcion = $("#dnDesc").value.trim();
+    if (!carrito || descripcion.length < 4) { $("#dnErr").textContent = "Indique el número de carrito y describa el daño."; return; }
+    $("#dnOk").disabled = true;
+    const { error } = await sb.from("op_danos").insert({carrito, descripcion, fuera_servicio: $("#dnFuera").checked, reportado_por: S.me.id, personal_id: S.miPer ? S.miPer.id : null});
+    if (error) { $("#dnErr").textContent = errMsg(error); $("#dnOk").disabled = false; return; }
+    closeSheet(); toast("Daño reportado a Gerencia y al Capitán");
+    if (S.view === "mipuesto") { S.mp.loaded = false; renderMiPuesto(); } else if (S.view === "puestos") cargarPuestos();
+  };
+}
+
+/* ---------- Capitanes · Puestos (supervisión y validación) ---------- */
+async function cargarPuestos(){
+  const u = S.pu, f = u.fecha;
+  try {
+    if (!S.op.loaded) await cargarCatalogoOp();
+    const [pe, tu, re, da] = await Promise.all([
+      sb.from("hor_personal").select("id,nombre,perfil_id,activo,orden").order("orden"),
+      sb.from("hor_turnos").select("*").eq("fecha", f).eq("tipo", "trabajo"),
+      sb.from("op_reportes").select("*").eq("fecha", f),
+      sb.from("op_danos").select("*").or(`estado.eq.abierto,fecha.eq.${f}`).order("creado_en", {ascending:false}),
+    ]);
+    const bad = [pe, tu, re, da].find(x => x.error); if (bad) throw bad.error;
+    const ids = re.data.map(r => r.id);
+    const [rs, va] = await Promise.all([
+      ids.length ? sb.from("op_respuestas").select("*").in("reporte_id", ids) : {data:[]},
+      ids.length ? sb.from("op_validaciones").select("*").in("reporte_id", ids) : {data:[]},
+    ]);
+    if (rs.error || va.error) throw (rs.error || va.error);
+    Object.assign(u, {per: Object.fromEntries(pe.data.map(p => [p.id, p])), turnos: tu.data, reps: re.data, danos: da.data, loaded: true, fechaCargada: f,
+      resp: rs.data.reduce((o, x) => ((o[x.reporte_id] = o[x.reporte_id] || {})[x.item_id] = x, o), {}), val: Object.fromEntries(va.data.map(x => [x.reporte_id, x]))});
+  } catch(x){ toast(errMsg(x)); return; }
+  if (S.view === "puestos" && !$("#ov")) renderPuestos();
+}
+function renderPuestos(){
+  const v = $("#v-puestos"), u = S.pu;
+  if (!u.loaded || u.fechaCargada !== u.fecha) { v.innerHTML = `<div class="loading">Cargando puestos…</div>`; cargarPuestos(); return; }
+  const filas = [];
+  u.turnos.forEach(t => (POS_DE_PUESTO[t.puesto] || []).forEach(pos => { if (u.per[t.personal_id]) filas.push({pid: t.personal_id, pos, t, rep: u.reps.find(r => r.personal_id === t.personal_id && r.posicion === pos)}); }));
+  u.reps.forEach(r => { if (!filas.some(x => x.rep === r)) filas.push({pid: r.personal_id, pos: r.posicion, t: u.turnos.find(t => t.personal_id === r.personal_id), rep: r, extra: true}); });
+  filas.sort((a, b) => "FLR".indexOf(a.pos) - "FLR".indexOf(b.pos) || (a.t ? hmin(a.t.inicio) : 0) - (b.t ? hmin(b.t.inicio) : 0));
+  const firm = filas.filter(x => x.rep && x.rep.estado === "firmado"), validos = firm.filter(x => u.val[x.rep.id]);
+  const cumpl = firm.length ? Math.round(firm.reduce((s, x) => s + statsOp(x.pos, u.fecha, u.resp[x.rep.id] || {}).cumpl, 0) / firm.length) : null;
+  const ultimo = pos => u.reps.filter(r => r.posicion === pos).sort((a, b) => (b.actualizado_en || "").localeCompare(a.actualizado_en || ""))[0];
+  const uL = ultimo("L"), uR = ultimo("R"), listos = uL && uL.datos.carritos_listos, nivel = uR && uR.datos.nivel_bolas;
+  const abiertos = u.danos.filter(d => d.estado === "abierto");
+  const esHoy = u.fecha === hoyISO();
+  const estado = x => !x.rep ? `<span class="pill p-draft">${esHoy ? "Sin iniciar" : "No lo llenó"}</span>` : x.rep.estado !== "firmado" ? (() => { const s = statsOp(x.pos, u.fecha, u.resp[x.rep.id] || {}); return `<span class="pill p-gold">En curso · ${s.n}/${s.total}</span>`; })()
+    : (() => { const s = statsOp(x.pos, u.fecha, u.resp[x.rep.id] || {}); return `<span class="pill ${u.val[x.rep.id] ? "p-ok" : "p-alta"}">${u.val[x.rep.id] ? "Validado" : "Por validar"} · ${s.cumpl}%</span>`; })();
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Frente, Carritos y Driving Range</div><h1>Puestos · ${esc(fechaLarga(u.fecha))}</h1>
+      <p class="sub">Cada colaborador llena en su teléfono el checklist de su posición (Staff → Mi puesto); usted lo revisa y lo valida.</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end"><label class="f" style="margin:0">Fecha<input type="date" id="puFecha" value="${u.fecha}" max="${hoyISO()}"></label>
+      ${S.esGer ? `<button class="btn small" id="puTareas" type="button">Editar tareas</button>` : ""}</div></div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Checklists firmados</div><div class="v ${filas.length && firm.length === filas.length ? "ok" : ""}">${firm.length}/${filas.length}</div><div class="t">de las posiciones del horario · meta 100%</div></div>
+      <div class="kpi"><div class="k">Cumplimiento</div><div class="v ${cumpl == null ? "" : cumpl >= 95 ? "ok" : cumpl >= 85 ? "warn" : "crit"}">${cumpl == null ? "—" : cumpl + "%"}</div><div class="t">promedio de los firmados · meta 95%</div></div>
+      <div class="kpi"><div class="k">Validados</div><div class="v ${firm.length && validos.length === firm.length ? "ok" : firm.length ? "warn" : ""}">${validos.length}/${firm.length}</div><div class="t">por el Capitán · meta 100%</div></div>
+      <div class="kpi"><div class="k">Carritos listos</div><div class="v ${listos == null ? "" : +listos >= META_CARRITOS ? "ok" : "warn"}">${listos == null ? "—" : listos}</div><div class="t">meta ${META_CARRITOS}${uL && uL.datos.carritos_fuera ? ` · ${uL.datos.carritos_fuera} fuera de servicio` : ""}${uL ? " · " + hora(uL.actualizado_en) : ""}</div></div>
+      <div class="kpi"><div class="k">Bolas de práctica</div><div class="v ${!nivel ? "" : nivel === "suficientes" ? "ok" : nivel === "bajas" ? "warn" : "crit"}" style="font-size:24px">${nivel ? NIVEL_BOLAS[nivel] : "—"}</div><div class="t">último reporte del Range${uR ? " · " + hora(uR.actualizado_en) : ""}</div></div>
+      <div class="kpi"><div class="k">Daños de carritos</div><div class="v ${abiertos.length ? "crit" : "ok"}">${abiertos.length}</div><div class="t">abiertos</div></div>
+    </div>
+    ${filas.length ? `<div class="tee-list">${filas.map(x => { const p = u.per[x.pid];
+      return `<div class="tee asis ${x.rep && x.rep.estado === "firmado" ? (u.val[x.rep.id] ? "ok" : "tarde") : ""}"><div class="h">${x.t ? hm(x.t.inicio) : "—"}<br><span class="lt" style="--c:${POS_COLOR[x.pos]}">${x.pos}</span></div>
+        <div class="j" ${x.rep ? `data-ver="${x.rep.id}"` : ""}><b>${esc(p.nombre)}</b><small>${POS[x.pos]}${x.t ? ` · ${hcorta(x.t.inicio)}–${hcorta(x.t.fin)} (${esc(x.t.puesto)})` : ""}${x.extra && !(x.t && (POS_DE_PUESTO[x.t.puesto] || []).includes(x.pos)) ? " · cambio de posición" : ""}${p.perfil_id ? "" : " · sin cuenta en la app"}</small>${estado(x)}</div>
+        <div class="acc">${x.rep ? `<button class="btn small" data-ver="${x.rep.id}" type="button">Ver</button>` : ""}</div></div>`; }).join("")}</div>`
+      : `<div class="empty"><strong>Nadie tiene Frente, Carritos o Range en el horario de este día</strong>Las posiciones salen del horario (F, L, R, ER, F/R y S/R).</div>`}
+    ${filas.some(x => !u.per[x.pid].perfil_id) ? `<p class="hint" style="margin:0">Los colaboradores sin cuenta no pueden llenar su checklist. ${S.esGer ? "Créeles la cuenta en Equipo con el rol Personal de campo." : "Pídale a Gerencia que les cree la cuenta."}</p>` : ""}
+    <div class="panel"><h2>Daños a carritos</h2>${u.danos.length ? `<div class="stack" style="gap:8px">${u.danos.map(d => `<div class="callout ${d.estado === "abierto" ? "crit" : ""}" style="font-weight:400"><b>Carrito ${esc(d.carrito)}</b> · ${esc(fechaCorta(d.fecha))} ${hora(d.creado_en)} · ${esc(nm(d.reportado_por))}${d.fuera_servicio ? " · fuera de servicio" : ""}<br>${esc(d.descripcion)}
+        ${d.estado === "abierto" ? `<div style="margin-top:6px"><button class="btn small" data-cerrar="${d.id}" type="button">Marcar atendido</button></div>` : `<br><span class="pill p-ok">Atendido</span> ${esc(d.accion || "")}`}</div>`).join("")}</div>` : `<p class="hint" style="margin:0">Sin daños abiertos.</p>`}
+      <button class="btn small" id="puDano" type="button" style="margin-top:10px">Reportar daño</button></div>`;
+  $("#puFecha").onchange = e => { if (e.target.value) { u.fecha = e.target.value; renderPuestos(); } };
+  if ($("#puTareas")) $("#puTareas").onclick = editarTareasOp;
+  $("#puDano").onclick = () => reportarDano(null);
+  v.querySelectorAll("[data-ver]").forEach(b => b.onclick = () => verReporteOp(b.dataset.ver));
+  v.querySelectorAll("[data-cerrar]").forEach(b => b.onclick = async () => {
+    const accion = prompt("¿Qué se hizo? (ej. enviado a mantenimiento, reparado)"); if (accion == null) return;
+    const { error } = await sb.from("op_danos").update({estado:"cerrado", accion: accion.trim() || null, cerrado_por: S.me.id, cerrado_en: new Date().toISOString()}).eq("id", b.dataset.cerrar);
+    if (error) toast(errMsg(error)); else { toast("Daño marcado como atendido"); cargarPuestos(); } });
+}
+function verReporteOp(id){
+  const u = S.pu, r = u.reps.find(x => x.id === id), p = u.per[r.personal_id], resp = u.resp[id] || {}, val = u.val[id], st = statsOp(r.posicion, r.fecha, resp), d = r.datos || {};
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(POS[r.posicion])} · ${esc(fechaLarga(r.fecha))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(p.nombre)}</h2></div><button class="btn ghost x" data-x type="button">Cerrar</button></div>
+    <div class="chips"><span class="pill ${r.estado === "firmado" ? "p-ok" : "p-draft"}">${r.estado === "firmado" ? "Firmado " + hora(r.firmado_en) : "En curso"}</span><span class="pill p-ord">${st.n}/${st.total} respondidas · ${st.cumpl}% cumplimiento</span>
+      ${r.posicion === "L" ? `<span class="pill ${d.carritos_listos != null && +d.carritos_listos >= META_CARRITOS ? "p-ok" : "p-alta"}">${d.carritos_listos ?? "—"} carritos listos${d.carritos_fuera ? ` · ${d.carritos_fuera} fuera` : ""}</span>` : ""}
+      ${r.posicion === "R" && d.nivel_bolas ? `<span class="pill p-ord">Bolas: ${NIVEL_BOLAS[d.nivel_bolas]}</span>` : ""}</div>
+    ${itemsOp(r.posicion, r.fecha).map(a => `<div><div class="eyebrow" style="margin:6px 0">${esc(a.nombre)}</div>${a.items.map(i => { const x = resp[i.id];
+      return `<div class="ans-row"><span class="s ${x ? x.valor : ""}">${x ? VAL[x.valor] : "—"}</span><span class="tx">${esc(i.texto)}${x && x.nota ? `<em>${esc(x.nota)}</em>` : ""}</span></div>`; }).join("")}</div>`).join("")}
+    ${r.observaciones ? `<div class="callout"><b>Observaciones:</b> ${esc(r.observaciones)}</div>` : ""}
+    ${r.entrega ? `<div class="callout gold"><b>Entrega de pendientes:</b> ${esc(r.entrega)}</div>` : ""}
+    ${r.estado !== "firmado" ? `<p class="hint" style="margin:0">Podrá validarlo cuando el colaborador lo firme.</p>`
+      : val ? `<div class="callout ok">Validado por ${esc(nm(val.validado_por))} a las ${hora(val.validado_en)}${val.observaciones ? ": " + esc(val.observaciones) : "."}</div><button class="btn danger" id="opDesv" type="button">Retirar validación</button>`
+      : `<label class="f">Observaciones de la validación (opcional)<input type="text" id="opVObs" placeholder="Ej. Recordar reponer arena en carritos"></label><button class="btn primary" id="opVal" type="button">Validar checklist</button>`}
+    <p class="hint warn" id="opErr" style="margin:0"></p>`);
+  if ($("#opVal")) $("#opVal").onclick = async () => { const { error } = await sb.from("op_validaciones").insert({reporte_id: id, validado_por: S.me.id, observaciones: $("#opVObs").value.trim() || null});
+    if (error) { $("#opErr").textContent = errMsg(error); return; } closeSheet(); toast("Checklist validado"); cargarPuestos(); };
+  if ($("#opDesv")) $("#opDesv").onclick = async () => { const { error } = await sb.from("op_validaciones").delete().eq("reporte_id", id);
+    if (error) { $("#opErr").textContent = errMsg(error); return; } closeSheet(); toast("Validación retirada"); cargarPuestos(); };
+}
+function editarTareasOp(){
+  const dias = [["", "Todos los días"], ...[1,2,3,4,5,6,7].map(n => [String(n), "Solo los " + DIAS_CORTOS[n]])];
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Tareas de los puestos</h2><button class="btn ghost x" data-x type="button">Cerrar</button></div>
+    <p class="hint" style="margin:0">Los cambios se guardan al salir de cada campo y aplican a los checklists que se empiecen desde ese momento. Desmarque una tarea para retirarla sin perder el historial.</p>
+    ${S.op.areas.map(a => `<div class="stack" style="gap:8px"><div class="eyebrow">${esc(a.nombre)}</div>
+      ${S.op.items.filter(i => i.area === a.codigo).map(i => `<div data-ti="${i.id}" style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px">
+        <textarea rows="2" data-k="texto" aria-label="Texto de la tarea">${esc(i.texto)}</textarea>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select data-k="dia_semana" style="width:auto">${dias.map(([k, l]) => `<option value="${k}" ${String(i.dia_semana ?? "") === k ? "selected" : ""}>${l}</option>`).join("")}</select>
+        <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" data-k="activo" ${i.activo ? "checked" : ""}> Activa</label><span class="hint mono">${i.id}</span></div></div>`).join("")}
+      <button class="btn small" data-nueva="${a.codigo}" type="button">Agregar tarea</button></div>`).join("")}`);
+  document.querySelectorAll("[data-ti] [data-k]").forEach(el => el.onchange = async () => {
+    const id = el.closest("[data-ti]").dataset.ti, k = el.dataset.k, val = k === "activo" ? el.checked : k === "dia_semana" ? (el.value ? +el.value : null) : el.value.trim();
+    if (k === "texto" && val.length < 5) { toast("Escriba la tarea completa."); return; }
+    const { error } = await sb.from("op_items").update({[k]: val}).eq("id", id);
+    if (error) { toast(errMsg(error)); return; } const it = S.op.items.find(x => x.id === id); if (it) it[k] = val; toast("Guardado"); S.mp.loaded = false;
+  });
+  document.querySelectorAll("[data-nueva]").forEach(b => b.onclick = async () => {
+    const texto = prompt("Nueva tarea:"); if (!texto || texto.trim().length < 5) return;
+    const a = b.dataset.nueva, de = S.op.items.filter(i => i.area === a), n = de.reduce((m, i) => Math.max(m, +(i.id.replace(/\D/g, "")) || 0), 0) + 1;
+    const row = {id: a + String(n).padStart(2, "0"), area: a, texto: texto.trim(), orden: de.reduce((m, i) => Math.max(m, i.orden), 0) + 1};
+    const { error } = await sb.from("op_items").insert(row);
+    if (error) { toast(errMsg(error)); return; } S.op.items.push({...row, activo: true, dia_semana: null}); toast("Tarea agregada"); editarTareasOp();
+  });
 }
 
 /* ===================== Hoja modal ===================== */

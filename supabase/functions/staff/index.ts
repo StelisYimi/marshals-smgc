@@ -21,7 +21,7 @@ const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey(), {
 });
 
 const GERENCIA = ["gerente_operaciones", "gerente_golf", "admin"];
-const ROLES_CREABLES = ["marshal", "starter", "capitan", "gerente_operaciones", "gerente_golf"];
+const ROLES_CREABLES = ["colaborador", "marshal", "starter", "capitan", "gerente_operaciones", "gerente_golf"];
 const USUARIO_RE = /^[a-z0-9][a-z0-9._-]{2,29}$/;
 
 async function config(clave: string) {
@@ -96,7 +96,19 @@ Deno.serve(async (req) => {
       });
       if (error) return json({ error: errorAuth(error.message) }, 400);
       await admin.from("perfiles").update({ rol, activo: true, usuario, nombre }).eq("id", data.user!.id);
-      return json({ ok: true, id: data.user!.id });
+      // Vincula la cuenta con su nombre en el horario (el elegido en el formulario o, si no, el que coincide por nombre)
+      let pid = String(body.personal_id ?? "") || null;
+      if (!pid) {
+        const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+        const { data: lista } = await admin.from("hor_personal").select("id, nombre").is("perfil_id", null).eq("activo", true);
+        pid = (lista ?? []).find((x) => norm(x.nombre) === norm(nombre))?.id ?? null;
+      }
+      let vinculado = false;
+      if (pid) {
+        const { error: ev } = await admin.from("hor_personal").update({ perfil_id: data.user!.id }).eq("id", pid).is("perfil_id", null);
+        vinculado = !ev;
+      }
+      return json({ ok: true, id: data.user!.id, vinculado });
     }
 
     if (accion === "restablecer") {
