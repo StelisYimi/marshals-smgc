@@ -2039,13 +2039,37 @@ function tablaLineas(items, tolY){
   items.slice().sort((a, b) => b.y - a.y || a.x - b.x).forEach(i => { const f = filas[filas.length - 1]; if (f && Math.abs(f.y - i.y) <= tolY) f.items.push(i); else filas.push({y:i.y, items:[i]}); });
   return filas.map(f => f.items.sort((a, b) => a.x - b.x).map(i => i.s).join(" "));
 }
-async function leerHorImagen(file, worker, prog, n, total){
-  prog(`Leyendo imagen ${n} de ${total}…`, 0.1 + 0.8 * (n - 1) / total);
-  const bmp = await createImageBitmap(file);
-  const s = Math.min(3, Math.max(1, 2200 / bmp.width)), cv = document.createElement("canvas");
-  cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s);
-  const k = cv.getContext("2d"); k.fillStyle = "#fff"; k.fillRect(0, 0, cv.width, cv.height); k.imageSmoothingQuality = "high"; k.filter = "grayscale(1) contrast(1.3)"; k.drawImage(bmp, 0, 0, cv.width, cv.height);
-  await worker.setParameters({tessedit_pageseg_mode:"6", tessedit_char_whitelist:"", preserve_interword_spaces:"1"});
+// Prepara la imagen para el lector: respeta la rotación de la foto, la achica si es muy grande y la gira si se pide.
+async function lienzoHor(file, giro){
+  let bmp;
+  try { bmp = await createImageBitmap(file, {imageOrientation:"from-image"}); }
+  catch(e) { try { bmp = await createImageBitmap(file); } catch(e2) { throw new Error(`No se pudo abrir la imagen “${file.name}”. Si es una foto HEIC del iPhone, compártala como JPG o haga una captura de pantalla.`); } }
+  const s = Math.max(0.3, Math.min(3, 2400 / Math.max(bmp.width, bmp.height) * (Math.max(bmp.width, bmp.height) < 1400 ? 1.6 : 1)));
+  const w = Math.round(bmp.width * s), h = Math.round(bmp.height * s), lado = giro % 180 !== 0;
+  const cv = document.createElement("canvas"); cv.width = lado ? h : w; cv.height = lado ? w : h;
+  const k = cv.getContext("2d", {willReadFrequently:true}); k.fillStyle = "#fff"; k.fillRect(0, 0, cv.width, cv.height); k.imageSmoothingQuality = "high";
+  k.translate(cv.width / 2, cv.height / 2); k.rotate(giro * Math.PI / 180); k.drawImage(bmp, -w / 2, -h / 2, w, h); k.setTransform(1, 0, 0, 1, 0, 0);
+  return cv;
+}
+// Dos versiones: gris con contraste (capturas) y blanco y negro por zonas (fotos con sombras o luz desigual)
+function versionesHor(cv){
+  const W = cv.width, H = cv.height, k = cv.getContext("2d", {willReadFrequently:true}), px = k.getImageData(0, 0, W, H).data;
+  const g = new Float64Array(W * H); for (let i = 0; i < W * H; i++) g[i] = (px[4*i] * 299 + px[4*i+1] * 587 + px[4*i+2] * 114) / 1000;
+  const gris = document.createElement("canvas"); gris.width = W; gris.height = H;
+  const gk = gris.getContext("2d"); gk.filter = "grayscale(1) contrast(1.3)"; gk.drawImage(cv, 0, 0);
+  const ii = new Float64Array((W + 1) * (H + 1));
+  for (let y = 1; y <= H; y++) { let f = 0; for (let x = 1; x <= W; x++) { f += g[(y-1)*W + x-1]; ii[y*(W+1) + x] = ii[(y-1)*(W+1) + x] + f; } }
+  const r = Math.max(8, Math.round(Math.max(W, H) / 60)), bn = document.createElement("canvas"); bn.width = W; bn.height = H;
+  const bk = bn.getContext("2d"), od = bk.createImageData(W, H);
+  for (let y = 0; y < H; y++) { const y0 = Math.max(0, y - r), y1 = Math.min(H, y + r + 1);
+    for (let x = 0; x < W; x++) { const x0 = Math.max(0, x - r), x1 = Math.min(W, x + r + 1);
+      const media = (ii[y1*(W+1) + x1] - ii[y0*(W+1) + x1] - ii[y1*(W+1) + x0] + ii[y0*(W+1) + x0]) / ((x1 - x0) * (y1 - y0));
+      const v = g[y*W + x] < media - 12 ? 0 : 255, i = 4 * (y*W + x); od.data[i] = od.data[i+1] = od.data[i+2] = v; od.data[i+3] = 255; } }
+  bk.putImageData(od, 0, 0);
+  return [gris, bn];
+}
+const puntajeHor = r => !r ? -1 : r.filas.reduce((n, f) => n + f.celdas.filter(c => c && !parsearCelda(c, S.hor.puestos).error).length * 2 - f.celdas.filter(c => c && parsearCelda(c, S.hor.puestos).error).length, 0);
+async function ocrHor(cv, worker){
   const { data } = await worker.recognize(cv);
   const words = (data.words || []).filter(w => w.text && w.text.trim() && w.confidence > 20).map(w => ({s:w.text.trim(), x:w.bbox.x0, w:w.bbox.x1 - w.bbox.x0, y:-(w.bbox.y0 + w.bbox.y1) / 2, h:w.bbox.y1 - w.bbox.y0}));
   const alto = words.map(w => w.h).sort((a, b) => a - b)[Math.floor(words.length / 2)] || 20;
@@ -2053,6 +2077,23 @@ async function leerHorImagen(file, worker, prog, n, total){
   let r = tabla && horarioDeTabla(tabla);
   if (!r || !r.filas.length) r = horarioDeLineas(String(data.text || "").split(/\r?\n/));
   return r;
+}
+async function leerHorImagen(file, worker, prog, n, total){
+  await worker.setParameters({tessedit_pageseg_mode:"6", tessedit_char_whitelist:"", preserve_interword_spaces:"1"});
+  const paso = (t, f) => prog(`Imagen ${n} de ${total}: ${t}`, (n - 1 + f) / total * 0.9 + 0.05);
+  let mejor = null;
+  for (const giro of [0, 90, 270, 180]) {
+    if (giro) paso(`probando la imagen girada ${giro}°…`, 0.6);
+    const cv = await lienzoHor(file, giro), vs = versionesHor(cv);
+    for (let k = 0; k < vs.length; k++) {
+      if (!giro) paso(k ? "leyendo con más contraste…" : "leyendo…", k ? 0.45 : 0.1);
+      const r = await ocrHor(vs[k], worker);
+      if (puntajeHor(r) > puntajeHor(mejor)) mejor = r;
+    }
+    if (mejor && mejor.filas.length) break;   // solo se gira si de frente no se encontró nada
+  }
+  if (!mejor || !mejor.filas.length) throw new Error(`No se pudo leer el horario en la imagen ${n}. Tome la foto de frente, con buena luz y que se vea toda la tabla, o use una captura de pantalla.`);
+  return mejor;
 }
 
 // Nombre leído → persona del horario
@@ -2073,8 +2114,11 @@ function emparejarPersona(nombre, personal){
 function abrirCargaHorario(){
   const sem = S.hor.lunes;
   openSheet(`<div class="sheet-head"><div><div class="eyebrow">Horario · semana del ${esc(fechaCorta(sem))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Cargar horarios</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
-    <p class="hint" style="margin:0;font-size:14px">Elija el horario de la semana en Excel, PDF o capturas de pantalla. La app lee a cada colaborador y su turno de cada día, y le muestra todo para revisarlo antes de guardar.</p>
-    <label class="btn primary" style="cursor:pointer;padding:14px 18px"><input type="file" id="chFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/pdf,image/*" multiple hidden>Elegir Excel, PDF o capturas</label>
+    <p class="hint" style="margin:0;font-size:14px">Suba el horario de la semana en foto, captura de pantalla, Excel o PDF. La app lee a cada colaborador y su turno de cada día, y le muestra todo para revisarlo antes de guardar.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+      <label class="btn primary" style="cursor:pointer;padding:14px 18px"><input type="file" class="chFile" accept="image/*" multiple hidden>📷 Foto o captura</label>
+      <label class="btn" style="cursor:pointer;padding:14px 18px"><input type="file" class="chFile" accept=".xlsx,.xls,.csv,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,application/pdf" multiple hidden>Excel o PDF</label></div>
+    <p class="hint" style="margin:0">Desde el teléfono puede tomar la foto del horario en ese momento o elegirla de la galería (una o varias). Para la foto: de frente, con buena luz y que se vea toda la tabla.</p>
     <details><summary style="cursor:pointer;font-weight:600">O pegar el texto del horario</summary>
       <div style="display:grid;gap:8px;margin-top:8px"><textarea id="chTxt" rows="6" placeholder="Copie la tabla desde Excel y péguela aquí, o escriba una línea por persona:&#10;Nombre  Lunes  Martes  Miércoles  Jueves  Viernes  Sábado  Domingo&#10;Alfredo Córdoba  5-1 C  5-1 C  D  11-7 C  11-7 C  VAC  COMP"></textarea>
       <button class="btn" id="chTxtOk" type="button">Leer texto</button></div></details>
@@ -2082,7 +2126,8 @@ function abrirCargaHorario(){
     <p class="hint warn" id="chErr" style="margin:0"></p>
     <div class="callout"><b>Cómo se lee cada día:</b> horario y letra de la función, por ejemplo <span class="mono">5-1 S</span>, <span class="mono">11-7 F</span>, <span class="mono">1-9 ER</span> o <span class="mono">9:30-6 P</span>. Libre: <span class="mono">D</span> o <span class="mono">Libre</span>; vacaciones: <span class="mono">VAC</span>; compensatorio: <span class="mono">COMP</span>. Una celda vacía no cambia lo que ya está cargado.</div>`);
   const prog = (t, f) => { $("#chProg").hidden = false; $("#chProgTxt").textContent = t; if (f != null) $("#chBar").style.width = Math.round(Math.min(1, f) * 100) + "%"; };
-  const fallo = e => { $("#chProg").hidden = true; $("#chErr").textContent = errMsg(e); $("#chFile").disabled = false; $("#chFile").value = ""; };
+  const ins = [...document.querySelectorAll(".chFile")], bloquear = b => ins.forEach(i => { i.disabled = b; i.parentElement.style.opacity = b ? ".55" : ""; if (!b) i.value = ""; });
+  const fallo = e => { $("#chProg").hidden = true; $("#chErr").textContent = errMsg(e); bloquear(false); };
   $("#chTxtOk").onclick = () => {
     const t = $("#chTxt").value.replace(/\r/g, "").trim(); if (!t) return;
     const lineas = t.split("\n");
@@ -2091,11 +2136,11 @@ function abrirCargaHorario(){
     if (!r.filas.length) { $("#chErr").textContent = "No se encontró ningún colaborador con turnos. Pegue la tabla con la fila de los días o una línea por persona con sus 7 días."; return; }
     revisarHorario(r, "texto", []);
   };
-  $("#chFile").onchange = async e => {
+  const alElegir = async e => {
     const files = [...e.target.files]; if (!files.length) return;
-    $("#chErr").textContent = ""; $("#chFile").disabled = true;
+    $("#chErr").textContent = ""; bloquear(true);
     const total = {semana:null, filas:[]}, esX = f => /\.(xlsx|xls|csv)$/i.test(f.name) || /sheet|excel|csv/i.test(f.type);
-    const imgs = files.filter(f => f.type.startsWith("image/")), pdfs = files.filter(f => f.type === "application/pdf" || /\.pdf$/i.test(f.name)), xls = files.filter(esX);
+    const imgs = files.filter(f => f.type.startsWith("image/") || /\.(jpe?g|png|heic|heif|webp)$/i.test(f.name)), pdfs = files.filter(f => f.type === "application/pdf" || /\.pdf$/i.test(f.name)), xls = files.filter(esX);
     let worker = null;
     try {
       for (const f of xls) { prog(`Leyendo ${f.name}…`, 0.3); const r = await leerHorExcel(f); total.semana = total.semana || r.semana; total.filas.push(...r.filas); }
@@ -2113,6 +2158,7 @@ function abrirCargaHorario(){
     } catch(err) { fallo(err); }
     finally { if (worker) worker.terminate(); }
   };
+  ins.forEach(i => i.onchange = alElegir);
 }
 
 async function revisarHorario(r, fuente, urls){
@@ -2130,7 +2176,7 @@ async function revisarHorario(r, fuente, urls){
     <label class="f">Semana (lunes)<input type="date" id="hvSem" value="${esc(semana)}"></label>
     <div class="hint" id="hvSemTxt" style="margin-top:-6px"></div>
     ${r.semana && r.semana !== h.lunes ? `<div class="callout gold">La semana se tomó del archivo: del ${esc(fechaCorta(r.semana))} al ${esc(fechaCorta(masDias(r.semana, 6)))}.</div>` : !r.semana ? `<div class="callout gold">El archivo no indica la fecha: confirme la semana arriba.</div>` : ""}
-    ${fuente === "imagen" ? `<div class="callout gold">Leído como imagen: compare cada día con la captura y corrija lo que salió mal antes de guardar.</div>
+    ${fuente === "imagen" ? `<div class="callout gold">Leído de una imagen: compare cada día con la foto (tóquela para verla en grande) y corrija lo que salió mal antes de guardar.</div>
       <div class="rvthumbs">${urls.map((u, i) => `<a href="${u}" target="_blank" rel="noopener" title="Ver imagen ${i + 1}"><img src="${u}" alt="Captura ${i + 1}"></a>`).join("")}</div>` : ""}
     <div class="stack" style="gap:8px" id="hvRows">${filas.map(filaHTML).join("")}</div>
     <button class="btn small" id="hvAdd" type="button">+ Agregar colaborador</button>
@@ -2636,7 +2682,7 @@ async function revisarCarga(r, fuente, urls, corregidos){
 }
 
 /* ===================== Versión: avisa y recarga cuando se publica una nueva ===================== */
-const APP_VER = "202610261130";
+const APP_VER = "202610261230";
 async function revisarVersion(){
   try {
     const h = await fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(r => r.ok ? r.text() : "");
