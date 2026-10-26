@@ -94,7 +94,7 @@ td select{min-width:190px;padding:7px 9px;font-size:14px}
 .stack{display:grid;gap:12px;align-content:start;min-width:0}
 .fields{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 label.f{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
-input[type=text],input[type=password],input[type=email],input[type=date],input[type=time],select,textarea{background:var(--paper);border:1px solid var(--line-strong);border-radius:8px;padding:10px 11px;width:100%;min-width:0;font-size:16px}
+input[type=text],input[type=password],input[type=email],input[type=search],input[type=tel],input[type=date],input[type=time],select,textarea{background:var(--paper);border:1px solid var(--line-strong);border-radius:8px;padding:10px 11px;width:100%;min-width:0;font-size:16px}
 textarea{resize:vertical;min-height:72px}
 input:disabled,select:disabled,textarea:disabled{opacity:.7}
 .btn{border:1px solid var(--line-strong);background:var(--paper);border-radius:8px;padding:10px 15px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center;justify-content:center;text-decoration:none}
@@ -274,6 +274,16 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .tee.h10{border-left-style:double;border-left-width:6px}
 .tee .j{min-width:0;overflow-wrap:anywhere;font-size:14px;cursor:pointer}
 .tee .j small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.tee.falta{border-left-color:var(--warn)}
+.tee .h .lt,.dcard .lt{display:inline-block;font-family:var(--f-mono);font-weight:600;font-size:12px;color:#fff;background:var(--c);border-radius:5px;padding:1px 6px}
+.tee.asis .j{cursor:default} .tee.asis .j[data-asis]{cursor:pointer} .tee.asis .j b{font-size:15px}
+.dgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.dcard{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:6px;min-width:0}
+.dcard[role="button"]{cursor:pointer} .dcard[role="button"]:hover{border-color:var(--line-strong)}
+.dtop{display:flex;gap:8px;align-items:flex-start;justify-content:space-between} .dtop b{font-size:16px;min-width:0;overflow-wrap:anywhere}
+.dline{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px}
+.permrow{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.permrow:first-child{border-top:0} .permrow input{width:22px;height:22px;flex:none;accent-color:var(--brand-2)}
 .tee .acc{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .rvrow{display:grid;grid-template-columns:140px 104px minmax(0,1fr) auto;gap:6px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--paper)}
 .rvrow input[type=time]{font-family:var(--f-mono)}
@@ -421,6 +431,9 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-starters" hidden></section>
     <section class="view" id="v-horario" hidden></section>
     <section class="view" id="v-supervision" hidden></section>
+    <section class="view" id="v-hoy" hidden></section>
+    <section class="view" id="v-directorio" hidden></section>
+    <section class="view" id="v-permisos" hidden></section>
   </main>
 </div>
 
@@ -446,7 +459,8 @@ const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
   marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["equipo","Equipo","ger"]]},
   starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"]]},
-  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["horario","Horario"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
+  staff:    {nombre:"Staff", tabs:[["hoy","Hoy"],["horario","Horario"],["directorio","Directorio"],["permisos","Permisos","ger"]]},
+  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
 
@@ -576,7 +590,7 @@ async function entrar(){
   if (!S.me.activo) { mostrar("blocked"); return; }
   S.esGer = GERENCIA.includes(S.me.rol); S.esCap = CAPITANIA.includes(S.me.rol);
   S.esStarter = S.me.rol === "starter";
-  S.mods = []; if (S.esStarter || S.esGer) S.mods.push("starter"); if (S.me.rol === "marshal" || S.esStarter || S.esGer) S.mods.push("marshals"); if (S.esCap) S.mods.push("capitanes");
+  S.mods = []; if (S.esStarter || S.esGer) S.mods.push("starter"); if (S.me.rol === "marshal" || S.esStarter || S.esGer) S.mods.push("marshals"); if (S.esCap) S.mods.push("capitanes"); S.mods.push("staff");
   $("#whoName").textContent = S.me.nombre; $("#whoRole").textContent = S.esGer ? "Gerencia" : ROLES[S.me.rol]; $("#whoRole").classList.toggle("g", S.esGer);
   $("#menuWho").textContent = `${S.me.nombre} · ${ROLES[S.me.rol]}${S.me.usuario ? " · " + S.me.usuario : ""}`;
   try {
@@ -600,6 +614,7 @@ async function entrar(){
   }
   if (S.mods.includes("capitanes")) { cargarCapitanes(); suscribirCap(); }
   if (S.esStarter || S.esGer) suscribirStarter();
+  await cargarEditores(); suscribirStaff();
   const sw = $("#modSw"); sw.hidden = S.mods.length < 2;
   sw.innerHTML = S.mods.map(m => `<button type="button" data-mod="${m}">${MODULOS[m].nombre}</button>`).join("");
   sw.onclick = e => { const b = e.target.closest("[data-mod]"); if (b) setModulo(b.dataset.mod); };
@@ -624,8 +639,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","supervision"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, supervision:cargarSupervision})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","supervision","hoy","directorio","permisos"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, permisos:renderPermisos})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -1246,7 +1261,6 @@ function suscribirCap(){
     .on("postgres_changes", {event:"*", schema:"public", table:"juegos_alquiler"}, re)
     .on("postgres_changes", {event:"*", schema:"public", table:"alquileres"}, re)
     .on("postgres_changes", {event:"*", schema:"public", table:"miembros"}, re)
-    .on("postgres_changes", {event:"*", schema:"public", table:"hor_turnos"}, () => { clearTimeout(suscribirCap._h); suscribirCap._h = setTimeout(() => { if (S.view === "horario" && !$("#ov")) cargarHorario(); }, 400); })
     .on("postgres_changes", {event:"*", schema:"public", table:"tee_salidas"}, () => { clearTimeout(suscribirCap._s); suscribirCap._s = setTimeout(() => { if (S.view === "salidas" && !$("#ov")) cargarSalidas(); }, 400); })
     .subscribe();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) cargarCapitanes(); });
@@ -1676,7 +1690,7 @@ function crearCasillas(){
   };
 }
 
-/* ===================== Capitanes: horario semanal y tablero de TV ===================== */
+/* ===================== Staff: horario semanal y tablero de TV ===================== */
 const DIAS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 const TIPO_T = {trabajo:"Trabaja", descanso:"Descanso", vacaciones:"Vacaciones", compensatorio:"Compensatorio"};
 const HORARIOS = [["05:00","13:00","Apertura 5:00 a. m. – 1:00 p. m."],["11:00","19:00","Cierre 11:00 a. m. – 7:00 p. m."],["13:00","21:00","Range nocturno 1:00 – 9:00 p. m."],["09:30","18:00","9:30 a. m. – 6:00 p. m."],["06:30","15:00","6:30 a. m. – 3:00 p. m."]];
@@ -1700,7 +1714,7 @@ async function cargarHorario(){
   if (S.view === "horario" && !$("#ov")) renderHorario();
 }
 const puestoDe = c => S.hor.puestos.find(p => p.codigo === c) || {codigo:c, nombre:c, color:"#4a5a66"};
-const puedeEditarDia = f => S.esGer || (S.esCap && f === hoyISO());
+const puedeEditarDia = f => S.esGer || S.esEditor || (S.esCap && f === hoyISO());
 const urlTablero = () => S.hor.token ? `${location.origin}${location.pathname.replace(/[^/]*$/, "")}tablero/?k=${S.hor.token}` : "";
 
 function celdaHor(t, f, pid){
@@ -1717,20 +1731,20 @@ function renderHorario(){
   const idx = {}; h.turnos.forEach(t => idx[t.fecha + "|" + t.personal_id] = t);
   const grupos = [...new Set(h.personal.map(p => p.grupo))];
   const vacios = h.personal.length * 7 - h.turnos.filter(t => h.personal.some(p => p.id === t.personal_id)).length;
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Operación de golf</div><h1>Horario del personal</h1>
-      <p class="sub">Semana del ${esc(fechaCorta(dias[0]))} al ${esc(fechaCorta(dias[6]))} · ${plural(h.personal.length, "persona")}${vacios > 0 ? ` · ${plural(vacios, "día sin asignar", "días sin asignar")}` : ""}${S.esGer ? "" : " · a mano puede ajustar solo el día de hoy; la semana completa se sube con Cargar horarios"}</p></div>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Staff · Operación de golf</div><h1>Horario del personal</h1>
+      <p class="sub">Semana del ${esc(fechaCorta(dias[0]))} al ${esc(fechaCorta(dias[6]))} · ${plural(h.personal.length, "persona")}${vacios > 0 ? ` · ${plural(vacios, "día sin asignar", "días sin asignar")}` : ""}${puedeEditarStaff() ? "" : S.esCap ? " · a mano puede ajustar solo el día de hoy; la semana completa se sube con Cargar horarios" : " · solo lectura"}</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        ${S.esCap ? `<button class="btn primary" id="hCargar" type="button">Cargar horarios</button>` : ""}
+        ${S.esCap || S.esEditor ? `<button class="btn primary" id="hCargar" type="button">Cargar horarios</button>` : ""}
         <button class="btn small" id="hPrev" type="button">← Semana anterior</button><button class="btn small" id="hHoy" type="button">Esta semana</button><button class="btn small" id="hNext" type="button">Semana siguiente →</button></div></div>
     ${S.esGer ? `<div class="callout gold" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Tablero de TV:</b> ${h.token ? `abra este enlace en el navegador de la Smart TV.` : "no hay enlace activo."}</span>
       ${h.token ? `<code style="font-family:var(--f-mono);font-size:12px;overflow-wrap:anywhere;flex:1 1 260px">${esc(urlTablero())}</code><button class="btn small" id="hCopy" type="button">Copiar enlace</button><a class="btn small" style="color:var(--ink)" href="${esc(urlTablero())}" target="_blank" rel="noopener">Abrir tablero</a>` : ""}
-      <button class="btn small ghost" id="hToken" type="button">${h.token ? "Cambiar enlace" : "Crear enlace"}</button></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" id="hCopiar" type="button">Copiar la semana anterior</button><button class="btn small" id="hPers" type="button">Personal</button><button class="btn small" id="hFun" type="button">Funciones e instrucciones</button></div>` : ""}
+      <button class="btn small ghost" id="hToken" type="button">${h.token ? "Cambiar enlace" : "Crear enlace"}</button></div>` : ""}
+    ${puedeEditarStaff() ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" id="hCopiar" type="button">Copiar la semana anterior</button><button class="btn small" id="hPers" type="button">Personal (Directorio)</button><button class="btn small" id="hFun" type="button">Funciones e instrucciones</button></div>` : ""}
     <div class="tablewrap"><table class="hgrid"><thead><tr><th style="text-align:left">Colaborador</th>${dias.map((f, i) => `<th class="${f === hoy ? "hoy" : ""}">${DIAS[i]}<br><span class="mono" style="font-weight:500">${esc(fechaCorta(f))}</span></th>`).join("")}</tr></thead>
       <tbody>${grupos.map(g => `<tr><td colspan="8" class="eyebrow" style="padding:10px 10px 4px;background:var(--ground)">${esc(g)}</td></tr>` +
         h.personal.filter(p => p.grupo === g).map(p => `<tr><td class="pn">${esc(p.nombre)}</td>${dias.map(f => `<td>${celdaHor(idx[f + "|" + p.id], f, p.id)}</td>`).join("")}</tr>`).join("")).join("")}
       </tbody></table></div>
-    ${h.personal.length ? "" : `<div class="empty"><strong>Aún no hay personal cargado</strong>${S.esGer ? "Agréguelo con el botón Personal o con Cargar horarios." : "Use Cargar horarios o pídale a Gerencia que cargue el personal."}</div>`}
+    ${h.personal.length ? "" : `<div class="empty"><strong>Aún no hay personal cargado</strong>${puedeEditarStaff() ? "Agréguelo en el Directorio o con Cargar horarios." : S.esCap ? "Use Cargar horarios o pídale a Gerencia que cargue el personal." : "Gerencia aún no publica el horario."}</div>`}
     <div class="hleyenda">${h.puestos.map(p => `<span><i style="--c:${esc(p.color)}">${esc(p.codigo)}</i>${esc(p.nombre)}</span>`).join("")}</div>`;
   $("#hPrev").onclick = () => { h.lunes = masDias(h.lunes, -7); renderHorario(); };
   $("#hNext").onclick = () => { h.lunes = masDias(h.lunes, 7); renderHorario(); };
@@ -1739,6 +1753,7 @@ function renderHorario(){
   v.querySelectorAll("[data-hf]").forEach(b => b.onclick = () => editarTurno(b.dataset.hf, b.dataset.hp));
   const th = v.querySelector(".hgrid th.hoy"), tw = v.querySelector(".tablewrap");
   if (th && tw && tw.scrollWidth > tw.clientWidth) { const pn = v.querySelector(".hgrid td.pn"); tw.scrollLeft = Math.max(0, th.offsetLeft - (pn ? pn.offsetWidth : 0) - 8); }
+  if (puedeEditarStaff()) { $("#hCopiar").onclick = copiarSemana; $("#hPers").onclick = () => go("directorio"); $("#hFun").onclick = editarFunciones; }
   if (!S.esGer) return;
   if ($("#hCopy")) $("#hCopy").onclick = async () => { try { await navigator.clipboard.writeText(urlTablero()); toast("Enlace copiado"); } catch(e){ toast("Copie el enlace manualmente"); } };
   $("#hToken").onclick = async () => {
@@ -1748,9 +1763,6 @@ function renderHorario(){
     if (error) { toast(errMsg(error)); return; }
     h.token = data.token; toast("Enlace del tablero listo"); renderHorario();
   };
-  $("#hCopiar").onclick = copiarSemana;
-  $("#hPers").onclick = editarPersonal;
-  $("#hFun").onclick = editarFunciones;
 }
 function editarTurno(f, pid){
   const h = S.hor, p = h.personal.find(x => x.id === pid), t = h.turnos.find(x => x.fecha === f && x.personal_id === pid);
@@ -1809,37 +1821,6 @@ async function copiarSemana(){
   const r = await sb.from("hor_turnos").insert(filas);
   if (r.error) { toast(errMsg(r.error)); return; }
   toast(`${plural(filas.length, "día copiado", "días copiados")}`); cargarHorario();
-}
-function editarPersonal(){
-  const h = S.hor, grupos = [...new Set(h.personal.map(p => p.grupo).concat(["Operación de golf"]))];
-  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Personal del horario</h2><button class="btn ghost x" data-x type="button">Cerrar</button></div>
-    <div class="stack" style="gap:8px" id="pList">${h.personal.map(p => `<div style="display:grid;grid-template-columns:1fr 160px auto;gap:8px;align-items:center" data-pid="${p.id}">
-      <input type="text" value="${esc(p.nombre)}" data-k="nombre" aria-label="Nombre"><input type="text" value="${esc(p.grupo)}" data-k="grupo" list="gruposL" aria-label="Grupo">
-      <button class="btn small danger" type="button" data-baja>Dar de baja</button></div>`).join("")}</div>
-    <datalist id="gruposL">${grupos.map(g => `<option value="${esc(g)}">`).join("")}</datalist>
-    <div style="display:grid;grid-template-columns:1fr 160px auto;gap:8px;align-items:end;border-top:1px solid var(--line);padding-top:12px">
-      <label class="f">Nueva persona<input type="text" id="nNom" placeholder="Nombre y apellido"></label><label class="f">Grupo<input type="text" id="nGru" list="gruposL" value="Operación de golf"></label>
-      <button class="btn primary" id="nOk" type="button">Agregar</button></div>
-    <p class="hint" style="margin:0">Los cambios de nombre o grupo se guardan al salir del campo. Dar de baja oculta a la persona del horario y del tablero, sin borrar su historial.</p>`);
-  document.querySelectorAll("#pList [data-k]").forEach(i => i.onchange = async () => {
-    const id = i.closest("[data-pid]").dataset.pid, val = i.value.trim(); if (!val) return;
-    const { error } = await sb.from("hor_personal").update({[i.dataset.k]: val}).eq("id", id);
-    if (error) toast(errMsg(error)); else { toast("Guardado"); const p = h.personal.find(x => x.id === id); if (p) p[i.dataset.k] = val; }
-  });
-  document.querySelectorAll("#pList [data-baja]").forEach(b => b.onclick = async () => {
-    const row = b.closest("[data-pid]"), p = h.personal.find(x => x.id === row.dataset.pid);
-    if (!confirm(`¿Dar de baja a ${p.nombre}?`)) return;
-    const { error } = await sb.from("hor_personal").update({activo:false}).eq("id", p.id);
-    if (error) { toast(errMsg(error)); return; }
-    row.remove(); toast(`${p.nombre} dado de baja`); cargarHorario();
-  });
-  $("#nOk").onclick = async () => {
-    const nombre = $("#nNom").value.trim(), grupo = $("#nGru").value.trim() || "Operación de golf"; if (!nombre) return;
-    const orden = h.personal.reduce((m, p) => Math.max(m, p.orden || 0), 0) + 1;
-    const { error } = await sb.from("hor_personal").insert({nombre, grupo, orden});
-    if (error) { toast(errMsg(error)); return; }
-    closeSheet(); toast(`${nombre} agregado`); await cargarHorario(); editarPersonal();
-  };
 }
 function editarFunciones(){
   const h = S.hor;
@@ -3270,6 +3251,274 @@ async function exportarCap(){
     XLSX.writeFile(wb, `SMGC_Capitanes_${S.sup.desde}_a_${S.sup.hasta}.xlsx`);
   } catch(e){ toast("No se pudo generar el Excel. " + errMsg(e)); }
   b.disabled = false; b.textContent = "Exportar a Excel";
+}
+
+/* ===================== Staff: asistencia del día, directorio y permisos ===================== */
+const AREAS_ST = {campo:"Personal de campo", marshal:"Marshals", capitan:"Capitanes"};
+const ESTADO_AS = {presente:"Presente", ausente:"Ausente", permiso:"Permiso", incapacidad:"Incapacidad"};
+const TOL_LLEGADA = 5;   // minutos de tolerancia para contar una llegada como puntual
+S.st2 = {fecha: hoyISO(), personal:[], puestos:[], turnos:[], asis:[], loaded:false, fechaCargada:null};
+S.dir = {q:"", area:"todos", bajas:false, personal:[], loaded:false};
+const puedeEditarStaff = () => S.esGer || S.esEditor;
+const puedeAsistencia = () => S.esGer || S.esEditor || S.esCap;
+const minDeISO = iso => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
+const isoDe = (f, t) => new Date(`${f}T${t}:00`).toISOString();
+const ahoraMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+const telLimpio = t => String(t || "").replace(/[^\d+]/g, "");
+const waDe = t => { let n = telLimpio(t).replace(/^\+/, ""); if (n.length === 8) n = "507" + n; return n ? `https://wa.me/${n}` : ""; };
+
+async function cargarEditores(){
+  const { data } = await sb.from("staff_editores").select("perfil_id");
+  S.editores = new Set((data || []).map(x => x.perfil_id));
+  S.esEditor = S.editores.has(S.me.id);
+}
+function suscribirStaff(){
+  const re = (fn, k) => () => { clearTimeout(suscribirStaff[k]); suscribirStaff[k] = setTimeout(fn, 400); };
+  sb.channel("staff-vivo")
+    .on("postgres_changes", {event:"*", schema:"public", table:"hor_turnos"}, re(() => {
+      if (S.view === "horario" && !$("#ov")) cargarHorario();
+      if (S.view === "hoy") cargarHoy();
+    }, "_t"))
+    .on("postgres_changes", {event:"*", schema:"public", table:"hor_asistencia"}, re(() => { if (S.view === "hoy") cargarHoy(); }, "_a"))
+    .on("postgres_changes", {event:"*", schema:"public", table:"hor_personal"}, re(() => { S.dir.loaded = false; S.hor.loaded = false; if (S.view === "directorio" && !$("#ov")) renderDirectorio(); if (S.view === "hoy") cargarHoy(); }, "_p"))
+    .subscribe();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && S.view === "hoy") cargarHoy(); });
+}
+
+/* ---------- Hoy: asistencia del día ---------- */
+async function cargarHoy(){
+  const a = S.st2, f = a.fecha;
+  const [pe, pu, tu, as] = await Promise.all([
+    sb.from("hor_personal").select("*").eq("activo", true).order("orden").order("nombre"),
+    sb.from("hor_puestos").select("*").eq("activo", true).order("orden"),
+    sb.from("hor_turnos").select("*").eq("fecha", f),
+    sb.from("hor_asistencia").select("*").eq("fecha", f),
+  ]);
+  const bad = [pe, pu, tu, as].find(x => x.error); if (bad) { toast(errMsg(bad.error)); return; }
+  a.personal = pe.data; a.puestos = pu.data; a.turnos = tu.data; a.asis = as.data; a.loaded = true; a.fechaCargada = f;
+  if (S.view === "hoy" && !$("#ov")) renderHoy();
+}
+const puestoHoy = c => S.st2.puestos.find(p => p.codigo === c) || {codigo:c, nombre:c, color:"#4a5a66"};
+// Estado de asistencia de una persona con turno de trabajo
+function estadoAsis(t, r, esHoy){
+  const ini = hmin(t.inicio), fin = hmin(t.fin), m = ahoraMin();
+  if (r && r.estado !== "presente") return {k:"aus", txt: ESTADO_AS[r.estado], cls:"p-crit"};
+  if (r && r.llegada) {
+    const dif = minDeISO(r.llegada) - ini, tarde = dif > TOL_LLEGADA;
+    if (r.salida) return {k: tarde ? "tarde" : "ok", txt:`Llegó ${hora(r.llegada)} · salió ${hora(r.salida)}`, cls: tarde ? "p-alta" : "p-ok", tarde};
+    return {k: tarde ? "tarde" : "ok", txt: tarde ? `Llegó ${hora(r.llegada)} · +${durTxt(dif)}` : `Llegó ${hora(r.llegada)}`, cls: tarde ? "p-alta" : "p-ok", tarde};
+  }
+  if (esHoy && m < ini) return {k:"prox", txt:`Entra ${hora12(t.inicio)}`, cls:"p-draft"};
+  if (esHoy && m < ini + TOL_LLEGADA) return {k:"prox", txt:"Entra ahora", cls:"p-gold"};
+  if (esHoy && m >= fin) return {k:"falta", txt:"Sin registro", cls:"p-alta"};
+  return {k:"falta", txt:"Sin marcar", cls:"p-alta"};
+}
+function renderHoy(){
+  const v = $("#v-hoy"), a = S.st2;
+  if (!a.loaded || a.fechaCargada !== a.fecha) { v.innerHTML = `<div class="loading">Cargando asistencia…</div>`; cargarHoy(); return; }
+  const esHoy = a.fecha === hoyISO(), m = ahoraMin(), ed = puedeAsistencia();
+  const per = Object.fromEntries(a.personal.map(p => [p.id, p])), rAs = Object.fromEntries(a.asis.map(r => [r.personal_id, r]));
+  const trab = a.turnos.filter(t => t.tipo === "trabajo" && per[t.personal_id]).sort((x, y) => hmin(x.inicio) - hmin(y.inicio) || (per[x.personal_id].orden - per[y.personal_id].orden));
+  const filas = trab.map(t => ({t, p: per[t.personal_id], r: rAs[t.personal_id], e: estadoAsis(t, rAs[t.personal_id], esHoy)}));
+  const libres = a.turnos.filter(t => t.tipo !== "trabajo" && per[t.personal_id]);
+  const sinTurno = a.personal.filter(p => !a.turnos.some(t => t.personal_id === p.id));
+  const deb = filas.filter(x => x.e.k !== "prox" && !(x.r && (x.r.estado === "permiso" || x.r.estado === "incapacidad"))), pres = filas.filter(x => x.r && x.r.llegada), tard = filas.filter(x => x.e.tarde);
+  const falt = filas.filter(x => x.e.k === "falta"), aus = filas.filter(x => x.e.k === "aus");
+  const pct = deb.length ? Math.round(100 * pres.filter(x => !x.e.tarde).length / deb.length) : null;
+  const ahora = filas.filter(x => !esHoy || (hmin(x.t.inicio) <= m && m < hmin(x.t.fin)));
+  const luego = esHoy ? filas.filter(x => m < hmin(x.t.inicio)) : [];
+  const fueron = esHoy ? filas.filter(x => m >= hmin(x.t.fin)) : [];
+  // Mi asistencia: si mi cuenta está vinculada y hoy tengo turno
+  const yo = a.personal.find(p => p.perfil_id === S.me.id), miT = yo && esHoy ? a.turnos.find(t => t.personal_id === yo.id) : null, miR = yo ? rAs[yo.id] : null;
+  const fila = x => {
+    const pu = puestoHoy(x.t.puesto), cls = {ok:"ok", tarde:"tarde", falta:"falta", aus:"ns", prox:""}[x.e.k];
+    const alm = x.t.almuerzo_inicio ? ` · almuerzo ${hcorta(x.t.almuerzo_inicio)}–${hcorta(x.t.almuerzo_fin)}` : "";
+    const acc = !ed ? "" : !x.r ? (x.e.k === "prox" && esHoy ? "" : `<button class="btn small primary" data-lleg="${x.p.id}" type="button">Llegó</button><button class="btn small" data-aus="${x.p.id}" type="button">Ausente</button>`)
+      : (x.r.estado === "presente" && x.r.llegada && !x.r.salida && esHoy && m >= hmin(x.t.fin) - 30 ? `<button class="btn small" data-sal="${x.p.id}" type="button">Salió</button>` : "");
+    return `<div class="tee asis ${cls}"><div class="h">${hm(x.t.inicio)}<br><span class="lt" style="--c:${esc(pu.color)}">${esc(x.t.puesto)}</span></div>
+      <div class="j" ${ed ? `data-asis="${x.p.id}"` : ""}><b>${esc(x.p.nombre)}</b><small>${esc(pu.nombre)} · ${hcorta(x.t.inicio)}–${hcorta(x.t.fin)}${alm}${x.r && x.r.nota ? " · " + esc(x.r.nota) : ""}</small>
+        <span class="pill ${x.e.cls}" style="margin-top:4px">${esc(x.e.txt)}</span></div>
+      <div class="acc">${acc}</div></div>`;
+  };
+  const bloque = (tit, L) => L.length ? `<div class="stack" style="gap:8px"><div class="eyebrow">${tit} · ${L.length}</div><div class="tee-list">${L.map(fila).join("")}</div></div>` : "";
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Staff · Asistencia</div><h1>${esHoy ? "Hoy" : "Asistencia"} · ${esc(fechaLarga(a.fecha))}</h1>
+      <p class="sub">${plural(filas.length, "persona")} con turno · puntual si llega hasta ${TOL_LLEGADA} min después de su hora${ed ? " · toque un nombre para corregir" : ""}</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end"><label class="f" style="margin:0">Fecha<input type="date" id="aFecha" value="${a.fecha}" max="${hoyISO()}"></label>
+      ${esHoy ? "" : `<button class="btn small" id="aHoy" type="button">Hoy</button>`}</div></div>
+    ${miT ? (() => {
+      if (miT.tipo !== "trabajo") return `<div class="callout">Hoy está de <b>${esc(TIPO_T[miT.tipo].toLowerCase())}</b>. Que descanse.</div>`;
+      const e = estadoAsis(miT, miR, true), pu = puestoHoy(miT.puesto);
+      const btn = !miR || !miR.llegada ? (miR && miR.estado !== "presente" ? "" : `<button class="btn primary" id="miLleg" type="button">Marcar mi llegada</button>`)
+        : !miR.salida ? `<button class="btn" id="miSal" type="button">Marcar mi salida</button>` : "";
+      return `<div class="callout gold" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="flex:1 1 220px"><b>Mi turno:</b> ${hora12(miT.inicio)} – ${hora12(miT.fin)} · ${esc(miT.puesto)} ${esc(pu.nombre)}${miT.almuerzo_inicio ? ` · almuerzo ${hcorta(miT.almuerzo_inicio)}–${hcorta(miT.almuerzo_fin)}` : ""}<br><span class="pill ${e.cls}" style="margin-top:4px">${esc(e.txt)}</span>${pu.instrucciones ? `<br><span class="hint">${esc(pu.instrucciones)}</span>` : ""}</span>${btn}</div>`;
+    })() : ""}
+    <div class="kpis">
+      <div class="kpi"><div class="k">Llegadas puntuales</div><div class="v ${pct == null ? "" : pct >= 95 ? "ok" : pct >= 85 ? "warn" : "crit"}">${pct == null ? "—" : pct + "%"}</div><div class="t">${deb.length ? `${pres.length - tard.length} de ${deb.length} que ya debían llegar` : "nadie debía llegar aún"} · meta 95%</div></div>
+      <div class="kpi"><div class="k">Presentes</div><div class="v">${pres.length}</div><div class="t">de ${filas.length} con turno</div></div>
+      <div class="kpi"><div class="k">Llegadas tarde</div><div class="v ${tard.length ? "warn" : ""}">${tard.length}</div><div class="t">más de ${TOL_LLEGADA} min</div></div>
+      <div class="kpi"><div class="k">Sin marcar</div><div class="v ${falt.length ? "warn" : ""}">${falt.length}</div><div class="t">ya debían llegar</div></div>
+      <div class="kpi"><div class="k">Ausencias</div><div class="v ${aus.length ? "crit" : ""}">${aus.length}</div><div class="t">ausente, permiso o incapacidad</div></div>
+    </div>
+    ${filas.length ? (esHoy ? bloque("En turno ahora", ahora) + bloque("Entran más tarde", luego) + bloque("Ya terminaron", fueron) : bloque("Con turno", ahora))
+      : `<div class="empty"><strong>No hay turnos cargados para este día</strong>${S.esCap || S.esEditor || S.esGer ? "Cárguelos en la pestaña Horario." : "Gerencia aún no publica el horario de este día."}</div>`}
+    ${libres.length ? `<div class="panel"><h2>Libres este día</h2><div class="chips">${libres.map(t => `<span class="chip" style="cursor:default">${esc(per[t.personal_id].nombre)} · ${esc(TIPO_T[t.tipo])}</span>`).join("")}</div></div>` : ""}
+    ${sinTurno.length && (S.esCap || puedeEditarStaff()) ? `<p class="hint" style="margin:0">Sin horario este día: ${sinTurno.map(p => esc(p.nombre)).join(", ")}.</p>` : ""}`;
+  $("#aFecha").onchange = e => { if (e.target.value) { a.fecha = e.target.value; renderHoy(); } };
+  if ($("#aHoy")) $("#aHoy").onclick = () => { a.fecha = hoyISO(); renderHoy(); };
+  if ($("#miLleg")) $("#miLleg").onclick = () => miAsistencia("llegada");
+  if ($("#miSal")) $("#miSal").onclick = () => miAsistencia("salida");
+  v.querySelectorAll("[data-lleg]").forEach(b => b.onclick = () => esHoy ? guardarAsis(b.dataset.lleg, {estado:"presente", llegada:new Date().toISOString(), salida:null}) : editarAsistencia(b.dataset.lleg));
+  v.querySelectorAll("[data-sal]").forEach(b => b.onclick = () => { const r = rAs[b.dataset.sal]; guardarAsis(b.dataset.sal, {estado:"presente", llegada:r.llegada, salida:new Date().toISOString()}); });
+  v.querySelectorAll("[data-aus]").forEach(b => b.onclick = () => editarAsistencia(b.dataset.aus, "ausente"));
+  v.querySelectorAll("[data-asis]").forEach(b => b.onclick = () => editarAsistencia(b.dataset.asis));
+}
+async function miAsistencia(accion){
+  const b = $(accion === "llegada" ? "#miLleg" : "#miSal"); if (b) b.disabled = true;
+  const { error } = await sb.rpc("marcar_mi_asistencia", {p_accion: accion});
+  if (b) b.disabled = false;
+  if (error) { toast(errMsg(error)); return; }
+  toast(accion === "llegada" ? "Llegada marcada" : "Salida marcada"); cargarHoy();
+}
+async function guardarAsis(pid, campos){
+  const row = {fecha:S.st2.fecha, personal_id:pid, nota:null, ...campos, marcado_por:S.me.id};
+  const previo = S.st2.asis.find(r => r.personal_id === pid); if (previo && !("nota" in campos)) row.nota = previo.nota;
+  const { error } = await sb.from("hor_asistencia").upsert(row, {onConflict:"fecha,personal_id"});
+  if (error) { toast(errMsg(error)); return false; }
+  toast("Asistencia guardada"); cargarHoy(); return true;
+}
+function editarAsistencia(pid, estadoIni){
+  const a = S.st2, p = a.personal.find(x => x.id === pid), t = a.turnos.find(x => x.personal_id === pid), r = a.asis.find(x => x.personal_id === pid);
+  let estado = estadoIni || (r ? r.estado : "presente");
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(fechaLarga(a.fecha))}${t && t.tipo === "trabajo" ? ` · turno ${hcorta(t.inicio)}–${hcorta(t.fin)} ${esc(t.puesto)}` : ""}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(p.nombre)}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <div class="chips" id="asE">${Object.entries(ESTADO_AS).map(([k, l]) => `<button type="button" class="chip" data-e="${k}">${l}</button>`).join("")}</div>
+    <div id="asHoras" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label class="f">Llegada<input type="time" id="asL" value="${r && r.llegada ? hora(r.llegada) : (t && t.inicio && !r ? hm(t.inicio) : "")}"></label><label class="f">Salida<input type="time" id="asS" value="${r && r.salida ? hora(r.salida) : ""}"></label></div>
+    <label class="f">Nota (opcional)<input type="text" id="asN" value="${esc(r && r.nota || "")}" placeholder="Ej. avisó por WhatsApp, cubrió Luis"></label>
+    <p class="hint warn" id="asErr" style="margin:0"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="asOk" type="button">Guardar</button>${r ? `<button class="btn danger" id="asDel" type="button">Borrar registro</button>` : ""}</div>`);
+  const pinta = () => { document.querySelectorAll("#asE [data-e]").forEach(b => b.setAttribute("aria-pressed", b.dataset.e === estado)); $("#asHoras").hidden = estado !== "presente"; };
+  pinta(); document.querySelectorAll("#asE [data-e]").forEach(b => b.onclick = () => { estado = b.dataset.e; pinta(); });
+  $("#asOk").onclick = async () => {
+    const L = $("#asL").value, Sa = $("#asS").value, nota = $("#asN").value.trim() || null, err = $("#asErr");
+    const c = {estado, nota, llegada:null, salida:null};
+    if (estado === "presente") {
+      if (!L) { err.textContent = "Indique la hora de llegada."; return; }
+      if (Sa && hmin(Sa) <= hmin(L)) { err.textContent = "La salida debe ser después de la llegada."; return; }
+      c.llegada = isoDe(a.fecha, L); c.salida = Sa ? isoDe(a.fecha, Sa) : null;
+    }
+    $("#asOk").disabled = true; const ok = await guardarAsis(pid, c); if ($("#asOk")) $("#asOk").disabled = false;
+    if (ok) closeSheet();
+  };
+  if ($("#asDel")) $("#asDel").onclick = async () => {
+    const { error } = await sb.from("hor_asistencia").delete().eq("id", r.id);
+    if (error) { $("#asErr").textContent = errMsg(error); return; }
+    closeSheet(); toast("Registro borrado"); cargarHoy();
+  };
+}
+
+/* ---------- Directorio ---------- */
+async function cargarDirectorio(){
+  const [pe, pu, tu] = await Promise.all([
+    sb.from("hor_personal").select("*").order("orden").order("nombre"),
+    sb.from("hor_puestos").select("*").eq("activo", true).order("orden"),
+    sb.from("hor_turnos").select("personal_id,tipo,inicio,fin,puesto").eq("fecha", hoyISO()),
+  ]);
+  const bad = [pe, pu, tu].find(x => x.error); if (bad) { toast(errMsg(bad.error)); return; }
+  S.dir.personal = pe.data; S.dir.puestos = pu.data; S.dir.hoy = tu.data; S.dir.loaded = true;
+  if (S.view === "directorio" && !$("#ov")) renderDirectorio();
+}
+function renderDirectorio(){
+  const v = $("#v-directorio"), d = S.dir, ed = puedeEditarStaff();
+  if (!d.loaded) { v.innerHTML = `<div class="loading">Cargando directorio…</div>`; cargarDirectorio(); return; }
+  const PU = Object.fromEntries(d.puestos.map(p => [p.codigo, p])), norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const base = d.personal.filter(p => p.activo !== d.bajas);
+  const L = base.filter(p => (d.area === "todos" || p.area === d.area) && (!d.q || norm(p.nombre + " " + p.grupo + " " + (p.telefono || "")).includes(norm(d.q))));
+  const grupos = [...new Set(L.map(p => p.grupo))];
+  const letra = c => { const p = PU[c] || {codigo:c, color:"#4a5a66", nombre:c}; return `<span class="lt" style="--c:${esc(p.color)}" title="${esc(p.nombre)}">${esc(c)}</span>`; };
+  const hoyDe = p => { const t = d.hoy.find(x => x.personal_id === p.id); if (!t) return ""; return t.tipo === "trabajo" ? `Hoy ${hcorta(t.inicio)}–${hcorta(t.fin)} ${letra(t.puesto)}` : `Hoy: ${esc(TIPO_T[t.tipo].toLowerCase())}`; };
+  const tarjeta = p => { const pf = p.perfil_id && S.perfiles[p.perfil_id];
+    return `<div class="dcard" ${ed ? `data-dp="${p.id}" role="button" tabindex="0"` : ""}>
+      <div class="dtop"><b>${esc(p.nombre)}</b><span class="pill p-ord">${esc(AREAS_ST[p.area] || p.area)}</span></div>
+      <div class="dline">${p.puesto_habitual ? `<span class="hint">Habitual</span> ${letra(p.puesto_habitual)}` : ""}${(p.funciones || []).length ? ` <span class="hint">· Cubre</span> ${p.funciones.map(letra).join(" ")}` : ""}</div>
+      <div class="dline">${hoyDe(p) || `<span class="hint">Sin horario hoy</span>`}</div>
+      <div class="dline hint">${pf ? `Cuenta: ${esc(pf.usuario || "correo")} · ${esc(ROLES[pf.rol])}` : "Sin cuenta en la app"}</div>
+      ${p.telefono ? `<div class="dline"><a class="btn small" href="tel:${esc(telLimpio(p.telefono))}">Llamar ${esc(p.telefono)}</a><a class="btn small" href="${esc(waDe(p.telefono))}" target="_blank" rel="noopener">WhatsApp</a></div>` : ""}
+    </div>`; };
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Staff · Directorio</div><h1>Directorio del personal</h1>
+      <p class="sub">${plural(base.length, "persona")} ${d.bajas ? "dadas de baja" : "activas"}${ed ? " · toque una tarjeta para editar" : ""}</p></div>
+      ${ed ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="dNueva" type="button">Agregar persona</button><button class="btn small" id="dFun" type="button">Funciones e instrucciones</button></div>` : ""}</div>
+    <div class="filters"><label class="f">Buscar<input type="search" id="dQ" value="${esc(d.q)}" placeholder="Nombre, grupo o teléfono"></label></div>
+    <div class="chips" id="dArea">${[["todos","Todos"], ...Object.entries(AREAS_ST)].map(([k, l]) => `<button type="button" class="chip" data-a="${k}" aria-pressed="${d.area === k}">${l} · ${k === "todos" ? base.length : base.filter(p => p.area === k).length}</button>`).join("")}
+      ${ed ? `<button type="button" class="chip" id="dBajas" aria-pressed="${d.bajas}">Dados de baja</button>` : ""}</div>
+    <div id="dRes">${L.length ? grupos.map(g => `<div class="stack" style="gap:8px;margin-bottom:14px"><div class="eyebrow">${esc(g)}</div><div class="dgrid">${L.filter(p => p.grupo === g).map(tarjeta).join("")}</div></div>`).join("")
+      : `<div class="empty"><strong>Nadie coincide</strong>Pruebe con otro nombre o filtro.</div>`}</div>`;
+  const q = $("#dQ"); q.oninput = () => { d.q = q.value; clearTimeout(renderDirectorio._t); renderDirectorio._t = setTimeout(() => { const pos = q.selectionStart; renderDirectorio(); const n = $("#dQ"); n.focus(); n.setSelectionRange(pos, pos); }, 200); };
+  v.querySelectorAll("#dArea [data-a]").forEach(b => b.onclick = () => { d.area = b.dataset.a; renderDirectorio(); });
+  if ($("#dBajas")) $("#dBajas").onclick = () => { d.bajas = !d.bajas; renderDirectorio(); };
+  if ($("#dNueva")) $("#dNueva").onclick = () => editarPersona(null);
+  if ($("#dFun")) $("#dFun").onclick = async () => { if (!S.hor.puestos.length) await cargarHorario(); editarFunciones(); };
+  v.querySelectorAll("[data-dp]").forEach(c => { const go2 = () => editarPersona(d.personal.find(p => p.id === c.dataset.dp)); c.onclick = e => { if (!e.target.closest("a")) go2(); }; c.onkeydown = e => { if (e.key === "Enter") go2(); }; });
+}
+function editarPersona(p){
+  const d = S.dir, nuevo = !p; p = p || {nombre:"", grupo:"Operación de golf", area:"campo", telefono:"", funciones:[], puesto_habitual:null, perfil_id:null, notas:"", activo:true};
+  const grupos = [...new Set(d.personal.map(x => x.grupo).concat(["Operación de golf"]))];
+  const usados = new Set(d.personal.filter(x => x.perfil_id && x.id !== p.id).map(x => x.perfil_id));
+  const cuentas = Object.values(S.perfiles).filter(x => !usados.has(x.id)).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  let fun = new Set(p.funciones || []);
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${nuevo ? "Nueva persona" : esc(p.nombre)}</h2><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <label class="f">Nombre y apellido<input type="text" id="ppNom" value="${esc(p.nombre)}"></label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><label class="f">Área<select id="ppArea">${Object.entries(AREAS_ST).map(([k, l]) => `<option value="${k}" ${p.area === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label class="f">Grupo en el horario<input type="text" id="ppGru" list="ppGrL" value="${esc(p.grupo)}"></label></div>
+    <datalist id="ppGrL">${grupos.map(g => `<option value="${esc(g)}">`).join("")}</datalist>
+    <label class="f">Teléfono<input type="tel" id="ppTel" inputmode="tel" value="${esc(p.telefono || "")}" placeholder="6000-0000"></label>
+    <label class="f">Función habitual<select id="ppHab"><option value="">—</option>${d.puestos.map(x => `<option value="${esc(x.codigo)}" ${p.puesto_habitual === x.codigo ? "selected" : ""}>${esc(x.codigo)} · ${esc(x.nombre)}</option>`).join("")}</select></label>
+    <div><div class="hint" style="margin-bottom:6px">Funciones que puede cubrir</div><div class="chips" id="ppFun">${d.puestos.map(x => `<button type="button" class="chip" data-f="${esc(x.codigo)}" aria-pressed="${fun.has(x.codigo)}">${esc(x.codigo)} · ${esc(x.nombre)}</button>`).join("")}</div></div>
+    <label class="f">Cuenta en la app<select id="ppCta"><option value="">Sin cuenta</option>${cuentas.map(x => `<option value="${x.id}" ${p.perfil_id === x.id ? "selected" : ""}>${esc(x.nombre)} · ${esc(x.usuario || "correo")} · ${esc(ROLES[x.rol])}</option>`).join("")}</select></label>
+    <p class="hint" style="margin:-6px 0 0">Con la cuenta vinculada, la persona ve su turno y marca su llegada y salida desde su teléfono.</p>
+    <label class="f">Notas (opcional)<textarea id="ppNot" rows="2">${esc(p.notas || "")}</textarea></label>
+    <p class="hint warn" id="ppErr" style="margin:0"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="ppOk" type="button">${nuevo ? "Agregar" : "Guardar"}</button>
+      ${nuevo ? "" : p.activo ? `<button class="btn danger" id="ppBaja" type="button">Dar de baja</button>` : `<button class="btn" id="ppAlta" type="button">Reactivar</button>`}</div>`);
+  document.querySelectorAll("#ppFun [data-f]").forEach(b => b.onclick = () => { const c = b.dataset.f; fun.has(c) ? fun.delete(c) : fun.add(c); b.setAttribute("aria-pressed", fun.has(c)); });
+  const listo = msg => { closeSheet(); toast(msg); d.loaded = false; S.hor.loaded = false; S.st2.loaded = false; renderDirectorio(); };
+  $("#ppOk").onclick = async () => {
+    const row = {nombre: $("#ppNom").value.trim().replace(/\s+/g, " "), area: $("#ppArea").value, grupo: $("#ppGru").value.trim() || "Operación de golf",
+      telefono: $("#ppTel").value.trim() || null, puesto_habitual: $("#ppHab").value || null, funciones: [...fun], perfil_id: $("#ppCta").value || null, notas: $("#ppNot").value.trim() || null};
+    if (row.nombre.length < 3) { $("#ppErr").textContent = "Escriba el nombre y apellido."; return; }
+    if (row.puesto_habitual && !row.funciones.includes(row.puesto_habitual)) row.funciones.unshift(row.puesto_habitual);
+    $("#ppOk").disabled = true;
+    const r = nuevo ? await sb.from("hor_personal").insert({...row, orden: d.personal.reduce((m, x) => Math.max(m, x.orden || 0), 0) + 1})
+      : await sb.from("hor_personal").update(row).eq("id", p.id);
+    if ($("#ppOk")) $("#ppOk").disabled = false;
+    if (r.error) { $("#ppErr").textContent = /perfil_unico/.test(r.error.message) ? "Esa cuenta ya está vinculada a otra persona." : errMsg(r.error); return; }
+    listo(nuevo ? `${row.nombre} agregado` : "Cambios guardados");
+  };
+  const activo = async (val, msg) => {
+    if (!val && !confirm(`¿Dar de baja a ${p.nombre}? Deja de aparecer en el horario, la asistencia y el tablero; su historial se conserva.`)) return;
+    const { error } = await sb.from("hor_personal").update({activo: val}).eq("id", p.id);
+    if (error) { $("#ppErr").textContent = errMsg(error); return; }
+    listo(msg);
+  };
+  if ($("#ppBaja")) $("#ppBaja").onclick = () => activo(false, `${p.nombre} dado de baja`);
+  if ($("#ppAlta")) $("#ppAlta").onclick = () => activo(true, `${p.nombre} reactivado`);
+}
+
+/* ---------- Permisos (Gerencia) ---------- */
+async function renderPermisos(){
+  const v = $("#v-permisos");
+  await cargarEditores();
+  const L = Object.values(S.perfiles).filter(p => p.activo).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const quePuede = p => GERENCIA.includes(p.rol) ? "Todo (Gerencia)" : S.editores.has(p.id) ? "Edita horario, directorio y asistencia" : CAPITANIA.includes(p.rol) ? "Asistencia; horario de hoy y Cargar horarios" : "Ve el Staff y marca su propia llegada";
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Staff · Gerencia</div><h1>Permisos del Staff</h1>
+      <p class="sub">Todo el personal con cuenta ve el horario, el directorio y la asistencia. Marque a quién más autoriza a editar.</p></div></div>
+    <div class="panel"><div class="stack" style="gap:0">${L.map(p => `<label class="permrow"><span><b>${esc(p.nombre)}</b><br><span class="hint">${esc(ROLES[p.rol])} · ${esc(quePuede(p))}</span></span>
+      ${GERENCIA.includes(p.rol) ? `<span class="pill p-ok">Siempre</span>` : `<input type="checkbox" data-ed="${p.id}" ${S.editores.has(p.id) ? "checked" : ""} aria-label="Puede editar el Staff">`}</label>`).join("")}</div></div>`;
+  v.querySelectorAll("[data-ed]").forEach(c => c.onchange = async () => {
+    const id = c.dataset.ed; c.disabled = true;
+    const r = c.checked ? await sb.from("staff_editores").insert({perfil_id:id}) : await sb.from("staff_editores").delete().eq("perfil_id", id);
+    c.disabled = false;
+    if (r.error) { c.checked = !c.checked; toast(errMsg(r.error)); return; }
+    toast(c.checked ? `${S.perfiles[id].nombre} puede editar el Staff` : `${S.perfiles[id].nombre} ya no edita el Staff`); renderPermisos();
+  });
 }
 
 /* ===================== Hoja modal ===================== */

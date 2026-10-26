@@ -14,7 +14,7 @@
 :root{
   --bg:#0b2a1d; --panel:#12382a; --panel-2:#174532; --line:rgba(255,255,255,.12);
   --ink:#f4f7f5; --muted:#a9bdb1; --gold:#d8b864; --gold-soft:rgba(216,184,100,.16);
-  --ok:#7fd3a4; --warn:#f0b866;
+  --ok:#7fd3a4; --warn:#f0b866; --crit:#f08a80;
   --f-display:"Marcellus",Georgia,serif; --f-body:"Figtree",system-ui,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,monospace;
 }
 *{box-sizing:border-box}
@@ -47,6 +47,10 @@ main{display:grid;grid-template-columns:1fr 500px;gap:26px;min-height:0}
 .p b{font-size:31px;font-weight:700;line-height:1.2;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p span{font-family:var(--f-mono);font-size:19px;color:var(--muted);white-space:nowrap;flex:none}
 .p.lunch b{color:var(--muted)} .p.lunch span{color:var(--warn)}
+.p i{flex:none;width:14px;height:14px;border-radius:50%;align-self:center;background:transparent;border:2px solid var(--muted)}
+.p.ok i{background:var(--ok);border-color:var(--ok)}
+.p.falta i{border-color:var(--warn)} .p.falta span{color:var(--warn)}
+.p.aus b{color:var(--muted);text-decoration:line-through} .p.aus i{border-color:var(--crit)} .p.aus span{color:var(--crit)}
 .card .ins{padding:6px 18px 14px;font-size:21px;line-height:1.35;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .grid.lleno .ins{display:none}
 
@@ -98,6 +102,7 @@ footer .upd.off{color:var(--warn)}
 var SB_URL = "https://kqupzmmudvegropbtbwu.supabase.co";
 var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxdXB6bW11ZHZlZ3JvcGJ0Ynd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwOTQ0NjksImV4cCI6MjEwNzY3MDQ2OX0.o-2D4npIhzS9L2cuuFFmrdLmXFeUQi8jnd0wPD5niXg";
 var KEY = new URLSearchParams(location.search).get("k") || "";
+var AUS = {ausente:"ausente", permiso:"permiso", incapacidad:"incapacidad"};
 var D = null, OFFSET = 0, MANANA = null, lastOk = 0;
 
 function $(id){ return document.getElementById(id); }
@@ -160,14 +165,17 @@ function pintar(){
   var porPuesto = {};
   activos.forEach(function(t){ (porPuesto[t.puesto] = porPuesto[t.puesto] || []).push(t); });
   var codigos = Object.keys(porPuesto).sort(function(a, b){ return orden[a] - orden[b]; });
-  $("nowTitle").innerHTML = "En este momento <span class='n'>" + activos.length + "</span>";
+  $("nowTitle").innerHTML = "En este momento <span class='n'>" + activos.filter(function(t){ return !t.asistencia || t.asistencia === "presente"; }).length + "</span>";
   $("grid").className = "grid" + (codigos.length <= 6 ? " pocos" : "") + (codigos.length > 9 ? " lleno" : "");
   $("grid").innerHTML = codigos.length ? codigos.map(function(c){
     var p = P[c] || {nombre:c, color:"#4a5a66", instrucciones:""};
     return "<div class='card" + (porPuesto[c].length > 2 ? " muchos" : porPuesto[c].length > 1 ? " dos" : "") + "' style='--c:" + esc(p.color) + "'><div class='top'><span class='lt'>" + esc(c) + "</span><span class='pn'>" + esc(p.nombre) + "</span></div>" +
       "<div class='ppl'>" + porPuesto[c].map(function(t){
         var enAlm = t.almuerzo_inicio && min(t.almuerzo_inicio) <= m && m < min(t.almuerzo_fin);
-        return "<div class='p" + (enAlm ? " lunch" : "") + "'><b>" + esc(corto(t.persona)) + "</b><span>" + (enAlm ? "almuerzo · " + hc(t.almuerzo_fin) : "hasta " + hc(t.fin)) + "</span></div>";
+        var aus = t.asistencia && t.asistencia !== "presente", llego = !!t.llegada, falta = !aus && !llego && m >= min(t.inicio) + 5;
+        var cls = aus ? " aus" : enAlm ? " lunch" : llego ? " ok" : falta ? " falta" : "";
+        var txt = aus ? AUS[t.asistencia] : enAlm ? "almuerzo · " + hc(t.almuerzo_fin) : falta ? "sin marcar" : "hasta " + hc(t.fin);
+        return "<div class='p" + cls + "'><i></i><b>" + esc(corto(t.persona)) + "</b><span>" + txt + "</span></div>";
       }).join("") + "</div>" + (p.instrucciones ? "<div class='ins'>" + esc(p.instrucciones) + "</div>" : "") + "</div>";
   }).join("") : (MANANA && MANANA.turnos.some(function(t){ return t.tipo === "trabajo"; })
       ? (function(){ var w = MANANA.turnos.filter(function(t){ return t.tipo === "trabajo"; }), pr = Math.min.apply(null, w.map(function(t){ return min(t.inicio); })),
@@ -185,7 +193,7 @@ function pintar(){
   $("next").innerHTML = prox.length ? prox.map(function(t){
     var p = PM[t.puesto] || {nombre:t.puesto, color:"#4a5a66"}, i = min(t.inicio), ya = !MANANA && i <= m;
     return "<div class='row" + (ya ? " ya" : "") + "'><div class='h'>" + h12(t.inicio).replace(/ (a|p)\. m\./, "") + "</div><div class='w'><b>" + esc(corto(t.persona)) + "</b>" +
-      "<small><i style='--c:" + esc(p.color) + "'>" + esc(t.puesto) + "</i>" + esc(p.nombre) + (ya ? " · entra ahora" : "") + " · hasta " + hc(t.fin) + "</small>" +
+      "<small><i style='--c:" + esc(p.color) + "'>" + esc(t.puesto) + "</i>" + esc(p.nombre) + (ya ? (t.llegada ? " · llegó " + hc(t.llegada) : " · entra ahora") : "") + " · hasta " + hc(t.fin) + "</small>" +
       (ya && p.instrucciones ? "<em>" + esc(p.instrucciones) + "</em>" : "") + "</div></div>";
   }).join("") + (extra ? "<div class='mas'>y " + extra + " más</div>" : "") : "<div class='empty'>No hay más entradas hoy.</div>";
 
@@ -199,9 +207,9 @@ function pintar(){
     : "<div class='empty'>Sin almuerzos en las próximas horas.</div>";
 
   // Pie: libres hoy
-  var lib = {descanso:[], vacaciones:[], compensatorio:[]};
-  D.turnos.forEach(function(t){ if (lib[t.tipo]) lib[t.tipo].push(corto(t.persona)); });
-  $("libres").innerHTML = [["descanso","Descanso"],["vacaciones","Vacaciones"],["compensatorio","Compensatorio"]].filter(function(x){ return lib[x[0]].length; })
+  var lib = {ausentes:[], descanso:[], vacaciones:[], compensatorio:[]};
+  D.turnos.forEach(function(t){ if (lib[t.tipo]) lib[t.tipo].push(corto(t.persona)); if (t.tipo === "trabajo" && t.asistencia && t.asistencia !== "presente") lib.ausentes.push(corto(t.persona) + " (" + AUS[t.asistencia] + ")"); });
+  $("libres").innerHTML = [["ausentes","Ausentes"],["descanso","Descanso"],["vacaciones","Vacaciones"],["compensatorio","Compensatorio"]].filter(function(x){ return lib[x[0]].length; })
     .map(function(x){ return "<span style='margin-right:34px'><b>" + x[1] + "</b>" + esc(lib[x[0]].join(", ")) + "</span>"; }).join("");
   pintarEstado();
 }

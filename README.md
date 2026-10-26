@@ -3,7 +3,7 @@
 Plataforma web del departamento de Operación de Golf: la usan Marshals, Starters, Capitanes y Gerencia desde el teléfono, y una televisión muestra el horario del personal en tiempo real.
 
 - **App:** https://app.smcapibara.com
-- **Tablero de TV:** `https://app.smcapibara.com/tablero/?k=<enlace>` (Gerencia obtiene el enlace en la app, pestaña **Capitanes → Horario**)
+- **Tablero de TV:** `https://app.smcapibara.com/tablero/?k=<enlace>` (Gerencia obtiene el enlace en la app, pestaña **Staff → Horario**)
 - **Datos:** Supabase, proyecto `smgc-marshals` (`kqupzmmudvegropbtbwu`)
 
 ## Módulos
@@ -17,10 +17,13 @@ Plataforma web del departamento de Operación de Golf: la usan Marshals, Starter
 | **Capitanes · Starters** | Checklists de los Starters por fechas, cumplimiento, salidas puntuales y tiempos de cruce de su tee; los 10 criterios de éxito por tee y periodo (incluye checklists firmados 100%, cumplimiento ≥ 95% y turnos validados 100%), novedades, y el Capitán (o Gerencia) valida o retira la validación. |
 | **Capitanes · Mi turno** | Checklist del Capitán (55 actividades en 8 áreas), condiciones de la cancha, puestos del equipo, insumos, firma y validación de Gerencia. |
 | **Capitanes · Salidas** | Salidas del tee sheet del día, con **salida simultánea por los hoyos 1 y 10** (filtro Ambos / Hoyo 1 / Hoyo 10, próxima salida y % puntual por hoyo). Botón **Cargar tee sheet**: PDF del sistema (lectura exacta por columnas, incluida la columna Hole), PDF hecho de capturas o capturas de pantalla (lectura de imagen en el propio teléfono) o texto pegado, siempre con revisión antes de guardar. Hora real de salida, no presentados y % de salidas puntuales (tolerancia 5 min). |
-| **Capitanes · Horario** | Horario semanal del personal: turno, función (letra), almuerzo, descanso, vacaciones y compensatorio. Botón **Cargar horarios** (Capitanes y Gerencia): foto tomada con el teléfono o de la galería, captura de pantalla, Excel, PDF o texto pegado (las fotos se enderezan solas, se leen en dos versiones de contraste y se prueban giradas si vienen de lado), con la fila de los días y un colaborador por fila; cada día se lee como horario y letra (`5-1 S`, `11-7 F`, `1-9 ER`, `9:30-6 P`), `D`/`Libre`, `VAC` o `COMP`. Empareja los nombres con el personal, permite agregar personas nuevas y siempre muestra la revisión antes de guardar (función `cargar_horario`). Copiar semana anterior, personal y funciones editables. |
+| **Staff · Hoy** | Asistencia del día: quién llegó, tarde (más de 5 min), sin marcar y ausente/permiso/incapacidad, con % de llegadas puntuales (meta 95%). Cada colaborador con cuenta vinculada ve su turno y marca su llegada y salida; Capitanes, Gerencia y editores marcan o corrigen la de cualquiera y revisan días anteriores. |
+| **Staff · Horario** | Horario semanal del personal: turno, función (letra), almuerzo, descanso, vacaciones y compensatorio. Botón **Cargar horarios** (Capitanes, Gerencia y editores del Staff): foto tomada con el teléfono o de la galería, captura de pantalla, Excel, PDF o texto pegado (las fotos se enderezan solas, se leen en dos versiones de contraste y se prueban giradas si vienen de lado), con la fila de los días y un colaborador por fila; cada día se lee como horario y letra (`5-1 S`, `11-7 F`, `1-9 ER`, `9:30-6 P`), `D`/`Libre`, `VAC` o `COMP`. Empareja los nombres con el personal, permite agregar personas nuevas y siempre muestra la revisión antes de guardar (función `cargar_horario`). Copiar semana anterior, personal y funciones editables. |
+| **Staff · Directorio** | Personal de campo, Marshals y Capitanes: área, grupo, teléfono (llamar o WhatsApp), función habitual, funciones que puede cubrir, horario de hoy y cuenta de la app vinculada. Altas, bajas y reactivación. |
+| **Staff · Permisos** | Gerencia elige quién más puede editar el Staff (tabla `staff_editores`). |
 | **Capitanes · Palos de alquiler** | Entrega con revisión de piezas y firma del huésped, devolución, historial y correos de confirmación. |
 | **Capitanes · Bolsas** | Bolsas de miembros por casilla: entrega y recepción. |
-| **Tablero de TV** | Quién está en cada función ahora, próximas entradas con instrucciones, almuerzos y libres del día. Sin inicio de sesión; se actualiza cada 30 s. |
+| **Tablero de TV** | Quién está en cada función ahora (con su asistencia: llegó, sin marcar o ausente), próximas entradas con instrucciones, almuerzos y libres del día. Sin inicio de sesión; se actualiza cada 30 s. |
 | **Equipo** | Gerencia crea cuentas del staff, asigna roles y restablece contraseñas. |
 
 ## Estructura del repositorio
@@ -69,5 +72,7 @@ Después, en la tabla `config_sistema`, cargar `dominio_usuarios`, `correo_geren
 |---|---|
 | Marshal | Módulo Marshals |
 | Starter | Módulo Starter y módulo Marshals (fines de semana de 3 a 7 p. m. cumple funciones de Marshal) |
-| Capitán | Módulo Capitanes; en Horario puede ajustar a mano solo el día de hoy y cargar la semana completa con **Cargar horarios** |
+| Capitán | Módulo Capitanes; en Staff marca la asistencia, ajusta a mano solo el horario de hoy y carga la semana completa con **Cargar horarios** |
+| Editor del Staff (cualquier rol que Gerencia autorice) | Edita horario completo, directorio, funciones y asistencia |
+| Todo el staff | Módulo Staff: ve horario, directorio y asistencia, y marca su propia llegada y salida |
 | Gerente de Operaciones / de Golf, Administrador | Ambos módulos, supervisión, validación, horario semanal, cuentas del staff y enlace de la TV |
