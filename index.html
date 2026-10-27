@@ -464,7 +464,7 @@ const ROLES = {colaborador:"Personal de campo", marshal:"Marshal", starter:"Star
 const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
 const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
-  marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["horario","Horario"],["equipo","Equipo","ger"]]},
+  marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["salidas","Salidas"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["horario","Horario"],["equipo","Equipo","ger"]]},
   starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"],["horario","Horario"]]},
   staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["horario","Horario"],["directorio","Directorio","cap"]]},
   capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
@@ -2284,8 +2284,9 @@ function statsSalidas(L){
   return {total:L.length, jug:L.reduce((n, x) => n + x.jugadores.length, 0), sal:sal.length, ns:ns.length, pend:L.length - sal.length - ns.length,
     pun:pun.length, pct: sal.length ? Math.round(100 * pun.length / sal.length) : null};
 }
+const puedeMarcarSalidas = () => S.esStarter || S.esCap;
 function renderSalidas(){
-  const v = $("#v-salidas"), t = S.tee;
+  const v = $("#v-salidas"), t = S.tee, marca = puedeMarcarSalidas();
   if (!t.loaded || t.fechaCargada !== t.fecha) { v.innerHTML = `<div class="loading">Cargando salidas…</div>`; cargarSalidas(); return; }
   const doble = t.list.some(x => hoyoDe(x) === 10), filtro = doble ? t.hoyo : "todos";
   const L = filtro === "todos" ? t.list : t.list.filter(x => String(hoyoDe(x)) === String(filtro)), st = statsSalidas(L), esHoy = t.fecha === hoyISO();
@@ -2293,11 +2294,11 @@ function renderSalidas(){
   const sigs = esHoy ? [1, 10].map(h => L.find(x => hoyoDe(x) === h && x.estado === "programada")).filter(Boolean) : [];
   const esSig = x => sigs.some(y => y.id === x.id), sig = sigs.slice().sort((a, b) => hm(a.hora).localeCompare(hm(b.hora)))[0] || null;
   const pctHoyo = h => statsSalidas(t.list.filter(x => hoyoDe(x) === h)).pct;
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Tee sheet</div><h1>Salidas · ${esc(fechaLarga(t.fecha))}</h1>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">${esc(MODULOS[S.modulo].nombre)} · Tee sheet</div><h1>Salidas · ${esc(fechaLarga(t.fecha))}</h1>
       <p class="sub">${plural(st.total, "salida")} · ${plural(st.jug, "jugador", "jugadores")}${doble ? " · salida simultánea por los hoyos 1 y 10" : ""} · puntual si sale hasta ${TOL_MIN} min después de su hora</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
         <label class="f" style="margin:0">Fecha<input type="date" id="tFecha" value="${t.fecha}"></label>
-        ${S.esCap ? `<button class="btn primary" id="tCargar" type="button">Cargar tee sheet</button>
+        ${S.esCap && S.modulo === "capitanes" ? `<button class="btn primary" id="tCargar" type="button">Cargar tee sheet</button>
         <button class="btn" id="tNueva" type="button">Agregar salida</button>` : ""}</div></div>
     ${doble ? `<div class="chips" id="tHoyo" role="group" aria-label="Hoyo de salida">${[["todos","Ambos hoyos"],["1","Hoyo 1"],["10","Hoyo 10"]].map(([k, l]) => `<button type="button" class="chip" data-h="${k}" aria-pressed="${String(filtro) === k}">${l} · ${k === "todos" ? t.list.length : t.list.filter(x => String(hoyoDe(x)) === k).length}</button>`).join("")}</div>` : ""}
     <div class="kpis">
@@ -2312,14 +2313,14 @@ function renderSalidas(){
       const a = atraso(x), cls = (x.estado === "no_show" ? "ns" : x.estado === "salio" ? (puntual(x) ? "ok" : "tarde") : (esSig(x) ? "sig" : "")) + (doble && hoyoDe(x) === 10 ? " h10" : "");
       const mc = minCruce(x), aOtro = hoyoDe(x) === 10 ? "1" : "10";
       const cruce = x.estado !== "salio" ? "" : x.cruce_real ? `<span class="pill ${mc > CRUCE_META_MIN ? "p-alta" : "p-ok"}">Cruzó al ${aOtro} ${hora(x.cruce_real)} · ${durTxt(mc)}</span>`
-        : `<button class="btn small" data-cruce="${x.id}" type="button">Cruzó al ${aOtro}</button>`;
+        : marca ? `<button class="btn small" data-cruce="${x.id}" type="button">Cruzó al ${aOtro}</button>` : `<span class="pill p-draft">Sin cruce aún</span>`;
       const estado = x.estado === "salio" ? `<span class="pill ${puntual(x) ? "p-ok" : "p-alta"}">Salió ${hora(x.salida_real)} · ${textoAtraso(a)}</span>${cruce}`
         : x.estado === "no_show" ? `<span class="pill p-crit">No se presentó</span>` : "";
-      const acc = x.estado === "programada" ? `<button class="btn small primary" data-salio="${x.id}" type="button">Salió</button><button class="btn small" data-ns="${x.id}" type="button">No se presentó</button>` : estado;
+      const acc = x.estado === "programada" ? (!marca ? `<span class="pill p-draft">Programada</span>` : "") + (!marca ? "" : `<button class="btn small primary" data-salio="${x.id}" type="button">Salió</button><button class="btn small" data-ns="${x.id}" type="button">No se presentó</button>`) : estado;
       return `<div class="tee ${cls}"><div class="h">${hm(x.hora)}${doble ? `<br><span class="hoyo ${hoyoDe(x) === 10 ? "h10" : ""}">${etHoyo(x)}</span>` : ""}</div>
-        <div class="j" data-ed="${x.id}">${x.jugadores.length ? x.jugadores.map(esc).join(" · ") : `<span class="hint">Sin jugadores</span>`}<small>${plural(x.jugadores.length, "jugador", "jugadores")}${esSig(x) ? ` · próxima salida${doble ? " por el " + etHoyo(x).toLowerCase() : ""}` : ""} · tocar para editar</small></div>
+        <div class="j" ${marca ? `data-ed="${x.id}"` : ""}>${x.jugadores.length ? x.jugadores.map(esc).join(" · ") : `<span class="hint">Sin jugadores</span>`}<small>${plural(x.jugadores.length, "jugador", "jugadores")}${esSig(x) ? ` · próxima salida${doble ? " por el " + etHoyo(x).toLowerCase() : ""}` : ""}${marca ? " · tocar para editar" : ""}</small></div>
         <div class="acc">${acc}</div></div>`; }).join("")}</div>`
-      : `<div class="empty"><strong>No hay salidas cargadas para este día</strong>${S.esGer ? "Cargue el tee sheet del día o agregue las salidas una por una." : "Pídale a Gerencia que cargue el tee sheet del día."}</div>`}`;
+      : `<div class="empty"><strong>No hay salidas cargadas para este día</strong>${S.esCap ? (S.modulo === "capitanes" ? "Cargue el tee sheet del día o agregue las salidas una por una." : "Cárguelo en Capitanes → Salidas.") : "El Capitán aún no carga el tee sheet de este día."}</div>`}`;
   $("#tFecha").onchange = e => { if (e.target.value) { t.fecha = e.target.value; renderSalidas(); } };
   v.querySelectorAll("#tHoyo [data-h]").forEach(b => b.onclick = () => { t.hoyo = b.dataset.h; try { localStorage.setItem("smgc_tee_hoyo", t.hoyo); } catch(e){} renderSalidas(); });
   if ($("#tNueva")) $("#tNueva").onclick = () => editarSalida(null);
@@ -3299,6 +3300,7 @@ function suscribirStaff(){
       if ((S.view === "horario" || S.view === "horariocap") && !$("#ov")) cargarHorario();
       if (S.view === "hoy") cargarHoy();
     }, "_t"))
+    .on("postgres_changes", {event:"*", schema:"public", table:"tee_salidas"}, re(() => { if (S.view === "salidas" && !S.esCap && !$("#ov")) cargarSalidas(); }, "_s"))
     .on("postgres_changes", {event:"*", schema:"public", table:"op_reportes"}, re(() => { if (S.view === "puestos" && !$("#ov")) cargarPuestos(); }, "_o"))
     .on("postgres_changes", {event:"*", schema:"public", table:"op_danos"}, re(() => { if (S.view === "puestos" && !$("#ov")) cargarPuestos(); }, "_d"))
     .on("postgres_changes", {event:"*", schema:"public", table:"hor_asistencia"}, re(() => { if (S.view === "hoy") cargarHoy(); }, "_a"))
