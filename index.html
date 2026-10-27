@@ -435,6 +435,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-turnost" hidden></section>
     <section class="view" id="v-starters" hidden></section>
     <section class="view" id="v-horario" hidden></section>
+    <section class="view" id="v-horariocap" hidden></section>
     <section class="view" id="v-supervision" hidden></section>
     <section class="view" id="v-hoy" hidden></section>
     <section class="view" id="v-directorio" hidden></section>
@@ -466,7 +467,7 @@ const MODULOS = {
   marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["equipo","Equipo","ger"]]},
   starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"]]},
   staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["horario","Horario"],["directorio","Directorio","cap"]]},
-  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
+  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
 
@@ -646,8 +647,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","supervision","hoy","directorio","mipuesto","puestos"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","mipuesto","puestos"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -1723,10 +1724,12 @@ async function cargarHorario(){
   const bad = [pe, pu, tu].find(x => x.error); if (bad) { toast(errMsg(bad.error)); return; }
   h.personal = pe.data; h.puestos = pu.data; h.turnos = tu.data; h.loaded = true; h.semCargada = h.lunes;
   if (S.esGer && !h.token) { const { data } = await sb.from("tablero_claves").select("token").eq("activo", true).order("creado_en", {ascending:false}).limit(1); h.token = data && data[0] ? data[0].token : null; }
-  if (S.view === "horario" && !$("#ov")) renderHorario();
+  if ((S.view === "horario" || S.view === "horariocap") && !$("#ov")) renderHorario();
 }
 const puestoDe = c => S.hor.puestos.find(p => p.codigo === c) || {codigo:c, nombre:c, color:"#4a5a66"};
-const puedeEditarDia = () => S.esCap;   // Gerencia y Capitanes editan el horario; el resto del personal solo lo consulta
+// El horario se modifica solo en Capitanes → Horario (Capitanes y Gerente de Operaciones); en Staff → Horario es de consulta para todos
+const editandoHor = () => S.esCap && S.view === "horariocap";
+const puedeEditarDia = () => editandoHor();
 const urlTablero = () => S.hor.token ? `${location.origin}${location.pathname.replace(/[^/]*$/, "")}tablero/?k=${S.hor.token}` : "";
 
 function celdaHor(t, f, pid){
@@ -1737,21 +1740,23 @@ function celdaHor(t, f, pid){
   return `<button class="hc" type="button" data-hf="${f}" data-hp="${pid}" ${dis} title="${esc(p.nombre)}${t.nota ? " · " + esc(t.nota) : ""}"><span class="hr">${hcorta(t.inicio)}–${hcorta(t.fin)}</span><span class="lt" style="--c:${esc(p.color)}">${esc(t.puesto)}</span></button>`;
 }
 function renderHorario(){
-  const v = $("#v-horario"), h = S.hor;
+  const ed = editandoHor(), v = $(ed ? "#v-horariocap" : "#v-horario"), h = S.hor;
+  $(ed ? "#v-horario" : "#v-horariocap").innerHTML = "";   // una sola copia en pantalla (evita botones duplicados)
   if (!h.loaded || h.semCargada !== h.lunes) { v.innerHTML = `<div class="loading">Cargando horario…</div>`; cargarHorario(); return; }
   const dias = [0,1,2,3,4,5,6].map(i => masDias(h.lunes, i)), hoy = hoyISO();
   const idx = {}; h.turnos.forEach(t => idx[t.fecha + "|" + t.personal_id] = t);
   const grupos = [...new Set(h.personal.map(p => p.grupo))];
   const vacios = h.personal.length * 7 - h.turnos.filter(t => h.personal.some(p => p.id === t.personal_id)).length;
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">Staff · Operación de golf</div><h1>Horario del personal</h1>
-      <p class="sub">Semana del ${esc(fechaCorta(dias[0]))} al ${esc(fechaCorta(dias[6]))} · ${plural(h.personal.length, "persona")}${vacios > 0 ? ` · ${plural(vacios, "día sin asignar", "días sin asignar")}` : ""}${puedeEditarStaff() ? "" : S.esCap ? " · a mano puede ajustar solo el día de hoy; la semana completa se sube con Cargar horarios" : " · solo lectura"}</p></div>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">${ed ? "Capitanes · Edición del horario" : "Staff · Operación de golf"}</div><h1>Horario del personal</h1>
+      <p class="sub">Semana del ${esc(fechaCorta(dias[0]))} al ${esc(fechaCorta(dias[6]))} · ${plural(h.personal.length, "persona")}${vacios > 0 ? ` · ${plural(vacios, "día sin asignar", "días sin asignar")}` : ""}${ed ? " · toque una casilla para cambiar un día o suba la semana con Cargar horarios" : " · solo consulta"}</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        ${S.esCap ? `<button class="btn primary" id="hCargar" type="button">Cargar horarios</button>` : ""}
+        ${ed ? `<button class="btn primary" id="hCargar" type="button">Cargar horarios</button>` : ""}
         <button class="btn small" id="hPrev" type="button">← Semana anterior</button><button class="btn small" id="hHoy" type="button">Esta semana</button><button class="btn small" id="hNext" type="button">Semana siguiente →</button></div></div>
-    ${S.esGer ? `<div class="callout gold" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Tablero de TV:</b> ${h.token ? `abra este enlace en el navegador de la Smart TV.` : "no hay enlace activo."}</span>
+    ${!ed && S.esCap ? `<div class="callout" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1 1 220px">Aquí el horario es de consulta. Para cambiarlo o cargar la semana vaya a <b>Capitanes → Horario</b>.</span><button class="btn small primary" id="hIrCap" type="button">Editar en Capitanes</button></div>` : ""}
+    ${ed && S.esGer ? `<div class="callout gold" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span><b>Tablero de TV:</b> ${h.token ? `abra este enlace en el navegador de la Smart TV.` : "no hay enlace activo."}</span>
       ${h.token ? `<code style="font-family:var(--f-mono);font-size:12px;overflow-wrap:anywhere;flex:1 1 260px">${esc(urlTablero())}</code><button class="btn small" id="hCopy" type="button">Copiar enlace</button><a class="btn small" style="color:var(--ink)" href="${esc(urlTablero())}" target="_blank" rel="noopener">Abrir tablero</a>` : ""}
       <button class="btn small ghost" id="hToken" type="button">${h.token ? "Cambiar enlace" : "Crear enlace"}</button></div>` : ""}
-    ${puedeEditarStaff() ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" id="hCopiar" type="button">Copiar la semana anterior</button><button class="btn small" id="hPers" type="button">Personal (Directorio)</button><button class="btn small" id="hFun" type="button">Funciones e instrucciones</button></div>` : ""}
+    ${ed ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" id="hCopiar" type="button">Copiar la semana anterior</button><button class="btn small" id="hPers" type="button">Personal (Directorio)</button><button class="btn small" id="hFun" type="button">Funciones e instrucciones</button></div>` : ""}
     ${(() => { const yo = h.personal.find(p => p.perfil_id === S.me.id); if (!yo) return S.esCap ? "" : `<div class="callout">Su cuenta aún no está vinculada a su nombre en el horario. Pídale al Capitán o a Gerencia que la vincule para ver su semana aquí.</div>`;
       return `<div class="panel"><h2>Mi semana</h2><div class="misem">${dias.map((f, i) => { const t = idx[f + "|" + yo.id], p = t && t.tipo === "trabajo" ? puestoDe(t.puesto) : null;
         return `<div class="${f === hoy ? "hoy" : ""}"><b>${DIAS[i].slice(0, 3)} <span class="mono">${esc(fechaCorta(f))}</span></b>${!t ? `<span class="hint">Sin asignar</span>` : t.tipo !== "trabajo" ? `<span>${esc(TIPO_T[t.tipo])}</span>`
@@ -1760,7 +1765,7 @@ function renderHorario(){
       <tbody>${grupos.map(g => `<tr><td colspan="8" class="eyebrow" style="padding:10px 10px 4px;background:var(--ground)">${esc(g)}</td></tr>` +
         h.personal.filter(p => p.grupo === g).map(p => `<tr${p.perfil_id === S.me.id ? ` class="yo"` : ""}><td class="pn">${esc(p.nombre)}</td>${dias.map(f => `<td>${celdaHor(idx[f + "|" + p.id], f, p.id)}</td>`).join("")}</tr>`).join("")).join("")}
       </tbody></table></div>
-    ${h.personal.length ? "" : `<div class="empty"><strong>Aún no hay personal cargado</strong>${puedeEditarStaff() ? "Agréguelo en el Directorio o con Cargar horarios." : S.esCap ? "Use Cargar horarios o pídale a Gerencia que cargue el personal." : "Gerencia aún no publica el horario."}</div>`}
+    ${h.personal.length ? "" : `<div class="empty"><strong>Aún no hay personal cargado</strong>${ed ? "Agréguelo en Staff → Directorio o con Cargar horarios." : S.esCap ? "Cárguelo en Capitanes → Horario." : "El horario aún no está publicado."}</div>`}
     <div class="hleyenda">${h.puestos.map(p => `<span><i style="--c:${esc(p.color)}">${esc(p.codigo)}</i>${esc(p.nombre)}</span>`).join("")}</div>`;
   $("#hPrev").onclick = () => { h.lunes = masDias(h.lunes, -7); renderHorario(); };
   $("#hNext").onclick = () => { h.lunes = masDias(h.lunes, 7); renderHorario(); };
@@ -1769,8 +1774,9 @@ function renderHorario(){
   v.querySelectorAll("[data-hf]").forEach(b => b.onclick = () => editarTurno(b.dataset.hf, b.dataset.hp));
   const th = v.querySelector(".hgrid th.hoy"), tw = v.querySelector(".tablewrap");
   if (th && tw && tw.scrollWidth > tw.clientWidth) { const pn = v.querySelector(".hgrid td.pn"); tw.scrollLeft = Math.max(0, th.offsetLeft - (pn ? pn.offsetWidth : 0) - 8); }
-  if (puedeEditarStaff()) { $("#hCopiar").onclick = copiarSemana; $("#hPers").onclick = () => go("directorio"); $("#hFun").onclick = editarFunciones; }
-  if (!S.esGer) return;
+  if ($("#hIrCap")) $("#hIrCap").onclick = () => { setModulo("capitanes"); go("horariocap"); };
+  if (ed) { $("#hCopiar").onclick = copiarSemana; $("#hPers").onclick = () => { setModulo("staff"); go("directorio"); }; $("#hFun").onclick = editarFunciones; }
+  if (!ed || !S.esGer) return;
   if ($("#hCopy")) $("#hCopy").onclick = async () => { try { await navigator.clipboard.writeText(urlTablero()); toast("Enlace copiado"); } catch(e){ toast("Copie el enlace manualmente"); } };
   $("#hToken").onclick = async () => {
     if (h.token && !confirm("La TV que tenga el enlace actual dejará de mostrar el horario hasta que abra el enlace nuevo. ¿Continuar?")) return;
@@ -1781,6 +1787,7 @@ function renderHorario(){
   };
 }
 function editarTurno(f, pid){
+  if (!S.esCap) { toast("Solo los Capitanes y el Gerente de Operaciones modifican el horario."); return; }
   const h = S.hor, p = h.personal.find(x => x.id === pid), t = h.turnos.find(x => x.fecha === f && x.personal_id === pid);
   let tipo = t ? t.tipo : "trabajo";
   openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(fechaLarga(f))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(p.nombre)}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
@@ -1825,6 +1832,7 @@ function editarTurno(f, pid){
   };
 }
 async function copiarSemana(){
+  if (!S.esCap) { toast("Solo los Capitanes y el Gerente de Operaciones modifican el horario."); return; }
   const h = S.hor, ant = masDias(h.lunes, -7);
   const { data, error } = await sb.from("hor_turnos").select("*").gte("fecha", ant).lte("fecha", masDias(ant, 6));
   if (error) { toast(errMsg(error)); return; }
@@ -2109,6 +2117,7 @@ function emparejarPersona(nombre, personal){
 }
 
 function abrirCargaHorario(){
+  if (!S.esCap) { toast("Solo los Capitanes y el Gerente de Operaciones modifican el horario."); return; }
   const sem = S.hor.lunes;
   openSheet(`<div class="sheet-head"><div><div class="eyebrow">Horario · semana del ${esc(fechaCorta(sem))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Cargar horarios</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
     <p class="hint" style="margin:0;font-size:14px">Suba el horario de la semana en foto, captura de pantalla, Excel o PDF. La app lee a cada colaborador y su turno de cada día, y le muestra todo para revisarlo antes de guardar.</p>
@@ -3287,7 +3296,7 @@ function suscribirStaff(){
   const re = (fn, k) => () => { clearTimeout(suscribirStaff[k]); suscribirStaff[k] = setTimeout(fn, 400); };
   sb.channel("staff-vivo")
     .on("postgres_changes", {event:"*", schema:"public", table:"hor_turnos"}, re(() => {
-      if (S.view === "horario" && !$("#ov")) cargarHorario();
+      if ((S.view === "horario" || S.view === "horariocap") && !$("#ov")) cargarHorario();
       if (S.view === "hoy") cargarHoy();
     }, "_t"))
     .on("postgres_changes", {event:"*", schema:"public", table:"op_reportes"}, re(() => { if (S.view === "puestos" && !$("#ov")) cargarPuestos(); }, "_o"))
@@ -3364,7 +3373,7 @@ function renderHoy(){
       <div class="kpi"><div class="k">Ausencias</div><div class="v ${aus.length ? "crit" : ""}">${aus.length}</div><div class="t">ausente, permiso o incapacidad</div></div>
     </div>
     ${filas.length ? (esHoy ? bloque("En turno ahora", ahora) + bloque("Entran más tarde", luego) + bloque("Ya terminaron", fueron) : bloque("Con turno", ahora))
-      : `<div class="empty"><strong>No hay turnos cargados para este día</strong>Cárguelos en la pestaña Horario.</div>`}
+      : `<div class="empty"><strong>No hay turnos cargados para este día</strong>Cárguelos en Capitanes → Horario.</div>`}
     ${libres.length ? `<div class="panel"><h2>Libres este día</h2><div class="chips">${libres.map(t => `<span class="chip" style="cursor:default">${esc(per[t.personal_id].nombre)} · ${esc(TIPO_T[t.tipo])}</span>`).join("")}</div></div>` : ""}
     ${sinTurno.length && (S.esCap || puedeEditarStaff()) ? `<p class="hint" style="margin:0">Sin horario este día: ${sinTurno.map(p => esc(p.nombre)).join(", ")}.</p>` : ""}`;
   $("#aFecha").onchange = e => { if (e.target.value) { a.fecha = e.target.value; renderHoy(); } };
