@@ -282,6 +282,8 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .misem>div.hoy{border-color:var(--gold);background:var(--gold-soft)}
 .misem .lt{font-style:normal;font-family:var(--f-mono);font-weight:600;font-size:12px;color:#fff;background:var(--c);border-radius:5px;padding:1px 6px}
 .hgrid tr.yo td{background:var(--gold-soft)}
+.funlist{margin:0;padding-left:22px;display:grid;gap:8px} .funlist li{line-height:1.45} .funlist .pill{margin-left:6px;vertical-align:1px}
+.crit{display:grid;gap:2px;padding:10px 0;border-top:1px solid var(--line)} .crit:first-child{border-top:0}
 .dgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
 .dcard{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:6px;min-width:0}
 .dcard[role="button"]{cursor:pointer} .dcard[role="button"]:hover{border-color:var(--line-strong)}
@@ -441,6 +443,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-directorio" hidden></section>
     <section class="view" id="v-mipuesto" hidden></section>
     <section class="view" id="v-puestos" hidden></section>
+    <section class="view" id="v-funciones" hidden></section>
   </main>
 </div>
 
@@ -466,7 +469,7 @@ const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
   marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["salidas","Salidas"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["horario","Horario"],["equipo","Equipo","ger"]]},
   starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"],["horario","Horario"]]},
-  staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["horario","Horario"],["directorio","Directorio","cap"]]},
+  staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["puestos","Puestos","cap"],["funciones","Funciones"],["horario","Horario"],["directorio","Directorio","cap"]]},
   capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
@@ -647,8 +650,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","mipuesto","puestos"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","mipuesto","puestos","funciones"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -3731,8 +3734,8 @@ function renderPuestos(){
   const esHoy = u.fecha === hoyISO();
   const estado = x => !x.rep ? `<span class="pill p-draft">${esHoy ? "Sin iniciar" : "No lo llenó"}</span>` : x.rep.estado !== "firmado" ? (() => { const s = statsOp(x.pos, u.fecha, u.resp[x.rep.id] || {}); return `<span class="pill p-gold">En curso · ${s.n}/${s.total}</span>`; })()
     : (() => { const s = statsOp(x.pos, u.fecha, u.resp[x.rep.id] || {}); return `<span class="pill ${u.val[x.rep.id] ? "p-ok" : "p-alta"}">${u.val[x.rep.id] ? "Validado" : "Por validar"} · ${s.cumpl}%</span>`; })();
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Frente, Carritos y Driving Range</div><h1>Puestos · ${esc(fechaLarga(u.fecha))}</h1>
-      <p class="sub">Cada colaborador llena en su teléfono el checklist de su posición (Staff → Mi puesto); usted lo revisa y lo valida.</p></div>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">${esc(MODULOS[S.modulo].nombre)} · Frente, Carritos y Driving Range</div><h1>Puestos · ${esc(fechaLarga(u.fecha))}</h1>
+      <p class="sub">Cada colaborador llena en su teléfono el checklist de su posición (Staff → Mi puesto); usted lo revisa y lo valida. Las funciones de cada posición están en Staff → Funciones.</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end"><label class="f" style="margin:0">Fecha<input type="date" id="puFecha" value="${u.fecha}" max="${hoyISO()}"></label>
       ${S.esGer ? `<button class="btn small" id="puTareas" type="button">Editar tareas</button>` : ""}</div></div>
     <div class="kpis">
@@ -3803,6 +3806,54 @@ function editarTareasOp(){
     const { error } = await sb.from("op_items").insert(row);
     if (error) { toast(errMsg(error)); return; } S.op.items.push({...row, activo: true, dia_semana: null}); toast("Tarea agregada"); editarTareasOp();
   });
+}
+
+/* ---------- Staff · Funciones: manual de las tres posiciones (Impact Filter) ---------- */
+const INSTRUCCIONES_OP = [
+  "Cada colaborador deberá conocer las funciones de las tres posiciones operativas.",
+  "Al comenzar su turno, el Capitán le comunicará su posición asignada.",
+  "El colaborador ejecutará el checklist correspondiente a esa posición.",
+  "Las tareas comunes de servicio, presentación personal, limpieza, seguridad y comunicación serán obligatorias para todos.",
+  "Las tareas periódicas deberán ejecutarse los días establecidos.",
+  "Cualquier anomalía deberá comunicarse oportunamente al Capitán.",
+  "Los daños a carritos deberán reportarse por escrito inmediatamente a la Gerencia de Operaciones.",
+  "Las actividades no completadas deberán quedar registradas junto con su justificación.",
+  "Cuando un colaborador cambie de posición durante el turno, deberá realizar una entrega ordenada de las responsabilidades pendientes.",
+  "El Capitán verificará el cumplimiento diario y reportará las novedades relevantes al Gerente de Operaciones.",
+];
+const CRITERIOS_OP = [
+  ["Cumplimiento de responsabilidades", "Cada colaborador ejecuta las funciones de su posición y turno.", "Checklists firmados (meta 100%) y cumplimiento (meta 95%)"],
+  ["Atención y hospitalidad", "Atención cordial, oportuna y profesional desde la llegada hasta la salida.", "Tareas comunes de servicio en cada checklist"],
+  ["Disponibilidad de carritos", "20 carritos preparados durante las horas de servicio; cualquier limitación se comunica.", "Carritos listos y fuera de servicio (meta 20)"],
+  ["Presentación y mantenimiento", "Carritos, recepción, bodega y Range limpios y organizados.", "Tareas de limpieza diarias y periódicas"],
+  ["Disponibilidad de bolas de práctica", "Bolas limpias y suficientes, con inventario y controles.", "Nivel de bolas e inventario semanal"],
+  ["Comunicación efectiva", "Incidentes, desperfectos y necesidades se reportan al Capitán y a Gerencia.", "Reportes escritos de daños a carritos"],
+  ["Control y trazabilidad", "Registros de utilización, limpieza, daños, inventarios y actividades periódicas.", "Historial de checklists y daños por fecha"],
+  ["Supervisión y mejora continua", "El Capitán verifica, documenta incumplimientos y coordina correcciones.", "Validación del Capitán (meta 100%)"],
+];
+S.fun = {pos: "C"};
+function renderFunciones(){
+  const v = $("#v-funciones");
+  if (!S.op.loaded) { v.innerHTML = `<div class="loading">Cargando funciones…</div>`; cargarCatalogoOp().then(() => S.view === "funciones" && renderFunciones()).catch(x => { v.innerHTML = `<div class="empty"><strong>No se pudo cargar</strong>${esc(errMsg(x))}</div>`; }); return; }
+  const f = S.fun, hoyD = isoDia(hoyISO());
+  const tabs = [["C", "Comunes"], ["F", "Frente"], ["L", "Carritos"], ["R", "Driving Range"], ["I", "Instrucciones"], ["M", "Criterios de éxito"]];
+  const area = S.op.areas.find(a => a.posicion === f.pos), its = area ? S.op.items.filter(i => i.area === area.codigo && i.activo) : [];
+  const diarias = its.filter(i => i.dia_semana == null), periodicas = its.filter(i => i.dia_semana != null).sort((a, b) => a.dia_semana - b.dia_semana);
+  const lista = L => `<ol class="funlist">${L.map(i => `<li>${esc(i.texto)}${i.dia_semana ? ` <span class="pill ${i.dia_semana === hoyD ? "p-gold" : "p-ord"}">${i.dia_semana === hoyD ? "Hoy · " : ""}${esc(DIAS[i.dia_semana - 1])}</span>` : ""}</li>`).join("")}</ol>`;
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">${esc(MODULOS[S.modulo].nombre)} · Frente, Carritos y Driving Range</div><h1>Funciones de las posiciones</h1>
+      <p class="sub">Lo que corresponde hacer en cada posición. Todo el equipo debe conocer las tres, porque el Capitán puede rotarlo durante el turno.</p></div></div>
+    <div class="callout gold"><b>Principio fundamental:</b> la posición asignada determina las funciones que corresponde ejecutar, pero el compromiso con la excelencia y la hospitalidad es responsabilidad de todo el equipo.</div>
+    <div class="chips" id="fnTabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" class="chip" data-f="${k}" aria-pressed="${f.pos === k}">${l}</button>`).join("")}</div>
+    <div class="panel">${
+      f.pos === "I" ? `<h2>Instrucciones generales para el personal</h2><ol class="funlist">${INSTRUCCIONES_OP.map(t => `<li>${esc(t)}</li>`).join("")}</ol>`
+      : f.pos === "M" ? `<h2>Criterios de éxito</h2><div class="stack" style="gap:0">${CRITERIOS_OP.map(([t, d, m], i) => `<div class="crit"><b>${i + 1}. ${esc(t)}</b><span>${esc(d)}</span><span class="hint">En la app: ${esc(m)}</span></div>`).join("")}</div>`
+      : `<h2>${esc(area ? area.nombre : "")}</h2>${area && area.nota ? `<p class="hint" style="margin:0 0 8px">${esc(area.nota)}</p>` : ""}
+        ${diarias.length ? `<div class="eyebrow" style="margin:6px 0">Todos los días</div>${lista(diarias)}` : ""}
+        ${periodicas.length ? `<div class="eyebrow" style="margin:14px 0 6px">Tareas periódicas</div>${lista(periodicas)}` : ""}
+        ${f.pos === "L" ? `<p class="hint" style="margin:10px 0 0">Todo daño a un carrito se reporta por escrito en la app (Mi puesto → Reportar daño de carrito) en el momento.</p>` : ""}`
+    }</div>
+    ${S.esGer ? `<p class="hint" style="margin:0">Las tareas se editan en Puestos → Editar tareas.</p>` : ""}`;
+  v.querySelectorAll("#fnTabs [data-f]").forEach(b => b.onclick = () => { f.pos = b.dataset.f; renderFunciones(); });
 }
 
 /* ===================== Hoja modal ===================== */
