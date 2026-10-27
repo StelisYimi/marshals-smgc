@@ -464,8 +464,8 @@ const ROLES = {colaborador:"Personal de campo", marshal:"Marshal", starter:"Star
 const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
 const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
-  marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["equipo","Equipo","ger"]]},
-  starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"]]},
+  marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["horario","Horario"],["equipo","Equipo","ger"]]},
+  starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"],["horario","Horario"]]},
   staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["horario","Horario"],["directorio","Directorio","cap"]]},
   capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
@@ -1747,7 +1747,7 @@ function renderHorario(){
   const idx = {}; h.turnos.forEach(t => idx[t.fecha + "|" + t.personal_id] = t);
   const grupos = [...new Set(h.personal.map(p => p.grupo))];
   const vacios = h.personal.length * 7 - h.turnos.filter(t => h.personal.some(p => p.id === t.personal_id)).length;
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">${ed ? "Capitanes · Edición del horario" : "Staff · Operación de golf"}</div><h1>Horario del personal</h1>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">${ed ? "Capitanes · Edición del horario" : esc(MODULOS[S.modulo].nombre) + " · Operación de golf"}</div><h1>Horario del personal</h1>
       <p class="sub">Semana del ${esc(fechaCorta(dias[0]))} al ${esc(fechaCorta(dias[6]))} · ${plural(h.personal.length, "persona")}${vacios > 0 ? ` · ${plural(vacios, "día sin asignar", "días sin asignar")}` : ""}${ed ? " · toque una casilla para cambiar un día o suba la semana con Cargar horarios" : " · solo consulta"}</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         ${ed ? `<button class="btn primary" id="hCargar" type="button">Cargar horarios</button>` : ""}
