@@ -441,6 +441,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-supervision" hidden></section>
     <section class="view" id="v-hoy" hidden></section>
     <section class="view" id="v-directorio" hidden></section>
+    <section class="view" id="v-directoriocap" hidden></section>
     <section class="view" id="v-mipuesto" hidden></section>
     <section class="view" id="v-puestos" hidden></section>
     <section class="view" id="v-funciones" hidden></section>
@@ -469,8 +470,8 @@ const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
   marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["salidas","Salidas"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["horario","Horario"],["equipo","Equipo","ger"]]},
   starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"],["horario","Horario"]]},
-  staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["puestos","Puestos","cap"],["funciones","Funciones"],["horario","Horario"],["directorio","Directorio","cap"]]},
-  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
+  staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["puestos","Puestos","cap"],["funciones","Funciones"],["horario","Horario"],["directorio","Directorio"]]},
+  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["directoriocap","Directorio"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
 
@@ -650,8 +651,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","mipuesto","puestos","funciones"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","directoriocap","mipuesto","puestos","funciones"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, directoriocap:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -1778,7 +1779,7 @@ function renderHorario(){
   const th = v.querySelector(".hgrid th.hoy"), tw = v.querySelector(".tablewrap");
   if (th && tw && tw.scrollWidth > tw.clientWidth) { const pn = v.querySelector(".hgrid td.pn"); tw.scrollLeft = Math.max(0, th.offsetLeft - (pn ? pn.offsetWidth : 0) - 8); }
   if ($("#hIrCap")) $("#hIrCap").onclick = () => { setModulo("capitanes"); go("horariocap"); };
-  if (ed) { $("#hCopiar").onclick = copiarSemana; $("#hPers").onclick = () => { setModulo("staff"); go("directorio"); }; $("#hFun").onclick = editarFunciones; }
+  if (ed) { $("#hCopiar").onclick = copiarSemana; $("#hPers").onclick = () => go("directoriocap"); $("#hFun").onclick = editarFunciones; }
   if (!ed || !S.esGer) return;
   if ($("#hCopy")) $("#hCopy").onclick = async () => { try { await navigator.clipboard.writeText(urlTablero()); toast("Enlace copiado"); } catch(e){ toast("Copie el enlace manualmente"); } };
   $("#hToken").onclick = async () => {
@@ -1850,6 +1851,7 @@ async function copiarSemana(){
   toast(`${plural(filas.length, "día copiado", "días copiados")}`); cargarHorario();
 }
 function editarFunciones(){
+  if (!S.esCap) return;
   const h = S.hor;
   openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Funciones e instrucciones</h2><button class="btn ghost x" data-x type="button">Cerrar</button></div>
     <p class="hint" style="margin:0">Las instrucciones aparecen en el tablero de la TV cuando la persona entra a su turno. Se guardan al salir del campo.</p>
@@ -3307,7 +3309,7 @@ function suscribirStaff(){
     .on("postgres_changes", {event:"*", schema:"public", table:"op_reportes"}, re(() => { if (S.view === "puestos" && !$("#ov")) cargarPuestos(); }, "_o"))
     .on("postgres_changes", {event:"*", schema:"public", table:"op_danos"}, re(() => { if (S.view === "puestos" && !$("#ov")) cargarPuestos(); }, "_d"))
     .on("postgres_changes", {event:"*", schema:"public", table:"hor_asistencia"}, re(() => { if (S.view === "hoy") cargarHoy(); }, "_a"))
-    .on("postgres_changes", {event:"*", schema:"public", table:"hor_personal"}, re(() => { S.dir.loaded = false; S.hor.loaded = false; if (S.view === "directorio" && !$("#ov")) renderDirectorio(); if (S.view === "hoy") cargarHoy(); }, "_p"))
+    .on("postgres_changes", {event:"*", schema:"public", table:"hor_personal"}, re(() => { S.dir.loaded = false; S.hor.loaded = false; if ((S.view === "directorio" || S.view === "directoriocap") && !$("#ov")) renderDirectorio(); if (S.view === "hoy") cargarHoy(); }, "_p"))
     .subscribe();
   document.addEventListener("visibilitychange", () => { if (!document.hidden && S.view === "hoy") cargarHoy(); });
 }
@@ -3435,12 +3437,15 @@ async function cargarDirectorio(){
   const bad = [pe, pu, tu, co].find(x => x.error); if (bad) { toast(errMsg(bad.error)); return; }
   const C = Object.fromEntries(co.data.map(c => [c.personal_id, c]));
   S.dir.personal = pe.data.map(p => ({...p, telefono: (C[p.id] || {}).telefono || null, notas: (C[p.id] || {}).notas || null})); S.dir.puestos = pu.data; S.dir.hoy = tu.data; S.dir.loaded = true;
-  if (S.view === "directorio" && !$("#ov")) renderDirectorio();
+  if ((S.view === "directorio" || S.view === "directoriocap") && !$("#ov")) renderDirectorio();
 }
+// Se modifica solo en Capitanes → Directorio (Capitanes y Gerente de Operaciones); en Staff → Directorio es de consulta para todos
 function renderDirectorio(){
-  const v = $("#v-directorio"), d = S.dir, ed = puedeEditarStaff();
+  const ed = S.esCap && S.view === "directoriocap", v = $(ed ? "#v-directoriocap" : "#v-directorio"), d = S.dir;
+  $(ed ? "#v-directorio" : "#v-directoriocap").innerHTML = "";
   if (!d.loaded) { v.innerHTML = `<div class="loading">Cargando directorio…</div>`; cargarDirectorio(); return; }
   const PU = Object.fromEntries(d.puestos.map(p => [p.codigo, p])), norm = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  if (!ed) d.bajas = false;
   const base = d.personal.filter(p => p.activo !== d.bajas);
   const L = base.filter(p => (d.area === "todos" || p.area === d.area) && (!d.q || norm(p.nombre + " " + p.grupo + " " + (p.telefono || "")).includes(norm(d.q))));
   const grupos = [...new Set(L.map(p => p.grupo))];
@@ -3451,12 +3456,13 @@ function renderDirectorio(){
       <div class="dtop"><b>${esc(p.nombre)}</b><span class="pill p-ord">${esc(AREAS_ST[p.area] || p.area)}</span></div>
       <div class="dline">${p.puesto_habitual ? `<span class="hint">Habitual</span> ${letra(p.puesto_habitual)}` : ""}${(p.funciones || []).length ? ` <span class="hint">· Cubre</span> ${p.funciones.map(letra).join(" ")}` : ""}</div>
       <div class="dline">${hoyDe(p) || `<span class="hint">Sin horario hoy</span>`}</div>
-      <div class="dline hint">${pf ? `Cuenta: ${esc(pf.usuario || "correo")} · ${esc(ROLES[pf.rol])}` : "Sin cuenta en la app"}</div>
+      ${ed ? `<div class="dline hint">${pf ? `Cuenta: ${esc(pf.usuario || "correo")} · ${esc(ROLES[pf.rol])}` : "Sin cuenta en la app"}</div>` : ""}
       ${p.telefono ? `<div class="dline"><a class="btn small" href="tel:${esc(telLimpio(p.telefono))}">Llamar ${esc(p.telefono)}</a><a class="btn small" href="${esc(waDe(p.telefono))}" target="_blank" rel="noopener">WhatsApp</a></div>` : ""}
     </div>`; };
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">Staff · Directorio</div><h1>Directorio del personal</h1>
-      <p class="sub">${plural(base.length, "persona")} ${d.bajas ? "dadas de baja" : "activas"}${ed ? " · toque una tarjeta para editar" : ""}</p></div>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">${ed ? "Capitanes · Edición del directorio" : esc(MODULOS[S.modulo].nombre) + " · Directorio"}</div><h1>Directorio del personal</h1>
+      <p class="sub">${plural(base.length, "persona")} ${d.bajas ? "dadas de baja" : "activas"}${ed ? " · toque una tarjeta para editar" : " · solo consulta"}</p></div>
       ${ed ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="dNueva" type="button">Agregar persona</button><button class="btn small" id="dFun" type="button">Funciones e instrucciones</button></div>` : ""}</div>
+    ${!ed && S.esCap ? `<div class="callout" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1 1 220px">Aquí el directorio es de consulta. Para agregar o modificar personas vaya a <b>Capitanes → Directorio</b>.</span><button class="btn small primary" id="dIrCap" type="button">Editar en Capitanes</button></div>` : ""}
     <div class="filters"><label class="f">Buscar<input type="search" id="dQ" value="${esc(d.q)}" placeholder="Nombre, grupo o teléfono"></label></div>
     <div class="chips" id="dArea">${[["todos","Todos"], ...Object.entries(AREAS_ST)].map(([k, l]) => `<button type="button" class="chip" data-a="${k}" aria-pressed="${d.area === k}">${l} · ${k === "todos" ? base.length : base.filter(p => p.area === k).length}</button>`).join("")}
       ${ed ? `<button type="button" class="chip" id="dBajas" aria-pressed="${d.bajas}">Dados de baja</button>` : ""}</div>
@@ -3465,11 +3471,13 @@ function renderDirectorio(){
   const q = $("#dQ"); q.oninput = () => { d.q = q.value; clearTimeout(renderDirectorio._t); renderDirectorio._t = setTimeout(() => { const pos = q.selectionStart; renderDirectorio(); const n = $("#dQ"); n.focus(); n.setSelectionRange(pos, pos); }, 200); };
   v.querySelectorAll("#dArea [data-a]").forEach(b => b.onclick = () => { d.area = b.dataset.a; renderDirectorio(); });
   if ($("#dBajas")) $("#dBajas").onclick = () => { d.bajas = !d.bajas; renderDirectorio(); };
+  if ($("#dIrCap")) $("#dIrCap").onclick = () => { setModulo("capitanes"); go("directoriocap"); };
   if ($("#dNueva")) $("#dNueva").onclick = () => editarPersona(null);
   if ($("#dFun")) $("#dFun").onclick = async () => { if (!S.hor.puestos.length) await cargarHorario(); editarFunciones(); };
   v.querySelectorAll("[data-dp]").forEach(c => { const go2 = () => editarPersona(d.personal.find(p => p.id === c.dataset.dp)); c.onclick = e => { if (!e.target.closest("a")) go2(); }; c.onkeydown = e => { if (e.key === "Enter") go2(); }; });
 }
 function editarPersona(p){
+  if (!S.esCap) { toast("Solo los Capitanes y el Gerente de Operaciones modifican el directorio."); return; }
   const d = S.dir, nuevo = !p; p = p || {nombre:"", grupo:"Operación de golf", area:"campo", telefono:"", funciones:[], puesto_habitual:null, perfil_id:null, notas:"", activo:true};
   const grupos = [...new Set(d.personal.map(x => x.grupo).concat(["Operación de golf"]))];
   const usados = new Set(d.personal.filter(x => x.perfil_id && x.id !== p.id).map(x => x.perfil_id));
