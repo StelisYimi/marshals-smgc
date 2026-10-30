@@ -466,7 +466,7 @@ const CATS = {ritmo_juego:"Ritmo de juego", campo_carritos:"Campo y carritos", a
 const ETAPAS = {deteccion:"Detección", comunicacion:"Comunicación", seguimiento:"Seguimiento", escalamiento:"Escalamiento"};
 const NOTIF = {gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Operaciones de Golf", starter:"Starter", mantenimiento:"Mantenimiento", ninguno:"Ninguno aún"};
 const PRIO = {critica:{l:"Crítica",c:"p-crit"}, alta:{l:"Alta",c:"p-alta"}, ordinaria:{l:"Ordinaria",c:"p-ord"}};
-const ROLES = {colaborador:"Personal de campo", marshal:"Marshal", starter:"Starter", capitan:"Capitán", gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Op. de Golf", admin:"Administrador"};
+const ROLES = {colaborador:"Personal de campo", marshal:"Marshal", starter:"Starter", mecanico:"Mecánico", capitan:"Capitán", gerente_operaciones:"Gerente de Operaciones", gerente_golf:"Gerente de Op. de Golf", admin:"Administrador"};
 const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
 const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
@@ -605,7 +605,7 @@ async function entrar(){
   S.esGer = GERENCIA.includes(S.me.rol); S.esCap = CAPITANIA.includes(S.me.rol);
   S.esStarter = S.me.rol === "starter";
   { const r = await sb.from("hor_personal").select("id,nombre,perfil_id,grupo").eq("perfil_id", S.me.id).eq("activo", true).maybeSingle(); S.miPer = r.data || null; }
-  S.esMec = !!(S.miPer && S.miPer.grupo === "Mecánico");   // el Mecánico es quien está en el grupo Mecánico del horario
+  S.esMec = S.me.rol === "mecanico" || !!(S.miPer && S.miPer.grupo === "Mecánico");   // por su rol, o por estar en el grupo Mecánico del horario
   S.mods = []; if (S.esMec) S.mods.push("mecanico"); if (S.esStarter || S.esGer) S.mods.push("starter"); if (S.me.rol === "marshal" || S.esStarter || S.esGer) S.mods.push("marshals"); if (S.esCap) S.mods.push("capitanes", "mecanico"); S.mods.push("staff");
   $("#whoName").textContent = S.me.nombre; $("#whoRole").textContent = S.esGer ? "Gerencia" : ROLES[S.me.rol]; $("#whoRole").classList.toggle("g", S.esGer);
   $("#menuWho").textContent = `${S.me.nombre} · ${ROLES[S.me.rol]}${S.me.usuario ? " · " + S.me.usuario : ""}`;
@@ -1172,7 +1172,7 @@ async function renderEquipo(){
   const { data } = await sb.from("perfiles").select("id,nombre,usuario,rol,activo").order("activo", {ascending:false}).order("nombre");
   if (data) S.perfiles = Object.fromEntries(data.map(p => [p.id, p]));
   const list = data || [];
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia</div><h1>Equipo</h1><p class="sub">${plural(list.filter(p => p.activo).length,"cuenta activa","cuentas activas")}. Cree aquí el usuario de cada colaborador de campo, Marshal, Starter o Capitán y entréguele su contraseña temporal.</p></div></div>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia</div><h1>Equipo</h1><p class="sub">${plural(list.filter(p => p.activo).length,"cuenta activa","cuentas activas")}. Cree aquí el usuario de cada colaborador de campo, Marshal, Starter, Mecánico o Capitán y entréguele su contraseña temporal.</p></div></div>
     <div class="grid2">
       <div class="stack">
         ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>
@@ -1187,7 +1187,7 @@ async function renderEquipo(){
           <label class="f">Nombre completo<input type="text" id="eNombre" autocomplete="off" placeholder="Ej. Juan Pérez"></label>
           <label class="f">Usuario para entrar<input type="text" id="eUser" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Ej. jperez"></label>
           <label class="f">Contraseña temporal<input type="text" id="ePass" autocomplete="off" value="${tempPass()}"></label>
-          <label class="f">Rol<select id="eRol"><option value="colaborador">Personal de campo (Frente, Carritos, Range)</option><option value="marshal" selected>Marshal</option><option value="starter">Starter</option><option value="capitan">Capitán</option><option value="gerente_operaciones">Gerente de Operaciones</option><option value="gerente_golf">Gerente de Op. de Golf</option></select></label>
+          <label class="f">Rol<select id="eRol"><option value="colaborador">Personal de campo (Frente, Carritos, Range)</option><option value="marshal" selected>Marshal</option><option value="starter">Starter</option><option value="mecanico">Mecánico</option><option value="capitan">Capitán</option><option value="gerente_operaciones">Gerente de Operaciones</option><option value="gerente_golf">Gerente de Op. de Golf</option></select></label>
           <label class="f">Su nombre en el horario<select id="eHor"><option value="">Vincular por nombre automáticamente</option></select></label>
           <p class="hint" style="margin:-4px 0 0">Con la cuenta vinculada ve su semana en Staff → Horario y, en Frente, Carritos o Range, llena su checklist en Staff → Mi puesto.</p>
           <div class="err" id="eErr"></div>
@@ -3294,7 +3294,7 @@ async function exportarCap(){
 }
 
 /* ===================== Staff: asistencia del día y directorio (Gerencia y Capitanes) ===================== */
-const AREAS_ST = {campo:"Personal de campo", marshal:"Marshals", capitan:"Capitanes"};
+const AREAS_ST = {campo:"Personal de campo", marshal:"Marshals", mecanico:"Mecánico", capitan:"Capitanes"};
 const ESTADO_AS = {presente:"Presente", ausente:"Ausente", permiso:"Permiso", incapacidad:"Incapacidad"};
 const TOL_LLEGADA = 5;   // minutos de tolerancia para contar una llegada como puntual
 S.st2 = {fecha: hoyISO(), personal:[], puestos:[], turnos:[], asis:[], loaded:false, fechaCargada:null};
