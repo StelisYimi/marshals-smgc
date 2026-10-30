@@ -42,7 +42,6 @@ main{display:grid;grid-template-columns:1fr 500px;gap:26px;min-height:0}
 .card .pn{font-size:30px;font-weight:800;line-height:1.1}
 .card .ppl{padding:12px 16px 4px;display:grid;gap:8px;grid-template-columns:minmax(0,1fr)}
 .card.muchos .ins{display:none}
-.grid:not(.pocos) .card.dos .ins{display:none}
 .p{display:flex;align-items:baseline;gap:8px;min-width:0}
 .p b{font-size:31px;font-weight:700;line-height:1.2;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p span{font-family:var(--f-mono);font-size:19px;color:var(--muted);white-space:nowrap;flex:none}
@@ -51,7 +50,15 @@ main{display:grid;grid-template-columns:1fr 500px;gap:26px;min-height:0}
 .p.ok i{background:var(--ok);border-color:var(--ok)}
 .p.falta i{border-color:var(--warn)} .p.falta span{color:var(--warn)}
 .p.aus b{color:var(--muted);text-decoration:line-through} .p.aus i{border-color:var(--crit)} .p.aus span{color:var(--crit)}
-.card .ins{margin:6px 18px 14px;padding:0;font-size:21px;line-height:1.35;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .ins{margin-top:auto;background:rgba(0,0,0,.24);border-top:1px solid var(--line);padding:10px 0;overflow:hidden;white-space:nowrap;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 18px,#000 calc(100% - 40px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 18px,#000 calc(100% - 40px),transparent 100%)}
+/* Cinta de noticias: el texto se desliza en bucle cuando no cabe en una línea */
+.ins .tr{display:inline-block;will-change:transform}
+.ins .tr span{display:inline-block;font-size:22px;line-height:1.3;color:var(--ink);opacity:.9;padding-left:18px}
+.ins .tr.mov span{padding-left:0;padding-right:70px}
+.ins .tr.mov span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--gold);margin:0 16px 3px 18px;vertical-align:middle}
+@-webkit-keyframes cinta{from{-webkit-transform:translateX(0)}to{-webkit-transform:translateX(-50%)}}
+@keyframes cinta{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .grid.lleno .ins{display:none}
 
 aside{display:grid;grid-template-rows:auto auto 1fr;gap:22px;min-height:0}
@@ -162,6 +169,20 @@ function pintarEstado(){
   u.textContent = seg > 180 ? "Sin conexión desde " + Math.round(seg / 60) + " min" : "Actualizado " + h12(new Date(lastOk + OFFSET).toISOString().slice(11, 16));
 }
 
+// Convierte en cinta las instrucciones que no caben: duplica el texto y lo desplaza al 50 % en bucle.
+// El desfase se calcula con el reloj, así la cinta sigue donde iba aunque la tarjeta se vuelva a pintar.
+function cintas(){
+  var L = document.querySelectorAll("#grid .ins");
+  for (var i = 0; i < L.length; i++) {
+    var box = L[i], tr = box.firstChild, sp = tr.firstChild;
+    if (sp.offsetWidth <= box.clientWidth - 24) continue;
+    tr.className = "tr mov"; tr.appendChild(sp.cloneNode(true));
+    var dur = (tr.offsetWidth / 2) / 75;   // 75 px por segundo: se lee de lejos sin prisa
+    var an = "cinta " + dur.toFixed(2) + "s linear " + (-((Date.now() / 1000) % dur)).toFixed(2) + "s infinite";
+    tr.style.webkitAnimation = an; tr.style.animation = an;
+  }
+}
+
 function pintar(){
   if (!D) return;
   var m = minAhora(), P = {}, orden = {};
@@ -184,12 +205,14 @@ function pintar(){
         var cls = aus ? " aus" : enAlm ? " lunch" : llego ? " ok" : falta ? " falta" : "";
         var txt = aus ? AUS[t.asistencia] : enAlm ? "almuerzo · " + hc(t.almuerzo_fin) : falta ? "sin marcar" : "hasta " + hc(t.fin);
         return "<div class='p" + cls + "'><i></i><b>" + esc(corto(t.persona)) + "</b><span>" + txt + "</span></div>";
-      }).join("") + "</div>" + (p.instrucciones ? "<div class='ins'>" + esc(p.instrucciones) + "</div>" : "") + "</div>";
+      }).join("") + "</div>" + (p.instrucciones ? "<div class='ins'><div class='tr'><span>" + esc(p.instrucciones) + "</span></div></div>" : "") + "</div>";
   }).join("") : (MANANA && MANANA.turnos.some(function(t){ return t.tipo === "trabajo"; })
       ? (function(){ var w = MANANA.turnos.filter(function(t){ return t.tipo === "trabajo"; }), pr = Math.min.apply(null, w.map(function(t){ return min(t.inicio); })),
           n = w.filter(function(t){ return min(t.inicio) === pr; }).length;
           return "<div class='fin'><b>Fin de la jornada</b>Mañana a las " + h12(String(Math.floor(pr / 60)).padStart(2, "0") + ":" + String(pr % 60).padStart(2, "0")) + " entran " + n + (n === 1 ? " persona." : " personas.") + "</div>"; })()
       : "<div class='fin'><b>Sin personal en turno</b>No hay turnos cargados para este momento.</div>");
+
+  cintas();
 
   // Próximas entradas (o las de mañana cuando el día terminó)
   var fuente = MANANA ? MANANA.turnos.filter(function(t){ return t.tipo === "trabajo"; }) : trab, PM = {};
