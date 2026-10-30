@@ -3017,7 +3017,10 @@ async function abrirReporteSt(id){
 }
 
 /* ===================== Capitán: Mi turno ===================== */
-const PUESTOS = [["starter","Starter","S"],["range","Driving Range","R"],["carritos","Carritos","L"],["frente","Frente","F"],["divots","Divots","D"],["comodin","Comodín","C"]];
+const PUESTOS = [["starter","Starter","S"],["range","Driving Range","R"],["carritos","Carritos","L"],["frente","Frente","F"],["divots","Divots","D"],["comodin","Comodín","C"],
+  ["hoyo7","Hoyo 7","7"],["range_noche","Range nocturno","ER",["cierre"]],["player","Player Assistant","P"],["mecanico","Mecánico","M"]];
+// Puestos del Equipo del turno que aplican a cada turno (Range nocturno solo en cierre)
+const puestosTurno = t => PUESTOS.filter(x => !x[3] || x[3].includes(t));
 const EST_PUESTO = {presente:"Presente", ausente:"Ausente", cubierto:"Cubierto"};
 const INSUMOS = [["tarjetas","Tarjetas de score"],["tees","Tees"],["lapices","Lápices"],["toallas","Toallas"],["bolas","Bolas de práctica"],["agua","Agua"]];
 const NIVEL = {suficiente:"Suficiente", bajo:"Bajo", agotado:"Agotado"};
@@ -3055,7 +3058,7 @@ function statsCap(){ let si=0,no=0,na=0,naSinJ=0; for (const it of S.ct.items) {
 function faltaCap(){
   const d = draftCap(), st = statsCap(), m = [], c = d.condiciones || {};
   if (["velocidad_greens","bandera","regla_carritos","apertura"].some(k => !String(c[k] || "").trim())) m.push("completar las condiciones de la cancha");
-  const sinEq = PUESTOS.filter(([k]) => !((d.equipo || {})[k] || {}).estado).length; if (sinEq) m.push(`indicar ${plural(sinEq, "puesto", "puestos")} del equipo`);
+  const sinEq = puestosTurno(S.ct.turno).filter(([k]) => !((d.equipo || {})[k] || {}).estado).length; if (sinEq) m.push(`indicar ${plural(sinEq, "puesto", "puestos")} del equipo`);
   const sinIn = INSUMOS.filter(([k]) => !((d.inventario || {})[k] || {}).nivel).length; if (sinIn) m.push(`indicar el nivel de ${plural(sinIn, "insumo")}`);
   if (st.answered < st.total) m.push(`responder ${plural(st.total - st.answered, "actividad", "actividades")}`);
   if (st.naSinJ) m.push(`justificar ${st.naSinJ} N/A`);
@@ -3089,7 +3092,7 @@ function renderTurnoCap(){
         ${c.hora_superintendente ? `<p class="hint" style="margin:8px 0 0">Registrado a las ${esc(c.hora_superintendente)}</p>` : ""}
       </div>
       <div class="panel"><h2>Equipo del turno</h2><div class="stack" style="gap:10px" id="ctEq">
-        ${PUESTOS.map(([k, l, s]) => { const e = (d.equipo || {})[k] || {}; return `<div class="pz" style="flex-wrap:wrap" data-pu="${k}"><span class="mono" style="width:22px;color:var(--gold);font-weight:500">${s}</span>
+        ${puestosTurno(ct.turno).map(([k, l, s]) => { const e = (d.equipo || {})[k] || {}; return `<div class="pz" style="flex-wrap:wrap" data-pu="${k}"><span class="mono" style="width:26px;color:var(--gold);font-weight:500">${s}</span>
           <input type="text" data-nom="${k}" value="${esc(e.nombre || "")}" placeholder="${l}" aria-label="${l}" style="flex:1 1 140px" ${dis}>
           <div class="seg" role="group" aria-label="Estado ${l}">${Object.entries(EST_PUESTO).map(([ek, el]) => `<button type="button" data-v="${ek === "presente" ? "si" : ek === "ausente" ? "no" : "na"}" data-est="${ek}" aria-pressed="${e.estado===ek}" ${dis}>${el}</button>`).join("")}</div></div>`; }).join("")}
       </div><p class="hint" style="margin:10px 0 0">Cubierto: el puesto lo atiende otra persona (por ejemplo, el Comodín).</p></div>
@@ -3258,7 +3261,7 @@ async function abrirReporteCap(id){
   let si=0,no=0,na=0; Object.values(resp).forEach(a => a.valor==="si"?si++:a.valor==="no"?no++:na++);
   openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(TURNOS[d.turno])} · Capitán</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(nm(d.capitan_id))} · ${esc(fechaLarga(d.fecha))}</h2></div><button class="btn ghost x" data-x type="button">Cerrar</button></div>
     <div class="kv"><div><b>Greens</b>${esc(c.velocidad_greens || "—")}</div><div><b>Bandera</b>${esc(BANDERA[c.bandera] || "—")}</div><div><b>Carritos</b>${esc(CARRITOS[c.regla_carritos] || "—")}</div><div><b>Apertura</b>${esc(c.apertura || "—")}</div><div><b>Obras / accidentes</b>${esc(c.obras || "Ninguno")}</div><div><b>Firma</b>${d.firmado_en ? hora(d.firmado_en) : "Sin firmar"}</div></div>
-    <div class="tablewrap"><table style="min-width:420px"><thead><tr><th>Puesto</th><th>Colaborador</th><th>Estado</th></tr></thead><tbody>${PUESTOS.map(([k, l, s]) => { const e = (d.equipo || {})[k] || {}; return `<tr><td>${s} · ${l}</td><td>${esc(e.nombre || "—")}</td><td>${e.estado ? `<span class="pill ${e.estado === "presente" ? "p-ok" : e.estado === "ausente" ? "p-crit" : "p-gold"}">${EST_PUESTO[e.estado]}</span>` : "—"}</td></tr>`; }).join("")}</tbody></table></div>
+    <div class="tablewrap"><table style="min-width:420px"><thead><tr><th>Puesto</th><th>Colaborador</th><th>Estado</th></tr></thead><tbody>${puestosTurno(d.turno).map(([k, l, s]) => { const e = (d.equipo || {})[k] || {}; return `<tr><td>${s} · ${l}</td><td>${esc(e.nombre || "—")}</td><td>${e.estado ? `<span class="pill ${e.estado === "presente" ? "p-ok" : e.estado === "ausente" ? "p-crit" : "p-gold"}">${EST_PUESTO[e.estado]}</span>` : "—"}</td></tr>`; }).join("")}</tbody></table></div>
     <div class="tablewrap"><table style="min-width:420px"><thead><tr><th>Insumo</th><th>Nivel</th><th>Nota</th></tr></thead><tbody>${INSUMOS.map(([k, l]) => { const e = (d.inventario || {})[k] || {}; return `<tr><td>${l}</td><td>${e.nivel ? `<span class="pill ${e.nivel === "suficiente" ? "p-ok" : e.nivel === "bajo" ? "p-alta" : "p-crit"}">${NIVEL[e.nivel]}</span>` : "—"}</td><td>${esc(e.nota || "")}</td></tr>`; }).join("")}</tbody></table></div>
     ${d.observaciones ? `<div><b class="hint">Observaciones</b><p style="margin:4px 0 0">${esc(d.observaciones)}</p></div>` : ""}
     ${d.pendientes ? `<div><b class="hint">Pendientes para el siguiente turno</b><p style="margin:4px 0 0">${esc(d.pendientes)}</p></div>` : ""}
