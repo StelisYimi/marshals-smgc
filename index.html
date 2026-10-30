@@ -217,8 +217,10 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .loading{padding:60px 16px;text-align:center;color:var(--muted)}
 #printArea{display:none}
 /* Módulos */
-.modsw{display:inline-flex;background:rgba(255,255,255,.1);border-radius:99px;padding:3px;margin-top:10px;gap:2px}
-.modsw button{border:0;background:none;color:rgba(255,255,255,.8);padding:6px 14px;border-radius:99px;font-weight:700;font-size:13px;cursor:pointer}
+.modsw{display:inline-flex;max-width:100%;background:rgba(255,255,255,.1);border-radius:99px;padding:3px;margin-top:10px;gap:2px}
+.modsw button{border:0;background:none;color:rgba(255,255,255,.8);padding:6px 14px;border-radius:99px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* En el teléfono los módulos ocupan todo el ancho en partes iguales, sin empujar la pantalla hacia los lados */
+@media (max-width:560px){.modsw{display:flex;width:100%}.modsw button{flex:1 1 0;padding:7px 4px;font-size:12px;letter-spacing:-.01em}}
 .modsw button[aria-pressed="true"]{background:#fff;color:#123d2a}
 /* Capitanes · palos */
 .tipos{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
@@ -606,7 +608,9 @@ async function entrar(){
   S.esStarter = S.me.rol === "starter";
   { const r = await sb.from("hor_personal").select("id,nombre,perfil_id,grupo").eq("perfil_id", S.me.id).eq("activo", true).maybeSingle(); S.miPer = r.data || null; }
   S.esMec = S.me.rol === "mecanico" || !!(S.miPer && S.miPer.grupo === "Mecánico");   // por su rol, o por estar en el grupo Mecánico del horario
-  S.mods = []; if (S.esMec) S.mods.push("mecanico"); if (S.esStarter || S.esGer) S.mods.push("starter"); if (S.me.rol === "marshal" || S.esStarter || S.esGer) S.mods.push("marshals"); if (S.esCap) S.mods.push("capitanes", "mecanico"); S.mods.push("staff");
+  // Orden fijo de los módulos: Capitanes, Marshals, Starter, Mecánico y Staff (cada quien ve solo los suyos)
+  const permitido = {capitanes: S.esCap, marshals: S.me.rol === "marshal" || S.esStarter || S.esGer, starter: S.esStarter || S.esGer, mecanico: S.esMec || S.esCap, staff: true};
+  S.mods = ["capitanes", "marshals", "starter", "mecanico", "staff"].filter(m => permitido[m]);
   $("#whoName").textContent = S.me.nombre; $("#whoRole").textContent = S.esGer ? "Gerencia" : ROLES[S.me.rol]; $("#whoRole").classList.toggle("g", S.esGer);
   $("#menuWho").textContent = `${S.me.nombre} · ${ROLES[S.me.rol]}${S.me.usuario ? " · " + S.me.usuario : ""}`;
   try {
@@ -634,7 +638,8 @@ async function entrar(){
   const sw = $("#modSw"); sw.hidden = S.mods.length < 2;
   sw.innerHTML = S.mods.map(m => `<button type="button" data-mod="${m}">${MODULOS[m].nombre}</button>`).join("");
   sw.onclick = e => { const b = e.target.closest("[data-mod]"); if (b) setModulo(b.dataset.mod); };
-  let m = S.mods[0]; try { const g = localStorage.getItem("smgc_mod"); if (S.mods.includes(g)) m = g; } catch(e){}
+  // Al entrar, cada quien abre en su propio módulo (o en el último que usó en este teléfono)
+  let m = ({starter:"starter", marshal:"marshals", mecanico:"mecanico"})[S.me.rol] || (S.esMec && !S.esCap ? "mecanico" : S.mods[0]); if (!S.mods.includes(m)) m = S.mods[0]; try { const g = localStorage.getItem("smgc_mod"); if (S.mods.includes(g)) m = g; } catch(e){}
   setModulo(m);
   if (S.mods.includes("marshals") && (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length)) flush();
 }
