@@ -20,27 +20,27 @@
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);overflow:hidden}
 body{color:var(--ink);font-family:var(--f-body)}
-#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;display:grid;grid-template-rows:118px 1fr 74px;padding:28px 40px 22px;gap:22px}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;-webkit-transform-origin:0 0;transform-origin:0 0;display:grid;grid-template-rows:100px 1fr 66px;padding:24px 40px 20px;grid-gap:20px;gap:20px}
 
 header{display:flex;align-items:center;gap:26px}
-header img{height:96px;width:96px;object-fit:contain;background:#fff;border-radius:16px;padding:8px}
+header img{height:86px;width:86px;object-fit:contain;background:#fff;border-radius:16px;padding:8px}
 .ttl .k{font-size:22px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);font-weight:700}
-.ttl h1{font-family:var(--f-display);font-weight:400;font-size:54px;margin:2px 0 0;line-height:1}
+.ttl h1{font-family:var(--f-display);font-weight:400;font-size:50px;margin:2px 0 0;line-height:1}
 .clock{margin-left:auto;text-align:right}
-.clock .t{font-family:var(--f-mono);font-size:84px;font-weight:600;line-height:.95;letter-spacing:-.02em}
+.clock .t{font-family:var(--f-mono);font-size:76px;font-weight:600;line-height:.95;letter-spacing:-.02em}
 .clock .d{font-size:26px;color:var(--muted);margin-top:4px}
 
-main{display:grid;grid-template-columns:1fr 560px;gap:26px;min-height:0}
+main{display:grid;grid-template-columns:1fr 560px;grid-gap:26px;gap:26px;min-height:0}
 .sec{font-size:22px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 14px;display:flex;align-items:center;gap:12px}
 .sec .n{font-family:var(--f-mono);letter-spacing:0;color:var(--gold)}
 .now{min-height:0;display:flex;flex-direction:column}
-.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:18px;flex:1;min-height:0}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);grid-gap:18px;gap:18px;flex:1;min-height:0}
 .grid.pocos{grid-auto-rows:auto;align-content:start}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
 .card .top{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--c)}
 .card .lt{font-family:var(--f-mono);font-weight:600;font-size:30px;background:rgba(0,0,0,.25);border-radius:10px;min-width:62px;text-align:center;padding:2px 10px}
 .card .pn{font-size:30px;font-weight:800;line-height:1.1}
-.card .ppl{padding:12px 16px 4px;display:grid;gap:8px;grid-template-columns:minmax(0,1fr)}
+.card .ppl{padding:12px 16px 4px;display:grid;grid-gap:8px;gap:8px;grid-template-columns:minmax(0,1fr)}
 .card.muchos .ins{display:none}
 .p{display:flex;align-items:baseline;gap:8px;min-width:0}
 .p b{font-size:29px;font-weight:700;line-height:1.2;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -61,16 +61,18 @@ main{display:grid;grid-template-columns:1fr 560px;gap:26px;min-height:0}
 @keyframes cinta{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .grid.lleno .ins{display:none}
 
-aside{display:flex;flex-direction:column;gap:20px;min-height:0}
+aside{display:flex;flex-direction:column;min-height:0}
 aside > .box{flex:none}
+aside > .box:not([hidden]) ~ .box{margin-top:16px}
 .noche{background:#132c3a;border-color:rgba(140,190,220,.28)}
 .noche .sec{color:#9cc6dc}
-.noche .ppl2{display:grid;gap:10px}
-.noche .q{display:flex;align-items:baseline;gap:12px;min-width:0}
-.noche .q b{font-size:30px;font-weight:700;line-height:1.15;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.noche .q span{font-family:var(--f-mono);font-size:19px;color:#9cc6dc;white-space:nowrap;flex:none}
+aside > .box.noche{padding:14px 20px}
+.noche .sec{margin-bottom:6px}
+.noche .q{display:flex;align-items:baseline;min-width:0;padding:2px 0}
+.noche .q b{font-size:25px;font-weight:700;line-height:1.2;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.noche .q span{font-family:var(--f-mono);font-size:18px;color:#9cc6dc;white-space:nowrap;margin-left:12px}
 .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 22px;min-height:0;overflow:hidden}
-.row{display:grid;grid-template-columns:118px 1fr;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:118px 1fr;grid-gap:14px;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
 .row:first-of-type{border-top:0}
 .row .h{font-family:var(--f-mono);font-size:30px;font-weight:600}
 .row .w b{display:block;font-size:30px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -84,18 +86,18 @@ aside > .box{flex:none}
 /* Horario de la semana: la misma hoja que cargan los Capitanes, con los colores de la hoja impresa */
 aside > .box.semana{flex:1 1 auto;display:flex;flex-direction:column;padding:18px 20px 14px}
 .semana .sec{margin-bottom:10px}
-.hs-r{display:grid;grid-template-columns:minmax(0,1fr) repeat(7,46px);gap:4px;align-items:center}
+.hs-r{display:grid;grid-template-columns:minmax(0,1fr) repeat(7,46px);grid-gap:4px;gap:4px;align-items:center}
 .hs-h{padding-bottom:8px;border-bottom:1px solid var(--line)}
 .hs-h span{text-align:center;font-size:17px;font-weight:700;color:var(--muted);line-height:1.1;border-radius:8px;padding:3px 0}
 .hs-h span small{display:block;font-family:var(--f-mono);font-weight:500;font-size:14px}
 .hs-h span.hoy{background:var(--gold);color:#1d1a0e}
 .hs-h span.hoy small{color:#1d1a0e}
-.hs-v{flex:1 1 auto;min-height:0;overflow:hidden;position:relative;margin-top:6px;
-  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 10px,#000 calc(100% - 16px),transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 10px,#000 calc(100% - 16px),transparent 100%)}
-.hs-l{will-change:transform}
-.hs-l .hs-r{height:36px}
-.hs-l .hs-r.g{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;height:42px}
-.hs-l .hs-r b{font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* Horario fijo: todas las filas visibles a la vez; su alto y letra se ajustan al espacio (ver tamSemana) */
+.hs-v{flex:1 1 auto;min-height:0;overflow:hidden;position:relative;margin-top:4px}
+.hs-l .hs-r{height:var(--rh,30px)}
+.hs-l .hs-r.g{border-top:1px solid var(--line)}
+.hs-l .hs-r b{font-size:var(--fs,19px);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.hs-l .hs-c{height:var(--ch,26px);font-size:var(--cf,15px)}
 .hs-c{font-style:normal;height:30px;display:flex;align-items:center;justify-content:center;border-radius:7px;font-family:var(--f-mono);font-weight:600;font-size:16px;letter-spacing:-.02em}
 .hs-c.hoy{outline:2px solid var(--gold);outline-offset:1px}
 .hs-c.ap{background:#f1d75c;color:#2b2406}
@@ -105,15 +107,22 @@ aside > .box.semana{flex:1 1 auto;display:flex;flex-direction:column;padding:18p
 .hs-c.no{color:var(--muted)}
 .hs-c{position:relative}
 .hs-c.rn:after{content:"";position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:#132c3a;border:2px solid #9cc6dc}
-.hs-ley{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:16px;color:var(--muted)}
-.hs-ley span{display:flex;align-items:center;gap:6px}
+.hs-ley{display:flex;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:15px;color:var(--muted)}
+.hs-ley span{display:flex;align-items:center;margin:2px 12px 2px 0}
+.hs-ley .hs-c{margin-right:6px}
 .hs-ley .hs-c{width:30px;height:22px;font-size:13px}
-@-webkit-keyframes subir{from{-webkit-transform:translateY(0)}to{-webkit-transform:translateY(-50%)}}
-@keyframes subir{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 .fin{grid-column:1/-1;align-self:center;text-align:center;color:var(--muted);font-size:30px}
 .fin b{display:block;font-family:var(--f-display);font-weight:400;font-size:60px;color:var(--ink);margin-bottom:10px}
 .mas{font-size:22px;color:var(--muted);padding-top:10px;border-top:1px solid var(--line)}
 .lunchbox .row .h{font-size:26px}
+aside > .box#lunchBox{padding:14px 20px}
+#lunchBox .sec{margin-bottom:4px}
+.lunchbox .alm{display:grid;grid-template-columns:96px minmax(0,1fr);grid-gap:12px;gap:12px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line)}
+.lunchbox .alm:first-child{border-top:0}
+.lunchbox .alm .h{font-family:var(--f-mono);font-size:24px;font-weight:600}
+.lunchbox .alm.ya .h{color:var(--gold)}
+.lunchbox .alm div{font-size:18px;line-height:1.3;color:var(--ink)}
+.lunchbox .alm small{display:block;font-size:16px;color:var(--muted)}
 
 footer{display:flex;align-items:center;gap:30px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:0 24px;font-size:24px;overflow:hidden;white-space:nowrap}
 footer b{color:var(--gold);font-weight:700;margin-right:8px;letter-spacing:.08em;text-transform:uppercase;font-size:20px}
@@ -121,7 +130,7 @@ footer .grp{overflow:hidden;text-overflow:ellipsis}
 footer .upd{margin-left:auto;font-family:var(--f-mono);font-size:20px;color:var(--muted);flex:none}
 footer .upd.off{color:var(--warn)}
 
-.msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-size:40px;color:var(--muted)}
+.msg{position:absolute;top:0;right:0;bottom:0;left:0;display:grid;place-items:center;text-align:center;font-size:40px;color:var(--muted)}
 .msg b{display:block;font-family:var(--f-display);font-weight:400;font-size:64px;color:var(--ink);margin-bottom:14px}
 </style>
 </head>
@@ -160,9 +169,15 @@ function minAhora(){ var d = ahora(); return d.getUTCHours() * 60 + d.getUTCMinu
 function nomSem(n){ var p = String(n).split(" "); return p.length > 1 && (p[0] + " " + p[1]).length > 15 ? p[0] + " " + p[1].charAt(0) + "." : corto(n); }
 function corto(n){ var p = String(n).split(" "); return p.length > 2 ? p[0] + " " + p[1] : n; }
 
-function fit(){ var s = Math.min(innerWidth / 1920, innerHeight / 1080), st = $("stage");
-  st.style.transform = "scale(" + s + ")"; st.style.left = ((innerWidth - 1920 * s) / 2) + "px"; st.style.top = ((innerHeight - 1080 * s) / 2) + "px"; }
-addEventListener("resize", fit); fit();
+var MARGEN = (function(){ var m = /[?&]margen=(\d+(?:\.\d+)?)/.exec(location.search); m = m ? +m[1] : 3; return Math.max(0, Math.min(8, m)) / 100; })();
+function fit(){
+  var W = document.documentElement.clientWidth || innerWidth, H = document.documentElement.clientHeight || innerHeight;
+  var s = Math.min(W * (1 - 2 * MARGEN) / 1920, H * (1 - 2 * MARGEN) / 1080), st = $("stage"), tf = "scale(" + s + ")";
+  st.style.webkitTransform = tf; st.style.transform = tf;
+  st.style.left = Math.round((W - 1920 * s) / 2) + "px"; st.style.top = Math.round((H - 1080 * s) / 2) + "px";
+  tamSemana();
+}
+addEventListener("resize", fit); addEventListener("load", fit); fit(); setTimeout(fit, 1500);
 
 function rpc(fecha){
   return fetch(SB_URL + "/rest/v1/rpc/tablero_dia", {method:"POST", headers:{"apikey":SB_KEY, "Authorization":"Bearer " + SB_KEY, "Content-Type":"application/json"},
@@ -234,7 +249,7 @@ function semana(){
   var lun = src.semana_lunes, hoyI = Math.round((fISO(src.fecha, 0) - fISO(lun, 0)) / 864e5), f0 = fISO(lun, 0), f6 = fISO(lun, 6);
   $("semTitle").textContent = "Semana · " + f0.getUTCDate() + (f0.getUTCMonth() !== f6.getUTCMonth() ? " " + MES[f0.getUTCMonth()] : "") + " – " + f6.getUTCDate() + " " + MES[f6.getUTCMonth()];
   var sig = JSON.stringify([src.semana, lun, hoyI]);
-  if (sig === SEM_SIG) return;   // sin cambios: no se repinta y la lista sigue bajando donde iba
+  if (sig === SEM_SIG) { tamSemana(); return; }   // sin cambios: no se repinta
   SEM_SIG = sig;
   if (!src.semana.length) { $("semana").innerHTML = "<div class='empty'>Sin horario cargado para esta semana.</div>"; return; }
   var cab = "<div class='hs-r hs-h'><span></span>" + DIAS_L.map(function(l, i){ return "<span class='" + (i === hoyI ? "hoy" : "") + "'>" + l + "<small>" + fISO(lun, i).getUTCDate() + "</small></span>"; }).join("") + "</div>";
@@ -242,13 +257,17 @@ function semana(){
     return "<div class='hs-r" + (g ? " g" : "") + "'><b>" + esc(nomSem(p.persona)) + "</b>" + p.dias.map(function(d, i){ return celda(d, i === hoyI); }).join("") + "</div>"; }).join("");
   var ley = "<div class='hs-ley'><span><i class='hs-c ap'>C</i>Apertura</span><span><i class='hs-c ci'>C</i>Cierre / tarde</span><span><i class='hs-c de'>D</i>Descanso</span><span><i class='hs-c va'>V</i>Vacaciones</span><span><i class='hs-c cp'>CP</i>Compensatorio</span><span><i class='hs-c ci rn'>R</i>Range nocturno</span></div>";
   $("semana").innerHTML = cab + "<div class='hs-v'><div class='hs-l' id='hsL'>" + filas + "</div></div>" + ley;
-  // Si no caben todos, la lista baja en bucle (como la cinta), a un ritmo que se lee de lejos
-  var v = $("semana").querySelector(".hs-v"), l = $("hsL");
-  if (l.offsetHeight > v.clientHeight + 4) {
-    l.innerHTML = filas + "<div style='height:22px'></div>" + filas + "<div style='height:22px'></div>";
-    var dur = (l.offsetHeight / 2) / 22, an = "subir " + dur.toFixed(2) + "s linear " + (-((Date.now() / 1000) % dur)).toFixed(2) + "s infinite";
-    l.style.webkitAnimation = an; l.style.animation = an;
-  }
+  tamSemana();
+}
+// Reparte el alto disponible entre todas las filas (sin desplazamiento) y ajusta letra y casillas a ese alto
+function tamSemana(){
+  var v = $("semana") && $("semana").querySelector(".hs-v"), l = $("hsL"); if (!v || !l) return;
+  var n = l.children.length; if (!n) return;
+  var rh = Math.max(18, Math.min(38, Math.floor(v.clientHeight / n)));
+  l.style.setProperty("--rh", rh + "px");
+  l.style.setProperty("--fs", Math.max(14, Math.min(21, Math.round(rh * 0.6))) + "px");
+  l.style.setProperty("--ch", Math.max(16, Math.min(30, rh - 4)) + "px");
+  l.style.setProperty("--cf", Math.max(12, Math.min(16, Math.round(rh * 0.5))) + "px");
 }
 
 function pintar(){
@@ -289,11 +308,10 @@ function pintar(){
     .sort(function(a, b){ return (a.puesto === "ER" ? 0 : 1) - (b.puesto === "ER" ? 0 : 1); });
   $("nocheBox").hidden = !nocheP.length;
   $("nocheTitle").textContent = MANANA ? "Range nocturno · mañana" : "Range nocturno · hoy";
-  $("noche").innerHTML = nocheP.map(function(t){
-    var aus = !MANANA && t.asistencia && t.asistencia !== "presente";
-    return "<div class='q'><b" + (aus ? " style='text-decoration:line-through;color:var(--muted)'" : "") + ">" + esc(corto(t.persona)) + "</b><span>" +
-      (aus ? AUS[t.asistencia] : t.puesto === "ER" ? "encargado · " + hc(t.inicio) + "–" + hc(t.fin) : "de noche") + "</span></div>";
-  }).join("");
+  var ausN = function(t){ return !MANANA && t.asistencia && t.asistencia !== "presente"; };
+  var encN = nocheP.filter(function(t){ return t.puesto === "ER"; }), apoN = nocheP.filter(function(t){ return t.puesto !== "ER"; });
+  $("noche").innerHTML = encN.map(function(t){ return "<div class='q'><b" + (ausN(t) ? " style='text-decoration:line-through;color:var(--muted)'" : "") + ">" + esc(corto(t.persona)) + "</b><span>" + (ausN(t) ? AUS[t.asistencia] : "encargado · " + hc(t.inicio) + "–" + hc(t.fin)) + "</span></div>"; }).join("") +
+    (apoN.length ? "<div class='q'><b>" + apoN.map(function(t){ return ausN(t) ? "<s style='color:var(--muted)'>" + esc(corto(t.persona)) + "</s>" : esc(corto(t.persona)); }).join(", ") + "</b><span>de noche</span></div>" : "");
 
   // Almuerzos: los que están o los próximos
   var alm = trab.filter(function(t){ return t.almuerzo_inicio && min(t.almuerzo_fin) > m && min(t.almuerzo_inicio) - m <= 180; });
@@ -301,9 +319,11 @@ function pintar(){
   alm.forEach(function(t){ var k = t.almuerzo_inicio + "-" + t.almuerzo_fin; (grupos[k] = grupos[k] || []).push(corto(t.persona)); });
   var ks = Object.keys(grupos).sort();
   $("lunch").innerHTML = ks.length ? ks.map(function(k){ var a = k.split("-"), en = min(a[0]) <= m;
-    return "<div class='row" + (en ? " ya" : "") + "'><div class='h'>" + h12(a[0]).replace(/ (a|p)\. m\./, "") + "</div><div class='w'><small>" + (en ? "En almuerzo hasta " + hc(a[1]) : "hasta " + hc(a[1])) + "</small><b style='font-size:22px;font-weight:600;white-space:normal;line-height:1.3'>" + esc(grupos[k].join(", ")) + "</b></div></div>"; }).join("")
+    return "<div class='alm" + (en ? " ya" : "") + "'><span class='h'>" + h12(a[0]).replace(/ (a|p)\. m\./, "") + "</span><div><small>" + (en ? "En almuerzo hasta " + hc(a[1]) : "hasta " + hc(a[1])) + "</small>" + esc(grupos[k].join(", ")) + "</div></div>"; }).join("")
     : "";
   $("lunchBox").hidden = !ks.length;   // sin almuerzos próximos, el espacio pasa al horario de la semana
+  if (ks.length) $("nocheBox").hidden = true;   // en la franja de almuerzos (mañana) el Range nocturno aún no aplica: se muestra desde que terminan
+  tamSemana();   // el horario semanal ocupa el alto que dejan los otros recuadros
 
   // Pie: libres hoy
   var lib = {ausentes:[], descanso:[], vacaciones:[], compensatorio:[]};
