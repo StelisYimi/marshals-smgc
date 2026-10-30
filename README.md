@@ -83,3 +83,7 @@ Después, en la tabla `config_sistema`, cargar `dominio_usuarios`, `correo_geren
 | Personal de campo | Staff · Horario en solo lectura y Staff · Mi puesto (su checklist de Frente, Carritos o Range) |
 | Marshal, Starter | Sus módulos; en Staff, Horario en solo lectura y Mi puesto cuando el horario les asigna Range (S/R) |
 | Gerente de Operaciones / de Golf, Administrador | Ambos módulos, supervisión, validación, horario semanal, cuentas del staff y enlace de la TV |
+
+## Módulo Mecánico
+
+Lo ve quien está en el grupo **Mecánico** del horario (y Capitanes y Gerencia para supervisar). Pestañas: **Mi checklist** (7 áreas del Impact Filter, estado de la flota con meta de 95 % de disponibilidad y daños de carritos para atender), **Supervisión** (Puestos, solo Capitanes y Gerencia), **Funciones y cargo**, **Horario** y **Directorio** (consulta). El checklist usa la posición `M` de `op_reportes` y lo valida el Capitán en Puestos.

@@ -446,6 +446,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-mipuesto" hidden></section>
     <section class="view" id="v-puestos" hidden></section>
     <section class="view" id="v-funciones" hidden></section>
+    <section class="view" id="v-mecfun" hidden></section>
   </main>
 </div>
 
@@ -472,6 +473,7 @@ const MODULOS = {
   marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["salidas","Salidas"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["horario","Horario"],["equipo","Equipo","ger"]]},
   starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"],["horario","Horario"]]},
   staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["puestos","Puestos","cap"],["funciones","Funciones"],["horario","Horario"],["directorio","Directorio"]]},
+  mecanico: {nombre:"Mecánico", tabs:[["mipuesto","Mi checklist","mec"],["puestos","Supervisión","cap"],["mecfun","Funciones y cargo"],["horario","Horario"],["directorio","Directorio"]]},
   capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["directoriocap","Directorio"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
@@ -602,7 +604,9 @@ async function entrar(){
   if (!S.me.activo) { mostrar("blocked"); return; }
   S.esGer = GERENCIA.includes(S.me.rol); S.esCap = CAPITANIA.includes(S.me.rol);
   S.esStarter = S.me.rol === "starter";
-  S.mods = []; if (S.esStarter || S.esGer) S.mods.push("starter"); if (S.me.rol === "marshal" || S.esStarter || S.esGer) S.mods.push("marshals"); if (S.esCap) S.mods.push("capitanes"); S.mods.push("staff");
+  { const r = await sb.from("hor_personal").select("id,nombre,perfil_id,grupo").eq("perfil_id", S.me.id).eq("activo", true).maybeSingle(); S.miPer = r.data || null; }
+  S.esMec = !!(S.miPer && S.miPer.grupo === "Mecánico");   // el Mecánico es quien está en el grupo Mecánico del horario
+  S.mods = []; if (S.esMec) S.mods.push("mecanico"); if (S.esStarter || S.esGer) S.mods.push("starter"); if (S.me.rol === "marshal" || S.esStarter || S.esGer) S.mods.push("marshals"); if (S.esCap) S.mods.push("capitanes", "mecanico"); S.mods.push("staff");
   $("#whoName").textContent = S.me.nombre; $("#whoRole").textContent = S.esGer ? "Gerencia" : ROLES[S.me.rol]; $("#whoRole").classList.toggle("g", S.esGer);
   $("#menuWho").textContent = `${S.me.nombre} · ${ROLES[S.me.rol]}${S.me.usuario ? " · " + S.me.usuario : ""}`;
   try {
@@ -627,7 +631,6 @@ async function entrar(){
   if (S.mods.includes("capitanes")) { cargarCapitanes(); suscribirCap(); }
   if (S.esStarter || S.esGer) suscribirStarter();
   suscribirStaff();
-  { const r = await sb.from("hor_personal").select("id,nombre,perfil_id").eq("perfil_id", S.me.id).eq("activo", true).maybeSingle(); S.miPer = r.data || null; }
   const sw = $("#modSw"); sw.hidden = S.mods.length < 2;
   sw.innerHTML = S.mods.map(m => `<button type="button" data-mod="${m}">${MODULOS[m].nombre}</button>`).join("");
   sw.onclick = e => { const b = e.target.closest("[data-mod]"); if (b) setModulo(b.dataset.mod); };
@@ -635,7 +638,7 @@ async function entrar(){
   setModulo(m);
   if (S.mods.includes("marshals") && (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length)) flush();
 }
-function tabsDe(m){ return MODULOS[m].tabs.filter(t => (t[2] !== "ger" || S.esGer) && (t[2] !== "cap" || S.esCap) && (t[2] !== "pos" || (!S.esCap && !!S.miPer))); }
+function tabsDe(m){ return MODULOS[m].tabs.filter(t => (t[2] !== "ger" || S.esGer) && (t[2] !== "cap" || S.esCap) && (t[2] !== "pos" || (!S.esCap && !!S.miPer)) && (t[2] !== "mec" || S.esMec)); }
 function setModulo(m){
   S.modulo = m; $("#modName").textContent = MODULOS[m].nombre;
   document.querySelectorAll("#modSw [data-mod]").forEach(b => b.setAttribute("aria-pressed", b.dataset.mod === m));
@@ -652,8 +655,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","directoriocap","mipuesto","puestos","funciones"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, directoriocap:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","directoriocap","mipuesto","puestos","funciones","mecfun"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, directoriocap:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones, mecfun:renderMecFun})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -3532,11 +3535,13 @@ function editarPersona(p){
 }
 
 /* ===================== Puestos: Frente, Carritos y Driving Range ===================== */
-const POS = {F:"Frente", L:"Carritos", R:"Driving Range"};
-const POS_DE_PUESTO = {F:["F"], L:["L"], R:["R"], ER:["R"], "F/R":["F","R"], "S/R":["R"]};   // letra del horario → checklist(s)
+const POS = {F:"Frente", L:"Carritos", R:"Driving Range", M:"Mecánico"};
+const POS_DE_PUESTO = {F:["F"], L:["L"], R:["R"], ER:["R"], "F/R":["F","R"], "S/R":["R"], M:["M"]};   // letra del horario → checklist(s)
 const NIVEL_BOLAS = {suficientes:"Suficientes", bajas:"Bajas", agotadas:"Agotadas"};
 const META_CARRITOS = 20;
-const POS_COLOR = {F:"#9a6410", L:"#5b4b8a", R:"#2e7d4f"};
+const POS_COLOR = {F:"#9a6410", L:"#5b4b8a", R:"#2e7d4f", M:"#6b5a3a"};
+const META_FLOTA = 95;   // % de carritos operativos
+const dispFlota = d => { const o = +d.flota_operativos, f = +d.flota_fuera; return d.flota_operativos == null || d.flota_fuera == null || o + f === 0 ? null : Math.round(100 * o / (o + f)); };
 const DIAS_CORTOS = ["", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 const isoDia = f => ((fechaDe(f).getDay() + 6) % 7) + 1;
 S.op = {areas:[], items:[], loaded:false};
@@ -3549,7 +3554,7 @@ async function cargarCatalogoOp(){
   S.op.areas = a.data; S.op.items = i.data; S.op.loaded = true;
 }
 function itemsOp(pos, fecha){
-  const d = isoDia(fecha), areas = S.op.areas.filter(a => a.posicion === "C" || a.posicion === pos);
+  const d = isoDia(fecha), areas = S.op.areas.filter(a => a.posicion === pos || (a.posicion === "C" && "FLR".includes(pos)));
   return areas.map(a => ({...a, items: S.op.items.filter(i => i.area === a.codigo && i.activo && (i.dia_semana == null || i.dia_semana === d))})).filter(a => a.items.length);
 }
 function statsOp(pos, fecha, resp){
@@ -3579,7 +3584,8 @@ async function cargarMiPuesto(){
   const [rs, va, da] = await Promise.all([
     ids.length ? sb.from("op_respuestas").select("*").in("reporte_id", ids) : {data:[]},
     ids.length ? sb.from("op_validaciones").select("*").in("reporte_id", ids) : {data:[]},
-    sb.from("op_danos").select("*").eq("fecha", f).eq("reportado_por", S.me.id).order("creado_en", {ascending:false}),
+    S.esMec ? sb.from("op_danos").select("*").or(`estado.eq.abierto,fecha.eq.${f}`).order("creado_en", {ascending:false})
+      : sb.from("op_danos").select("*").eq("fecha", f).eq("reportado_por", S.me.id).order("creado_en", {ascending:false}),
   ]);
   m.fecha = f; m.turno = tu.data; m.reps = {}; m.resp = {}; m.val = {}; m.danos = da.data || [];
   re.data.forEach(r => { m.reps[r.posicion] = r; m.resp[r.posicion] = {}; });
@@ -3593,22 +3599,28 @@ function renderMiPuesto(){
   const v = $("#v-mipuesto"), m = S.mp;
   if (!S.miPer) { v.innerHTML = `<div class="empty"><strong>Su cuenta no está vinculada a su nombre en el horario</strong>Pídale al Capitán o a Gerencia que la vincule en Staff → Directorio.</div>`; return; }
   if (!m.loaded || m.fecha !== hoyISO()) { v.innerHTML = `<div class="loading">Cargando su puesto…</div>`; cargarMiPuesto().then(() => S.view === "mipuesto" && renderMiPuesto()).catch(x => { v.innerHTML = `<div class="empty"><strong>No se pudo cargar</strong>${esc(errMsg(x))}</div>`; }); return; }
-  const t = m.turno, trab = t && t.tipo === "trabajo", asign = trab ? (POS_DE_PUESTO[t.puesto] || []) : [], pos = m.pos;
+  const t = m.turno, trab = t && t.tipo === "trabajo", asign = trab ? (POS_DE_PUESTO[t.puesto] || []) : [], esM = S.modulo === "mecanico";
+  if (esM) m.pos = "M"; else if (m.pos === "M" && !asign.includes("M") && !m.reps.M) m.pos = asign[0] || null;
+  const pos = m.pos;
   const ex = v.querySelectorAll("#mpAreas details"); const abiertas = ex.length ? [...ex].filter(x => x.open).map(x => x.dataset.a) : null;
   const rep = pos && m.reps[pos], resp = (pos && m.resp[pos]) || {}, val = pos && m.val[pos], ro = !!(rep && rep.estado === "firmado"), dis = ro ? "disabled" : "";
   const st = pos ? statsOp(pos, m.fecha, resp) : null, datos = (rep && rep.datos) || {};
   const pu = trab ? ((m.puestos || []).find(p => p.codigo === t.puesto) || {nombre:t.puesto}) : null;
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">Staff · Mi puesto</div><h1>${esc(fechaLarga(m.fecha))}</h1>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">${esM ? "Mecánico · Mi checklist" : "Staff · Mi puesto"}</div><h1>${esc(fechaLarga(m.fecha))}</h1>
       <p class="sub">${trab ? `Turno ${hora12(t.inicio)} – ${hora12(t.fin)} · ${esc(t.puesto)} ${esc(pu.nombre)}` : t ? `Hoy está de ${esc(TIPO_T[t.tipo].toLowerCase())}.` : "Hoy no tiene turno en el horario."}</p></div>
       ${pos ? `<div class="statusbar">${ro ? `<span class="pill ${val ? "p-ok" : "p-gold"}">${val ? "Validado" : "Firmado"}</span>` : `<span class="pill p-draft">Borrador</span><span class="saved" id="mpSave"></span>`}</div>` : ""}</div>
-    <div class="panel"><div class="hint" style="margin-bottom:6px;font-weight:600">Posición${asign.length ? " asignada" : ""}</div>
-      <div class="chips" id="mpPos">${Object.entries(POS).map(([k, l]) => `<button type="button" class="chip" data-p="${k}" aria-pressed="${pos === k}">${l}${asign.includes(k) ? " · asignada" : ""}${m.reps[k] ? (m.reps[k].estado === "firmado" ? " ✓" : " · en curso") : ""}</button>`).join("")}</div>
-      <p class="hint" style="margin:8px 0 0">${asign.length ? "Si el Capitán lo cambia de posición durante el turno, elija la nueva y anote la entrega en la anterior." : trab ? `Su función de hoy (${esc(t.puesto)}) no tiene checklist de Frente, Carritos o Range. Si el Capitán le asigna una de esas posiciones, elíjala aquí.` : "Si el Capitán le asigna una posición, elíjala aquí."}</p></div>
+    ${esM ? "" : `<div class="panel"><div class="hint" style="margin-bottom:6px;font-weight:600">Posición${asign.length ? " asignada" : ""}</div>
+      <div class="chips" id="mpPos">${Object.entries(POS).filter(([k]) => k !== "M" || asign.includes("M") || m.reps.M).map(([k, l]) => `<button type="button" class="chip" data-p="${k}" aria-pressed="${pos === k}">${l}${asign.includes(k) ? " · asignada" : ""}${m.reps[k] ? (m.reps[k].estado === "firmado" ? " ✓" : " · en curso") : ""}</button>`).join("")}</div>
+      <p class="hint" style="margin:8px 0 0">${asign.length ? "Si el Capitán lo cambia de posición durante el turno, elija la nueva y anote la entrega en la anterior." : trab ? `Su función de hoy (${esc(t.puesto)}) no tiene checklist de Frente, Carritos o Range. Si el Capitán le asigna una de esas posiciones, elíjala aquí.` : "Si el Capitán le asigna una posición, elíjala aquí."}</p></div>`}
     ${!pos ? "" : `
     ${pos === "L" ? `<div class="panel"><h2>Carritos</h2><div class="fields">
       <label class="f">Carritos listos ahora (meta ${META_CARRITOS})<input type="number" inputmode="numeric" min="0" max="200" id="mpListos" value="${datos.carritos_listos ?? ""}" ${dis}></label>
       <label class="f">Fuera de servicio<input type="number" inputmode="numeric" min="0" max="200" id="mpFuera" value="${datos.carritos_fuera ?? ""}" ${dis}></label></div>
       ${datos.carritos_listos != null && +datos.carritos_listos < META_CARRITOS ? `<p class="hint warn" style="margin:8px 0 0">Por debajo de la meta de ${META_CARRITOS}: avise al Capitán.</p>` : ""}</div>` : ""}
+    ${pos === "M" ? (() => { const dp = dispFlota(datos); return `<div class="panel"><h2>Estado de la flota</h2><div class="fields">
+      <label class="f">Carritos operativos<input type="number" inputmode="numeric" min="0" max="300" id="mpOper" value="${datos.flota_operativos ?? ""}" ${dis}></label>
+      <label class="f">Fuera de servicio<input type="number" inputmode="numeric" min="0" max="300" id="mpFueraM" value="${datos.flota_fuera ?? ""}" ${dis}></label></div>
+      <p class="hint ${dp != null && dp < META_FLOTA ? "warn" : ""}" style="margin:8px 0 0" id="mpDisp">${dp == null ? `Disponibilidad de la flota: meta ${META_FLOTA} %.` : `Disponibilidad ${dp} % · meta ${META_FLOTA} %${dp < META_FLOTA ? ". Informe al Gerente de Operaciones y al Capitán." : "."}`}</p></div>`; })() : ""}
     ${pos === "R" ? `<div class="panel"><h2>Bolas de práctica</h2><div class="chips" id="mpBolas">${Object.entries(NIVEL_BOLAS).map(([k, l]) => `<button type="button" class="chip" data-b="${k}" aria-pressed="${datos.nivel_bolas === k}" ${dis}>${l}</button>`).join("")}</div></div>` : ""}
     <div class="progress panel" style="padding:12px 16px"><span class="mono" id="mpProg">${st.n}/${st.total}</span><div class="bar"><i id="mpBar" style="width:${st.total ? Math.round(100 * st.n / st.total) : 0}%"></i></div><span class="mono" id="mpCum">${st.cumpl}%</span></div>
     <div id="mpAreas" class="stack" style="gap:10px">${itemsOp(pos, m.fecha).map((a, ai, arr) => { const n = a.items.filter(i => resp[i.id]).length;
@@ -3616,8 +3628,8 @@ function renderMiPuesto(){
       return `<details class="area" data-a="${a.codigo}" ${open ? "open" : ""}><summary><span class="letter">${a.codigo}</span><span class="aname">${esc(a.nombre)}</span><span class="acount ${n === a.items.length ? "done" : ""}" data-ocnt="${a.codigo}">${n}/${a.items.length}</span><span class="chev">›</span></summary>
         ${a.nota ? `<div class="note-area">${esc(a.nota)}</div>` : ""}${a.items.map(i => itemOpHTML(i, resp[i.id], ro)).join("")}</details>`; }).join("")}</div>
     <div class="panel"><h2>Daños a carritos</h2>
-      <p class="hint" style="margin:0 0 10px">Todo daño se reporta por escrito aquí en el momento. Llega a Gerencia y al Capitán.</p>
-      ${m.danos.length ? `<div class="stack" style="gap:6px;margin-bottom:10px">${m.danos.map(d => `<div class="callout"><b>Carrito ${esc(d.carrito)}</b> · ${hora(d.creado_en)}${d.fuera_servicio ? " · fuera de servicio" : ""}<br>${esc(d.descripcion)}${d.estado === "cerrado" ? `<br><span class="pill p-ok">Atendido</span>` : ""}</div>`).join("")}</div>` : ""}
+      <p class="hint" style="margin:0 0 10px">${pos === "M" ? "Daños reportados por el personal que siguen abiertos y los atendidos hoy. Al repararlo, márquelo como atendido y anote qué se hizo." : "Todo daño se reporta por escrito aquí en el momento. Llega a Gerencia y al Capitán."}</p>
+      ${m.danos.length ? `<div class="stack" style="gap:6px;margin-bottom:10px">${m.danos.map(d => `<div class="callout ${pos === "M" && d.estado === "abierto" ? "crit" : ""}" style="font-weight:400"><b>Carrito ${esc(d.carrito)}</b> · ${pos === "M" ? esc(fechaCorta(d.fecha)) + " " : ""}${hora(d.creado_en)}${pos === "M" ? " · " + esc(nm(d.reportado_por)) : ""}${d.fuera_servicio ? " · fuera de servicio" : ""}<br>${esc(d.descripcion)}${d.estado === "cerrado" ? `<br><span class="pill p-ok">Atendido</span> ${esc(d.accion || "")}` : pos === "M" ? `<div style="margin-top:6px"><button class="btn small" data-mcerrar="${d.id}" type="button">Marcar atendido</button></div>` : ""}</div>`).join("")}</div>` : pos === "M" ? `<p class="hint" style="margin:0 0 10px">Sin daños abiertos.</p>` : ""}
       <button class="btn ${pos === "L" ? "primary" : ""}" id="mpDano" type="button">Reportar daño de carrito</button></div>
     <div class="panel"><h2>Cierre y entrega</h2><div class="stack" style="gap:10px">
       <label class="f">Observaciones<textarea id="mpObs" ${dis} placeholder="Novedades, quejas o necesidades del turno">${esc((rep && rep.observaciones) || "")}</textarea></label>
@@ -3628,6 +3640,10 @@ function renderMiPuesto(){
   v.querySelectorAll("#mpPos [data-p]").forEach(b => b.onclick = () => { m.pos = b.dataset.p; renderMiPuesto(); });
   if (!pos) return;
   $("#mpDano").onclick = () => reportarDano(pos);
+  v.querySelectorAll("[data-mcerrar]").forEach(b => b.onclick = async () => {
+    const accion = prompt("¿Qué se hizo? (diagnóstico, reparación y repuestos usados)"); if (accion == null) return;
+    const { error } = await sb.from("op_danos").update({estado:"cerrado", accion: accion.trim() || null, cerrado_por: S.me.id, cerrado_en: new Date().toISOString()}).eq("id", b.dataset.mcerrar);
+    if (error) toast(errMsg(error)); else { toast("Daño marcado como atendido"); m.loaded = false; renderMiPuesto(); } });
   if (ro) return;
   updHintMp();
   const areas = $("#mpAreas");
@@ -3644,6 +3660,10 @@ function renderMiPuesto(){
   $("#mpObs").oninput = e => campo("observaciones", e.target.value);
   $("#mpEnt").oninput = e => campo("entrega", e.target.value);
   if ($("#mpListos")) { $("#mpListos").onchange = e => guardarDatosOp(pos, {carritos_listos: e.target.value === "" ? null : +e.target.value}); $("#mpFuera").onchange = e => guardarDatosOp(pos, {carritos_fuera: e.target.value === "" ? null : +e.target.value}); }
+  if ($("#mpOper")) { const flota = () => { const o = $("#mpOper").value, f = $("#mpFueraM").value;
+      guardarDatosOp(pos, {flota_operativos: o === "" ? null : +o, flota_fuera: f === "" ? null : +f}).then(() => { const dp = dispFlota((m.reps.M && m.reps.M.datos) || {}), h = $("#mpDisp");
+        if (h) { h.textContent = dp == null ? `Disponibilidad de la flota: meta ${META_FLOTA} %.` : `Disponibilidad ${dp} % · meta ${META_FLOTA} %${dp < META_FLOTA ? ". Informe al Gerente de Operaciones y al Capitán." : "."}`; h.classList.toggle("warn", dp != null && dp < META_FLOTA); } }); };
+    $("#mpOper").onchange = flota; $("#mpFueraM").onchange = flota; }
   v.querySelectorAll("#mpBolas [data-b]").forEach(b => b.onclick = () => guardarDatosOp(pos, {nivel_bolas: b.dataset.b}).then(renderMiPuesto));
   $("#mpFirmar").onclick = () => firmarOp(pos);
 }
@@ -3656,6 +3676,7 @@ function faltaMp(){ const m = S.mp, st = statsOp(m.pos, m.fecha, m.resp[m.pos] |
   if (st.sinJ) f.push(plural(st.sinJ, "justificación", "justificaciones") + " de No o N/A");
   if (m.pos === "L" && d.carritos_listos == null) f.push("cuántos carritos quedaron listos");
   if (m.pos === "R" && !d.nivel_bolas) f.push("el nivel de bolas");
+  if (m.pos === "M" && (d.flota_operativos == null || d.flota_fuera == null)) f.push("los carritos operativos y fuera de servicio");
   return f; }
 function updHintMp(){ const h = $("#mpHint"); if (!h) return; const f = faltaMp(); h.textContent = f.length ? "Para firmar falta: " + f.join(", ") + "." : "Todo listo. Al firmar pasa a validación del Capitán y ya no se puede editar."; $("#mpFirmar").disabled = !!f.length; }
 function marcaGuardado(txt){ const el = $("#mpSave"); if (el) el.textContent = txt; }
@@ -3739,16 +3760,17 @@ function renderPuestos(){
   const filas = [];
   u.turnos.forEach(t => (POS_DE_PUESTO[t.puesto] || []).forEach(pos => { if (u.per[t.personal_id]) filas.push({pid: t.personal_id, pos, t, rep: u.reps.find(r => r.personal_id === t.personal_id && r.posicion === pos)}); }));
   u.reps.forEach(r => { if (!filas.some(x => x.rep === r)) filas.push({pid: r.personal_id, pos: r.posicion, t: u.turnos.find(t => t.personal_id === r.personal_id), rep: r, extra: true}); });
-  filas.sort((a, b) => "FLR".indexOf(a.pos) - "FLR".indexOf(b.pos) || (a.t ? hmin(a.t.inicio) : 0) - (b.t ? hmin(b.t.inicio) : 0));
+  filas.sort((a, b) => "FLRM".indexOf(a.pos) - "FLRM".indexOf(b.pos) || (a.t ? hmin(a.t.inicio) : 0) - (b.t ? hmin(b.t.inicio) : 0));
   const firm = filas.filter(x => x.rep && x.rep.estado === "firmado"), validos = firm.filter(x => u.val[x.rep.id]);
   const cumpl = firm.length ? Math.round(firm.reduce((s, x) => s + statsOp(x.pos, u.fecha, u.resp[x.rep.id] || {}).cumpl, 0) / firm.length) : null;
   const ultimo = pos => u.reps.filter(r => r.posicion === pos).sort((a, b) => (b.actualizado_en || "").localeCompare(a.actualizado_en || ""))[0];
+  const uM = ultimo("M"), dpM = uM ? dispFlota(uM.datos || {}) : null;
   const uL = ultimo("L"), uR = ultimo("R"), listos = uL && uL.datos.carritos_listos, nivel = uR && uR.datos.nivel_bolas;
   const abiertos = u.danos.filter(d => d.estado === "abierto");
   const esHoy = u.fecha === hoyISO();
   const estado = x => !x.rep ? `<span class="pill p-draft">${esHoy ? "Sin iniciar" : "No lo llenó"}</span>` : x.rep.estado !== "firmado" ? (() => { const s = statsOp(x.pos, u.fecha, u.resp[x.rep.id] || {}); return `<span class="pill p-gold">En curso · ${s.n}/${s.total}</span>`; })()
     : (() => { const s = statsOp(x.pos, u.fecha, u.resp[x.rep.id] || {}); return `<span class="pill ${u.val[x.rep.id] ? "p-ok" : "p-alta"}">${u.val[x.rep.id] ? "Validado" : "Por validar"} · ${s.cumpl}%</span>`; })();
-  v.innerHTML = `<div class="head"><div><div class="eyebrow">${esc(MODULOS[S.modulo].nombre)} · Frente, Carritos y Driving Range</div><h1>Puestos · ${esc(fechaLarga(u.fecha))}</h1>
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">${esc(MODULOS[S.modulo].nombre)} · Frente, Carritos, Driving Range y Mecánico</div><h1>Puestos · ${esc(fechaLarga(u.fecha))}</h1>
       <p class="sub">Cada colaborador llena en su teléfono el checklist de su posición (Staff → Mi puesto); usted lo revisa y lo valida. Las funciones de cada posición están en Staff → Funciones.</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end"><label class="f" style="margin:0">Fecha<input type="date" id="puFecha" value="${u.fecha}" max="${hoyISO()}"></label>
       ${S.esGer ? `<button class="btn small" id="puTareas" type="button">Editar tareas</button>` : ""}</div></div>
@@ -3758,13 +3780,14 @@ function renderPuestos(){
       <div class="kpi"><div class="k">Validados</div><div class="v ${firm.length && validos.length === firm.length ? "ok" : firm.length ? "warn" : ""}">${validos.length}/${firm.length}</div><div class="t">por el Capitán · meta 100%</div></div>
       <div class="kpi"><div class="k">Carritos listos</div><div class="v ${listos == null ? "" : +listos >= META_CARRITOS ? "ok" : "warn"}">${listos == null ? "—" : listos}</div><div class="t">meta ${META_CARRITOS}${uL && uL.datos.carritos_fuera ? ` · ${uL.datos.carritos_fuera} fuera de servicio` : ""}${uL ? " · " + hora(uL.actualizado_en) : ""}</div></div>
       <div class="kpi"><div class="k">Bolas de práctica</div><div class="v ${!nivel ? "" : nivel === "suficientes" ? "ok" : nivel === "bajas" ? "warn" : "crit"}" style="font-size:24px">${nivel ? NIVEL_BOLAS[nivel] : "—"}</div><div class="t">último reporte del Range${uR ? " · " + hora(uR.actualizado_en) : ""}</div></div>
+      <div class="kpi"><div class="k">Flota operativa</div><div class="v ${dpM == null ? "" : dpM >= META_FLOTA ? "ok" : "warn"}">${dpM == null ? "—" : dpM + "%"}</div><div class="t">meta ${META_FLOTA}%${uM && uM.datos.flota_fuera != null ? ` · ${uM.datos.flota_fuera} fuera de servicio` : ""}${uM ? " · Mecánico " + hora(uM.actualizado_en) : ""}</div></div>
       <div class="kpi"><div class="k">Daños de carritos</div><div class="v ${abiertos.length ? "crit" : "ok"}">${abiertos.length}</div><div class="t">abiertos</div></div>
     </div>
     ${filas.length ? `<div class="tee-list">${filas.map(x => { const p = u.per[x.pid];
       return `<div class="tee asis ${x.rep && x.rep.estado === "firmado" ? (u.val[x.rep.id] ? "ok" : "tarde") : ""}"><div class="h">${x.t ? hm(x.t.inicio) : "—"}<br><span class="lt" style="--c:${POS_COLOR[x.pos]}">${x.pos}</span></div>
         <div class="j" ${x.rep ? `data-ver="${x.rep.id}"` : ""}><b>${esc(p.nombre)}</b><small>${POS[x.pos]}${x.t ? ` · ${hcorta(x.t.inicio)}–${hcorta(x.t.fin)} (${esc(x.t.puesto)})` : ""}${x.extra && !(x.t && (POS_DE_PUESTO[x.t.puesto] || []).includes(x.pos)) ? " · cambio de posición" : ""}${p.perfil_id ? "" : " · sin cuenta en la app"}</small>${estado(x)}</div>
         <div class="acc">${x.rep ? `<button class="btn small" data-ver="${x.rep.id}" type="button">Ver</button>` : ""}</div></div>`; }).join("")}</div>`
-      : `<div class="empty"><strong>Nadie tiene Frente, Carritos o Range en el horario de este día</strong>Las posiciones salen del horario (F, L, R, ER, F/R y S/R).</div>`}
+      : `<div class="empty"><strong>Nadie tiene Frente, Carritos, Range o Mecánico en el horario de este día</strong>Las posiciones salen del horario (F, L, R, ER, F/R, S/R y M).</div>`}
     ${filas.some(x => !u.per[x.pid].perfil_id) ? `<p class="hint" style="margin:0">Los colaboradores sin cuenta no pueden llenar su checklist. ${S.esGer ? "Créeles la cuenta en Equipo con el rol Personal de campo." : "Pídale a Gerencia que les cree la cuenta."}</p>` : ""}
     <div class="panel"><h2>Daños a carritos</h2>${u.danos.length ? `<div class="stack" style="gap:8px">${u.danos.map(d => `<div class="callout ${d.estado === "abierto" ? "crit" : ""}" style="font-weight:400"><b>Carrito ${esc(d.carrito)}</b> · ${esc(fechaCorta(d.fecha))} ${hora(d.creado_en)} · ${esc(nm(d.reportado_por))}${d.fuera_servicio ? " · fuera de servicio" : ""}<br>${esc(d.descripcion)}
         ${d.estado === "abierto" ? `<div style="margin-top:6px"><button class="btn small" data-cerrar="${d.id}" type="button">Marcar atendido</button></div>` : `<br><span class="pill p-ok">Atendido</span> ${esc(d.accion || "")}`}</div>`).join("")}</div>` : `<p class="hint" style="margin:0">Sin daños abiertos.</p>`}
@@ -3783,7 +3806,8 @@ function verReporteOp(id){
   openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(POS[r.posicion])} · ${esc(fechaLarga(r.fecha))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(p.nombre)}</h2></div><button class="btn ghost x" data-x type="button">Cerrar</button></div>
     <div class="chips"><span class="pill ${r.estado === "firmado" ? "p-ok" : "p-draft"}">${r.estado === "firmado" ? "Firmado " + hora(r.firmado_en) : "En curso"}</span><span class="pill p-ord">${st.n}/${st.total} respondidas · ${st.cumpl}% cumplimiento</span>
       ${r.posicion === "L" ? `<span class="pill ${d.carritos_listos != null && +d.carritos_listos >= META_CARRITOS ? "p-ok" : "p-alta"}">${d.carritos_listos ?? "—"} carritos listos${d.carritos_fuera ? ` · ${d.carritos_fuera} fuera` : ""}</span>` : ""}
-      ${r.posicion === "R" && d.nivel_bolas ? `<span class="pill p-ord">Bolas: ${NIVEL_BOLAS[d.nivel_bolas]}</span>` : ""}</div>
+      ${r.posicion === "R" && d.nivel_bolas ? `<span class="pill p-ord">Bolas: ${NIVEL_BOLAS[d.nivel_bolas]}</span>` : ""}
+      ${r.posicion === "M" ? `<span class="pill ${dispFlota(d) != null && dispFlota(d) >= META_FLOTA ? "p-ok" : "p-alta"}">Flota: ${d.flota_operativos ?? "—"} operativos · ${d.flota_fuera ?? "—"} fuera${dispFlota(d) != null ? " · " + dispFlota(d) + "%" : ""}</span>` : ""}</div>
     ${itemsOp(r.posicion, r.fecha).map(a => `<div><div class="eyebrow" style="margin:6px 0">${esc(a.nombre)}</div>${a.items.map(i => { const x = resp[i.id];
       return `<div class="ans-row"><span class="s ${x ? x.valor : ""}">${x ? VAL[x.valor] : "—"}</span><span class="tx">${esc(i.texto)}${x && x.nota ? `<em>${esc(x.nota)}</em>` : ""}</span></div>`; }).join("")}</div>`).join("")}
     ${r.observaciones ? `<div class="callout"><b>Observaciones:</b> ${esc(r.observaciones)}</div>` : ""}
@@ -3868,6 +3892,53 @@ function renderFunciones(){
     }</div>
     ${S.esGer ? `<p class="hint" style="margin:0">Las tareas se editan en Puestos → Editar tareas.</p>` : ""}`;
   v.querySelectorAll("#fnTabs [data-f]").forEach(b => b.onclick = () => { f.pos = b.dataset.f; renderFunciones(); });
+}
+
+/* ---------- Mecánico · Funciones y descripción del cargo (Impact Filter del Módulo Mecánico) ---------- */
+const CARGO_MEC = [["Departamento","Operaciones de Golf"],["Cargo","Mecánico de Carritos de Golf"],["Jefe directo","Gerente de Operaciones"],["Coordinación operativa","Capitán del Staff en turno"],
+  ["Áreas de responsabilidad","Flota de carritos de golf, vehículos de Alimentos y Bebidas, taller mecánico y equipos mecánicos asignados"]];
+const PROPOSITO_MEC = "Mantener la flota de carritos de golf y los vehículos operativos del club en óptimas condiciones de funcionamiento, seguridad, limpieza y disponibilidad: mantenimiento preventivo, diagnóstico y corrección de fallas, control de repuestos y herramientas, taller organizado y atención oportuna de las emergencias mecánicas durante la operación.";
+const OBJETIVO_MEC = "Garantizar una flota segura, confiable y operativa, con el menor tiempo posible fuera de servicio y sin interrupciones en la experiencia de miembros e invitados.";
+const SUPERV_MEC = [
+  ["Gerente de Operaciones", "Supervisa el desempeño general, establece prioridades, aprueba compras, autoriza reparaciones extraordinarias y evalúa resultados."],
+  ["Capitán del Staff en turno", "Coordina las necesidades operativas del día, verifica el cumplimiento del checklist y comunica las prioridades de disponibilidad de carritos."],
+  ["Mecánico", "Responsable técnico de diagnosticar, inspeccionar, reparar y mantener los vehículos. Retira de inmediato del servicio cualquier unidad que represente un riesgo y reporta la situación."],
+  ["Personal de Carritos", "Comunica desperfectos, identifica unidades defectuosas y colabora con el Mecánico en la coordinación de los vehículos."],
+];
+const REGISTROS_MEC = ["Fecha y número de identificación del vehículo.", "Tipo de mantenimiento o reparación.", "Diagnóstico y trabajo realizado.", "Repuestos y materiales utilizados.", "Estado final de la unidad.", "Próximo mantenimiento programado.", "Reparaciones pendientes.", "Observaciones y necesidades de seguimiento."];
+const CRITERIOS_MEC = [
+  ["Disponibilidad operativa de la flota", "Al menos 95 % de los carritos operativos y disponibles.", "Estado de la flota en Mi checklist (meta 95 %)"],
+  ["Seguridad mecánica", "El 100 % de los carritos que circulan, sin fallas críticas conocidas.", "Retirar de circulación carritos inseguros (área 2)"],
+  ["Mantenimiento preventivo", "El 100 % de los mantenimientos programados a tiempo, o reprogramados con justificación.", "Área 1 y justificación de cada No o N/A"],
+  ["Atención oportuna de desperfectos", "Emergencias del campo atendidas: seguridad del jugador, sustitución y recuperación del carrito.", "Daños a carritos abiertos y atendidos"],
+  ["Control de repuestos y herramientas", "Inventario al día y necesidades de compra comunicadas con anticipación.", "Área 4"],
+  ["Orden, limpieza y seguridad del taller", "Taller, equipos y herramientas organizados y seguros durante y al cierre de la jornada.", "Área 5"],
+  ["Comunicación y coordinación", "Novedades al Gerente de Operaciones y prioridades coordinadas con el Capitán.", "Área 6 y validación del Capitán"],
+  ["Registro y trazabilidad", "El 100 % de reparaciones, mantenimientos y unidades retiradas documentadas.", "Área 7 y daños atendidos con lo que se hizo"],
+];
+S.mf = {tab: "cargo"};
+function renderMecFun(){
+  const v = $("#v-mecfun");
+  if (!S.op.loaded) { v.innerHTML = `<div class="loading">Cargando funciones…</div>`; cargarCatalogoOp().then(() => S.view === "mecfun" && renderMecFun()).catch(x => { v.innerHTML = `<div class="empty"><strong>No se pudo cargar</strong>${esc(errMsg(x))}</div>`; }); return; }
+  const f = S.mf, areas = S.op.areas.filter(a => a.posicion === "M"), nIt = areas.reduce((n, a) => n + S.op.items.filter(i => i.area === a.codigo && i.activo).length, 0);
+  const tabs = [["cargo", "Descripción del cargo"], ["funciones", "Funciones"], ["superv", "Supervisión"], ["registros", "Registros"], ["criterios", "Criterios de éxito"]];
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Mecánico · Funciones y cargo</div><h1>Mecánico de Carritos de Golf</h1>
+      <p class="sub">Descripción del cargo y checklist oficial de ${nIt} actividades en ${areas.length} áreas. El Mecánico lo llena cada día en Mi checklist y el Capitán lo valida.</p></div></div>
+    <div class="callout gold"><b>Principio fundamental:</b> el éxito del Mecánico no se mide solo por cuántos carritos repara, sino por cuántas fallas logra prevenir, cuántos vehículos mantiene operativos y cómo contribuye a una experiencia segura y sin interrupciones para los miembros.</div>
+    <div class="chips" id="mfTabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" class="chip" data-mf="${k}" aria-pressed="${f.tab === k}">${l}</button>`).join("")}</div>
+    <div class="panel">${
+      f.tab === "cargo" ? `<h2>Descripción del cargo</h2><div class="stack" style="gap:0">${CARGO_MEC.map(([k, t]) => `<div class="crit"><b>${esc(k)}</b><span>${esc(t)}</span></div>`).join("")}</div>
+        <h2 style="margin-top:16px">Propósito</h2><p style="margin:0">${esc(PROPOSITO_MEC)}</p>
+        <h2 style="margin-top:16px">Objetivo principal</h2><p style="margin:0">${esc(OBJETIVO_MEC)}</p>
+        <p class="hint" style="margin:12px 0 0">Trabaja con planificación preventiva, registros al día, comunicación permanente con la Gerencia de Operaciones y coordinación directa con el Capitán en turno.</p>`
+      : f.tab === "funciones" ? areas.map((a, i) => `<h2 style="${i ? "margin-top:16px" : ""}">Área ${i + 1}. ${esc(a.nombre)}</h2><ol class="funlist">${S.op.items.filter(x => x.area === a.codigo && x.activo).map(x => `<li>${esc(x.texto)}</li>`).join("")}</ol>`).join("")
+      : f.tab === "superv" ? `<h2>Supervisión y responsabilidades</h2><div class="stack" style="gap:0">${SUPERV_MEC.map(([k, t]) => `<div class="crit"><b>${esc(k)}</b><span>${esc(t)}</span></div>`).join("")}</div>`
+      : f.tab === "registros" ? `<h2>Control y seguimiento</h2><p style="margin:0 0 8px">Cada reparación o mantenimiento se registra por número de carrito con:</p><ol class="funlist">${REGISTROS_MEC.map(t => `<li>${esc(t)}</li>`).join("")}</ol>
+        <p class="hint" style="margin:10px 0 0">Cada día el Mecánico reporta las novedades y la disponibilidad de la flota en Mi checklist. La Gerencia de Operaciones evalúa disponibilidad, mantenimiento preventivo, seguridad, costos y reparaciones recurrentes.</p>`
+      : `<h2>Criterios de éxito</h2><div class="stack" style="gap:0">${CRITERIOS_MEC.map(([t, d, m], i) => `<div class="crit"><b>${i + 1}. ${esc(t)}</b><span>${esc(d)}</span><span class="hint">En la app: ${esc(m)}</span></div>`).join("")}</div>`
+    }</div>
+    ${S.esGer ? `<p class="hint" style="margin:0">Las tareas del checklist se editan en Supervisión → Editar tareas.</p>` : ""}`;
+  v.querySelectorAll("#mfTabs [data-mf]").forEach(b => b.onclick = () => { f.tab = b.dataset.mf; renderMecFun(); });
 }
 
 /* ===================== Hoja modal ===================== */
