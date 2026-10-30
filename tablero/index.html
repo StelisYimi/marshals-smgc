@@ -30,7 +30,7 @@ header img{height:96px;width:96px;object-fit:contain;background:#fff;border-radi
 .clock .t{font-family:var(--f-mono);font-size:84px;font-weight:600;line-height:.95;letter-spacing:-.02em}
 .clock .d{font-size:26px;color:var(--muted);margin-top:4px}
 
-main{display:grid;grid-template-columns:1fr 500px;gap:26px;min-height:0}
+main{display:grid;grid-template-columns:1fr 560px;gap:26px;min-height:0}
 .sec{font-size:22px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 14px;display:flex;align-items:center;gap:12px}
 .sec .n{font-family:var(--f-mono);letter-spacing:0;color:var(--gold)}
 .now{min-height:0;display:flex;flex-direction:column}
@@ -43,7 +43,7 @@ main{display:grid;grid-template-columns:1fr 500px;gap:26px;min-height:0}
 .card .ppl{padding:12px 16px 4px;display:grid;gap:8px;grid-template-columns:minmax(0,1fr)}
 .card.muchos .ins{display:none}
 .p{display:flex;align-items:baseline;gap:8px;min-width:0}
-.p b{font-size:31px;font-weight:700;line-height:1.2;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p b{font-size:29px;font-weight:700;line-height:1.2;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p span{font-family:var(--f-mono);font-size:19px;color:var(--muted);white-space:nowrap;flex:none}
 .p.lunch b{color:var(--muted)} .p.lunch span{color:var(--warn)}
 .p i{flex:none;width:14px;height:14px;border-radius:50%;align-self:center;background:transparent;border:2px solid var(--muted)}
@@ -61,8 +61,8 @@ main{display:grid;grid-template-columns:1fr 500px;gap:26px;min-height:0}
 @keyframes cinta{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .grid.lleno .ins{display:none}
 
-aside{display:grid;grid-template-rows:auto auto 1fr;gap:22px;min-height:0}
-aside.sin-noche{grid-template-rows:auto 1fr}
+aside{display:flex;flex-direction:column;gap:20px;min-height:0}
+aside > .box{flex:none}
 .noche{background:#132c3a;border-color:rgba(140,190,220,.28)}
 .noche .sec{color:#9cc6dc}
 .noche .ppl2{display:grid;gap:10px}
@@ -80,6 +80,36 @@ aside.sin-noche{grid-template-rows:auto 1fr}
 .row .w small i{font-style:normal;font-family:var(--f-mono);font-weight:600;color:var(--ink);background:var(--c);border-radius:6px;padding:0 8px;margin-right:8px}
 .row.ya .h{color:var(--gold)} .row.ya{background:var(--gold-soft);margin:0 -22px;padding:10px 22px;border-top-color:transparent}
 .empty{font-size:26px;color:var(--muted);padding:8px 0}
+
+/* Horario de la semana: la misma hoja que cargan los Capitanes, con los colores de la hoja impresa */
+aside > .box.semana{flex:1 1 auto;display:flex;flex-direction:column;padding:18px 20px 14px}
+.semana .sec{margin-bottom:10px}
+.hs-r{display:grid;grid-template-columns:minmax(0,1fr) repeat(7,46px);gap:4px;align-items:center}
+.hs-h{padding-bottom:8px;border-bottom:1px solid var(--line)}
+.hs-h span{text-align:center;font-size:17px;font-weight:700;color:var(--muted);line-height:1.1;border-radius:8px;padding:3px 0}
+.hs-h span small{display:block;font-family:var(--f-mono);font-weight:500;font-size:14px}
+.hs-h span.hoy{background:var(--gold);color:#1d1a0e}
+.hs-h span.hoy small{color:#1d1a0e}
+.hs-v{flex:1 1 auto;min-height:0;overflow:hidden;position:relative;margin-top:6px;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 10px,#000 calc(100% - 16px),transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 10px,#000 calc(100% - 16px),transparent 100%)}
+.hs-l{will-change:transform}
+.hs-l .hs-r{height:36px}
+.hs-l .hs-r.g{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;height:42px}
+.hs-l .hs-r b{font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.hs-c{font-style:normal;height:30px;display:flex;align-items:center;justify-content:center;border-radius:7px;font-family:var(--f-mono);font-weight:600;font-size:16px;letter-spacing:-.02em}
+.hs-c.hoy{outline:2px solid var(--gold);outline-offset:1px}
+.hs-c.ap{background:#f1d75c;color:#2b2406}
+.hs-c.ci{background:#f0a03c;color:#2b1704}
+.hs-c.de,.hs-c.va{background:#e7b59c;color:#3b1e10}
+.hs-c.cp{background:#4f86cf;color:#fff}
+.hs-c.no{color:var(--muted)}
+.hs-c{position:relative}
+.hs-c.rn:after{content:"";position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:#132c3a;border:2px solid #9cc6dc}
+.hs-ley{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:16px;color:var(--muted)}
+.hs-ley span{display:flex;align-items:center;gap:6px}
+.hs-ley .hs-c{width:30px;height:22px;font-size:13px}
+@-webkit-keyframes subir{from{-webkit-transform:translateY(0)}to{-webkit-transform:translateY(-50%)}}
+@keyframes subir{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 .fin{grid-column:1/-1;align-self:center;text-align:center;color:var(--muted);font-size:30px}
 .fin b{display:block;font-family:var(--f-display);font-weight:400;font-size:60px;color:var(--ink);margin-bottom:10px}
 .mas{font-size:22px;color:var(--muted);padding-top:10px;border-top:1px solid var(--line)}
@@ -106,8 +136,8 @@ footer .upd.off{color:var(--warn)}
     <section class="now"><h2 class="sec" id="nowTitle">En este momento</h2><div class="grid" id="grid"></div></section>
     <aside id="aside">
       <div class="box noche" id="nocheBox"><h2 class="sec" id="nocheTitle">Range nocturno · hoy</h2><div class="ppl2" id="noche"></div></div>
-      <div class="box"><h2 class="sec">Almuerzos</h2><div id="lunch" class="lunchbox"></div></div>
-      <div class="box"><h2 class="sec" id="nextTitle">Próximas entradas</h2><div id="next"></div></div>
+      <div class="box" id="lunchBox"><h2 class="sec">Almuerzos</h2><div id="lunch" class="lunchbox"></div></div>
+      <div class="box semana"><h2 class="sec" id="semTitle">Horario de la semana</h2><div id="semana" style="display:flex;flex-direction:column;flex:1 1 auto;min-height:0"></div></div>
     </aside>
   </main>
   <footer><div class="grp" id="libres"></div><div class="upd" id="upd"></div></footer>
@@ -127,6 +157,7 @@ function h12(t){ var m = min(t), h = Math.floor(m / 60), mm = m % 60; return ((h
 function hc(t){ var m = min(t), h = Math.floor(m / 60), mm = m % 60; return ((h + 11) % 12 + 1) + (mm ? ":" + (mm < 10 ? "0" : "") + mm : "") + (h < 12 ? " am" : " pm"); }
 function ahora(){ return new Date(Date.now() + OFFSET); }   // hora de Panamá según el servidor, aunque el reloj de la TV esté mal
 function minAhora(){ var d = ahora(); return d.getUTCHours() * 60 + d.getUTCMinutes(); }
+function nomSem(n){ var p = String(n).split(" "); return p.length > 1 && (p[0] + " " + p[1]).length > 15 ? p[0] + " " + p[1].charAt(0) + "." : corto(n); }
 function corto(n){ var p = String(n).split(" "); return p.length > 2 ? p[0] + " " + p[1] : n; }
 
 function fit(){ var s = Math.min(innerWidth / 1920, innerHeight / 1080), st = $("stage");
@@ -183,6 +214,43 @@ function cintas(){
   }
 }
 
+// Horario de la semana (lunes a domingo). Cuando la jornada terminó, muestra la semana de mañana (útil el domingo en la noche).
+var DIAS_L = ["L","M","X","J","V","S","D"], MES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+function fISO(s, n){ var f = new Date(s + "T12:00:00Z"); f.setUTCDate(f.getUTCDate() + n); return f; }
+function celda(d, hoy){
+  var c = "no", t = "–";
+  if (d) {
+    if (d.tipo === "trabajo") { c = min(d.inicio) < 9 * 60 ? "ap" : "ci"; t = d.puesto; if (d.rn) c += " rn"; }
+    else if (d.tipo === "descanso") { c = "de"; t = "D"; }
+    else if (d.tipo === "vacaciones") { c = "va"; t = "V"; }
+    else if (d.tipo === "compensatorio") { c = "cp"; t = "CP"; }
+  }
+  return "<span class='hs-c " + c + (hoy ? " hoy" : "") + "'>" + esc(t) + "</span>";
+}
+var SEM_SIG = "";
+function semana(){
+  var src = MANANA && MANANA.semana ? MANANA : D;
+  if (!src.semana || !src.semana_lunes) { $("semana").innerHTML = "<div class='empty'>Sin horario cargado para esta semana.</div>"; return; }
+  var lun = src.semana_lunes, hoyI = Math.round((fISO(src.fecha, 0) - fISO(lun, 0)) / 864e5), f0 = fISO(lun, 0), f6 = fISO(lun, 6);
+  $("semTitle").textContent = "Semana · " + f0.getUTCDate() + (f0.getUTCMonth() !== f6.getUTCMonth() ? " " + MES[f0.getUTCMonth()] : "") + " – " + f6.getUTCDate() + " " + MES[f6.getUTCMonth()];
+  var sig = JSON.stringify([src.semana, lun, hoyI]);
+  if (sig === SEM_SIG) return;   // sin cambios: no se repinta y la lista sigue bajando donde iba
+  SEM_SIG = sig;
+  if (!src.semana.length) { $("semana").innerHTML = "<div class='empty'>Sin horario cargado para esta semana.</div>"; return; }
+  var cab = "<div class='hs-r hs-h'><span></span>" + DIAS_L.map(function(l, i){ return "<span class='" + (i === hoyI ? "hoy" : "") + "'>" + l + "<small>" + fISO(lun, i).getUTCDate() + "</small></span>"; }).join("") + "</div>";
+  var g0 = null, filas = src.semana.map(function(p){ var g = p.grupo !== g0 && g0 !== null; g0 = p.grupo;
+    return "<div class='hs-r" + (g ? " g" : "") + "'><b>" + esc(nomSem(p.persona)) + "</b>" + p.dias.map(function(d, i){ return celda(d, i === hoyI); }).join("") + "</div>"; }).join("");
+  var ley = "<div class='hs-ley'><span><i class='hs-c ap'>C</i>Apertura</span><span><i class='hs-c ci'>C</i>Cierre / tarde</span><span><i class='hs-c de'>D</i>Descanso</span><span><i class='hs-c va'>V</i>Vacaciones</span><span><i class='hs-c cp'>CP</i>Compensatorio</span><span><i class='hs-c ci rn'>R</i>Range nocturno</span></div>";
+  $("semana").innerHTML = cab + "<div class='hs-v'><div class='hs-l' id='hsL'>" + filas + "</div></div>" + ley;
+  // Si no caben todos, la lista baja en bucle (como la cinta), a un ritmo que se lee de lejos
+  var v = $("semana").querySelector(".hs-v"), l = $("hsL");
+  if (l.offsetHeight > v.clientHeight + 4) {
+    l.innerHTML = filas + "<div style='height:22px'></div>" + filas + "<div style='height:22px'></div>";
+    var dur = (l.offsetHeight / 2) / 22, an = "subir " + dur.toFixed(2) + "s linear " + (-((Date.now() / 1000) % dur)).toFixed(2) + "s infinite";
+    l.style.webkitAnimation = an; l.style.animation = an;
+  }
+}
+
 function pintar(){
   if (!D) return;
   var m = minAhora(), P = {}, orden = {};
@@ -214,25 +282,12 @@ function pintar(){
 
   cintas();
 
-  // Próximas entradas (o las de mañana cuando el día terminó)
-  var fuente = MANANA ? MANANA.turnos.filter(function(t){ return t.tipo === "trabajo"; }) : trab, PM = {};
-  (MANANA ? MANANA.puestos : D.puestos).forEach(function(p){ PM[p.codigo] = p; });
-  var prox = fuente.filter(function(t){ var i = min(t.inicio); return MANANA ? true : (i > m - 15 && i <= m + 240 && !(i <= m - 15)); })
-    .sort(function(a, b){ return min(a.inicio) - min(b.inicio); });
-  var extra = Math.max(0, prox.length - 6); prox = prox.slice(0, 6);
-  $("nextTitle").textContent = MANANA ? "Mañana entran" : "Próximas entradas";
-  $("next").innerHTML = prox.length ? prox.map(function(t){
-    var p = PM[t.puesto] || {nombre:t.puesto, color:"#4a5a66"}, i = min(t.inicio), ya = !MANANA && i <= m;
-    return "<div class='row" + (ya ? " ya" : "") + "'><div class='h'>" + h12(t.inicio).replace(/ (a|p)\. m\./, "") + "</div><div class='w'><b>" + esc(corto(t.persona)) + "</b>" +
-      "<small><i style='--c:" + esc(p.color) + "'>" + esc(t.puesto) + "</i>" + esc(p.nombre) + (ya ? (t.llegada ? " · llegó " + hc(t.llegada) : " · entra ahora") : "") + " · hasta " + hc(t.fin) + "</small>" +
-      (ya && p.instrucciones ? "<em>" + esc(p.instrucciones) + "</em>" : "") + "</div></div>";
-  }).join("") + (extra ? "<div class='mas'>y " + extra + " más</div>" : "") : "<div class='empty'>No hay más entradas hoy.</div>";
+  semana();
 
   // Range nocturno: el encargado (ER) y el personal marcado para el Range de noche (hoy, o mañana si la jornada terminó)
   var diaN = MANANA || D, nocheP = diaN.turnos.filter(function(t){ return t.tipo === "trabajo" && (t.puesto === "ER" || t.range_nocturno); })
     .sort(function(a, b){ return (a.puesto === "ER" ? 0 : 1) - (b.puesto === "ER" ? 0 : 1); });
   $("nocheBox").hidden = !nocheP.length;
-  $("aside").className = nocheP.length ? "" : "sin-noche";
   $("nocheTitle").textContent = MANANA ? "Range nocturno · mañana" : "Range nocturno · hoy";
   $("noche").innerHTML = nocheP.map(function(t){
     var aus = !MANANA && t.asistencia && t.asistencia !== "presente";
@@ -247,7 +302,8 @@ function pintar(){
   var ks = Object.keys(grupos).sort();
   $("lunch").innerHTML = ks.length ? ks.map(function(k){ var a = k.split("-"), en = min(a[0]) <= m;
     return "<div class='row" + (en ? " ya" : "") + "'><div class='h'>" + h12(a[0]).replace(/ (a|p)\. m\./, "") + "</div><div class='w'><small>" + (en ? "En almuerzo hasta " + hc(a[1]) : "hasta " + hc(a[1])) + "</small><b style='font-size:22px;font-weight:600;white-space:normal;line-height:1.3'>" + esc(grupos[k].join(", ")) + "</b></div></div>"; }).join("")
-    : "<div class='empty'>Sin almuerzos en las próximas horas.</div>";
+    : "";
+  $("lunchBox").hidden = !ks.length;   // sin almuerzos próximos, el espacio pasa al horario de la semana
 
   // Pie: libres hoy
   var lib = {ausentes:[], descanso:[], vacaciones:[], compensatorio:[]};
