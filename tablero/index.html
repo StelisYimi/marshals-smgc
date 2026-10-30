@@ -51,10 +51,17 @@ main{display:grid;grid-template-columns:1fr 500px;gap:26px;min-height:0}
 .p.ok i{background:var(--ok);border-color:var(--ok)}
 .p.falta i{border-color:var(--warn)} .p.falta span{color:var(--warn)}
 .p.aus b{color:var(--muted);text-decoration:line-through} .p.aus i{border-color:var(--crit)} .p.aus span{color:var(--crit)}
-.card .ins{padding:6px 18px 14px;font-size:21px;line-height:1.35;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .ins{margin:6px 18px 14px;padding:0;font-size:21px;line-height:1.35;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .grid.lleno .ins{display:none}
 
-aside{display:grid;grid-template-rows:auto 1fr;gap:22px;min-height:0}
+aside{display:grid;grid-template-rows:auto auto 1fr;gap:22px;min-height:0}
+aside.sin-noche{grid-template-rows:auto 1fr}
+.noche{background:#132c3a;border-color:rgba(140,190,220,.28)}
+.noche .sec{color:#9cc6dc}
+.noche .ppl2{display:grid;gap:10px}
+.noche .q{display:flex;align-items:baseline;gap:12px;min-width:0}
+.noche .q b{font-size:30px;font-weight:700;line-height:1.15;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.noche .q span{font-family:var(--f-mono);font-size:19px;color:#9cc6dc;white-space:nowrap;flex:none}
 .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 22px;min-height:0;overflow:hidden}
 .row{display:grid;grid-template-columns:118px 1fr;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
 .row:first-of-type{border-top:0}
@@ -90,7 +97,8 @@ footer .upd.off{color:var(--warn)}
   </header>
   <main>
     <section class="now"><h2 class="sec" id="nowTitle">En este momento</h2><div class="grid" id="grid"></div></section>
-    <aside>
+    <aside id="aside">
+      <div class="box noche" id="nocheBox"><h2 class="sec" id="nocheTitle">Range nocturno · hoy</h2><div class="ppl2" id="noche"></div></div>
       <div class="box"><h2 class="sec">Almuerzos</h2><div id="lunch" class="lunchbox"></div></div>
       <div class="box"><h2 class="sec" id="nextTitle">Próximas entradas</h2><div id="next"></div></div>
     </aside>
@@ -196,6 +204,18 @@ function pintar(){
       "<small><i style='--c:" + esc(p.color) + "'>" + esc(t.puesto) + "</i>" + esc(p.nombre) + (ya ? (t.llegada ? " · llegó " + hc(t.llegada) : " · entra ahora") : "") + " · hasta " + hc(t.fin) + "</small>" +
       (ya && p.instrucciones ? "<em>" + esc(p.instrucciones) + "</em>" : "") + "</div></div>";
   }).join("") + (extra ? "<div class='mas'>y " + extra + " más</div>" : "") : "<div class='empty'>No hay más entradas hoy.</div>";
+
+  // Range nocturno: el encargado (ER) y el personal marcado para el Range de noche (hoy, o mañana si la jornada terminó)
+  var diaN = MANANA || D, nocheP = diaN.turnos.filter(function(t){ return t.tipo === "trabajo" && (t.puesto === "ER" || t.range_nocturno); })
+    .sort(function(a, b){ return (a.puesto === "ER" ? 0 : 1) - (b.puesto === "ER" ? 0 : 1); });
+  $("nocheBox").hidden = !nocheP.length;
+  $("aside").className = nocheP.length ? "" : "sin-noche";
+  $("nocheTitle").textContent = MANANA ? "Range nocturno · mañana" : "Range nocturno · hoy";
+  $("noche").innerHTML = nocheP.map(function(t){
+    var aus = !MANANA && t.asistencia && t.asistencia !== "presente";
+    return "<div class='q'><b" + (aus ? " style='text-decoration:line-through;color:var(--muted)'" : "") + ">" + esc(corto(t.persona)) + "</b><span>" +
+      (aus ? AUS[t.asistencia] : t.puesto === "ER" ? "encargado · " + hc(t.inicio) + "–" + hc(t.fin) : "de noche") + "</span></div>";
+  }).join("");
 
   // Almuerzos: los que están o los próximos
   var alm = trab.filter(function(t){ return t.almuerzo_inicio && min(t.almuerzo_fin) > m && min(t.almuerzo_inicio) - m <= 180; });
