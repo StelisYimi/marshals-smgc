@@ -609,7 +609,7 @@ async function entrar(){
   { const r = await sb.from("hor_personal").select("id,nombre,perfil_id,grupo").eq("perfil_id", S.me.id).eq("activo", true).maybeSingle(); S.miPer = r.data || null; }
   S.esMec = S.me.rol === "mecanico" || !!(S.miPer && S.miPer.grupo === "Mecánico");   // por su rol, o por estar en el grupo Mecánico del horario
   // Orden fijo de los módulos: Capitanes, Marshals, Starter, Mecánico y Staff (cada quien ve solo los suyos)
-  const permitido = {capitanes: S.esCap, marshals: S.me.rol === "marshal" || S.esStarter || S.esGer, starter: S.esStarter || S.esGer, mecanico: S.esMec || S.esCap, staff: true};
+  const permitido = {capitanes: S.esCap, marshals: S.me.rol === "marshal" || S.esStarter || S.esGer, starter: S.esStarter || S.esGer, mecanico: S.esMec || S.esCap, staff: S.me.rol !== "mecanico"};   // el Mecánico entra solo a su módulo (ahí tiene su horario y el directorio)
   S.mods = ["capitanes", "marshals", "starter", "mecanico", "staff"].filter(m => permitido[m]);
   $("#whoName").textContent = S.me.nombre; $("#whoRole").textContent = S.esGer ? "Gerencia" : ROLES[S.me.rol]; $("#whoRole").classList.toggle("g", S.esGer);
   $("#menuWho").textContent = `${S.me.nombre} · ${ROLES[S.me.rol]}${S.me.usuario ? " · " + S.me.usuario : ""}`;
