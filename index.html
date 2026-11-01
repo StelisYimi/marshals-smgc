@@ -975,7 +975,7 @@ async function firmar(){
   if (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length) { toast("Sin conexión. Firme cuando recupere señal."); updateSignHint(); return; }
   const { error } = await sb.rpc("firmar_reporte", {p_reporte:S.report.id});
   if (error) { toast(errMsg(error)); updateSignHint(); return; }
-  await cargarTurno(); renderTurno(); toast("Reporte firmado. Gracias por su turno.");
+  await cargarTurno(); renderTurno(); toast("Reporte firmado y enviado a Gerencia. Gracias por su turno.");
 }
 
 /* ===================== Incidencias ===================== */
@@ -1117,6 +1117,32 @@ async function cargarGerencia(){
 }
 const cls = (v, good = 100, warn = 85) => v == null ? "" : v >= good ? "ok" : v >= warn ? "warn" : "crit";
 function kpi(k, v, u, t, c){ return `<div class="kpi"><div class="k">${esc(k)}</div><div class="v ${c}">${v == null ? "—" : v + u}</div><div class="t">${esc(t)}</div></div>`; }
+/* ---------- Reportes por correo: cada checklist firmado llega a Gerencia con su Excel ---------- */
+const MOD_CORREO = {marshals:"Marshals", starter:"Starter", capitanes:"Capitanes", staff:"Staff"};
+async function pintarCorreosRep(el, desde, hasta){
+  if (!el) return;
+  el.innerHTML = `<h2>Reportes por correo</h2><p class="hint" style="margin:0">Cargando…</p>`;
+  const { data, error } = await sb.from("correos_reportes").select("*").gte("fecha", desde).lte("fecha", hasta).order("creado_en", {ascending:false}).limit(200);
+  if (error) { el.innerHTML = `<h2>Reportes por correo</h2><p class="hint warn" style="margin:0">${esc(errMsg(error))}</p>`; return; }
+  const dest = (data.find(x => x.destinatario) || {}).destinatario, env = data.filter(x => x.estado === "enviado").length, pend = data.filter(x => x.estado !== "enviado");
+  el.innerHTML = `<div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;justify-content:space-between">
+      <div><h2 style="margin-bottom:4px">Reportes por correo</h2>
+      <p class="hint" style="margin:0">Cada checklist firmado (Capitanes, Marshals, Starter, Staff y Mecánico) se envía al momento${dest ? ` a <b>${esc(dest)}</b>` : " al correo de Gerencia"} con un Excel adjunto. ${plural(env, "enviado", "enviados")} en este periodo${pend.length ? ` · <b style="color:var(--warn)">${pend.length} sin enviar</b>` : ""}.</p></div>
+      ${pend.length ? `<button class="btn small gold" type="button" data-crproc>Enviar pendientes</button>` : ""}</div>
+    ${data.length ? `<div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Fecha</th><th>Módulo</th><th>Colaborador</th><th>Turno o posición</th><th>Correo</th><th></th></tr></thead><tbody>
+      ${data.map(x => `<tr><td class="num">${esc(fechaCorta(x.fecha))}</td><td>${esc(MOD_CORREO[x.modulo] || x.modulo)}</td><td>${esc(x.colaborador || "—")}</td><td>${esc(x.detalle || "—")}</td>
+        <td>${x.estado === "enviado" ? `<span class="pill p-ok">Enviado ${hora(x.enviado_en)}</span>` : x.estado === "error" ? `<span class="pill p-crit" title="${esc(x.error || "")}">Error</span>` : `<span class="pill p-draft">En cola</span>`}</td>
+        <td><button class="btn small" type="button" data-crre="${x.id}">${x.estado === "enviado" ? "Reenviar" : "Enviar"}</button></td></tr>`).join("")}
+      </tbody></table></div>` : `<p class="hint" style="margin:10px 0 0">Aún no hay checklists firmados en este periodo.</p>`}`;
+  const llamar = async (body, b) => { if (b) { b.disabled = true; b.textContent = "Enviando…"; }
+    try { const { data: r, error: e } = await sb.functions.invoke("reportes", {body}); if (e) throw e;
+      if (r && r.configurado === false) toast(r.mensaje); else { const malos = ((r && r.resultados) || []).filter(x => x.estado !== "enviado"); toast(malos.length ? "No se pudo enviar: " + malos[0].error : `Reporte enviado a ${r.destino}.`); }
+    } catch(x){ toast("No se pudo enviar. " + errMsg(x)); }
+    pintarCorreosRep(el, desde, hasta); };
+  el.querySelectorAll("[data-crre]").forEach(b => b.onclick = () => { const x = data.find(y => y.id === b.dataset.crre);
+    llamar(x.estado === "enviado" ? {accion:"reenviar", id:x.id} : {accion:"procesar", reporte_id:x.reporte_id}, b); });
+  const pb = el.querySelector("[data-crproc]"); if (pb) pb.onclick = () => llamar({accion:"procesar"}, pb);
+}
 function renderGerencia(){
   const v = $("#v-gerencia"), g = S.ger, {reps, incs, cob} = S.gerData;
   const firm = reps.filter(x => x.estado === "firmado");
@@ -1143,6 +1169,7 @@ function renderGerencia(){
       ${kpi("Atención a miembros", incs.filter(x => x.categoria==="atencion_miembros").length, "", "Quejas, solicitudes y reconocimientos", "")}
       ${kpi("Incidencias abiertas", incs.filter(x => x.estado==="abierta").length, "", "Del periodo, sin cerrar", incs.some(x => x.estado==="abierta") ? "warn" : "ok")}
     </div>
+    <div class="panel" id="gCorreos"></div>
     <div class="grid2">
       <div class="stack"><h2>Reportes de turno</h2>
         ${reps.length ? `<div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Turno</th><th>Marshal</th><th>Hoyos</th><th>Cumpl.</th><th>No</th><th>Estado</th></tr></thead><tbody>
@@ -1161,6 +1188,7 @@ function renderGerencia(){
   $("#gMarshal").onchange = e => { g.marshal = e.target.value; cargarGerencia(); };
   $("#gTurno").onchange = e => { g.turno = e.target.value; cargarGerencia(); };
   $("#gRefresh").onclick = cargarGerencia; $("#gXlsx").onclick = exportarExcel;
+  pintarCorreosRep($("#gCorreos"), g.desde, g.hasta);
   v.querySelectorAll("tr[data-r]").forEach(tr => tr.onclick = () => abrirReporte(tr.dataset.r));
 }
 async function abrirReporte(id){
@@ -3013,7 +3041,7 @@ async function firmarSt(){
   if (Object.keys(S.st.pend.resp).length || Object.keys(S.st.pend.rep).length) { toast("Sin conexión. Firme cuando recupere señal."); updHintSt(); return; }
   const { error } = await sb.rpc("firmar_reporte_starter", {p_reporte:S.st.rep.id});
   if (error) { toast(errMsg(error)); updHintSt(); return; }
-  S.st.loaded = false; renderTurnoSt(); toast("Reporte firmado. Gracias por su turno.");
+  S.st.loaded = false; renderTurnoSt(); toast("Reporte firmado y enviado a Gerencia. Gracias por su turno.");
 }
 function suscribirStarter(){
   sb.channel("starter-vivo")
@@ -3278,7 +3306,7 @@ async function firmarCap(){
   if (Object.keys(S.ct.pend.resp).length || Object.keys(S.ct.pend.rep).length) { toast("Sin conexión. Firme cuando recupere señal."); updHintCap(); return; }
   const { error } = await sb.rpc("firmar_reporte_capitan", {p_reporte:S.ct.rep.id});
   if (error) { toast(errMsg(error)); updHintCap(); return; }
-  S.ct.loaded = false; renderTurnoCap(); toast("Reporte firmado. Gracias por su turno.");
+  S.ct.loaded = false; renderTurnoCap(); toast("Reporte firmado y enviado a Gerencia. Gracias por su turno.");
 }
 
 /* ===================== Capitanes: supervisión de Gerencia ===================== */
@@ -3317,6 +3345,7 @@ function renderSupervision(){
       ${kpi("Ausencias del equipo", aus, "", "Puestos marcados como ausentes", aus ? "warn" : "ok")}
       ${kpi("Alquileres de palos", alq.length, "", `${alq.filter(a => a.estado === "cerrado" && !a.todo_ok).length} con observaciones`, "")}
     </div>
+    <div class="panel" id="sCorreos"></div>
     ${reps.length ? `<div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Turno</th><th>Capitán</th><th>Cumpl.</th><th>No</th><th>Equipo</th><th>Insumos</th><th>Estado</th></tr></thead><tbody>
       ${reps.map(x => { const pres = PUESTOS.filter(([k]) => ((x.equipo || {})[k] || {}).estado === "presente").length, bj = INSUMOS.filter(([k]) => ["bajo","agotado"].includes(((x.inventario || {})[k] || {}).nivel)).length;
         return `<tr class="click" data-cr="${x.id}"><td class="num">${esc(fechaCorta(x.fecha))}</td><td>${TURNO_CORTO[x.turno]}</td><td>${esc(x.capitan)}</td>
@@ -3328,6 +3357,7 @@ function renderSupervision(){
   $("#sHasta").onchange = e => { g.hasta = e.target.value || g.hasta; cargarSupervision(); };
   $("#sCap").onchange = e => { g.capitan = e.target.value; cargarSupervision(); };
   $("#sRef").onclick = cargarSupervision; $("#sXlsx").onclick = exportarCap;
+  pintarCorreosRep($("#sCorreos"), g.desde, g.hasta);
   v.querySelectorAll("tr[data-cr]").forEach(tr => tr.onclick = () => abrirReporteCap(tr.dataset.cr));
 }
 async function abrirReporteCap(id){
@@ -3787,7 +3817,7 @@ async function firmarOp(pos){
   if (!confirm("¿Firmar su checklist? Después ya no podrá modificarlo.")) return;
   const b = $("#mpFirmar"); b.disabled = true;
   try { const rep = await asegurarRepOp(pos); const { error } = await sb.rpc("firmar_reporte_op", {p_reporte: rep.id}); if (error) throw error;
-    toast("Checklist firmado"); S.mp.loaded = false; renderMiPuesto(); }
+    toast("Checklist firmado y enviado a Gerencia."); S.mp.loaded = false; renderMiPuesto(); }
   catch(x){ toast(errMsg(x)); b.disabled = false; }
 }
 function reportarDano(pos){
