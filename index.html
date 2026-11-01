@@ -455,6 +455,8 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-horario" hidden></section>
     <section class="view" id="v-horariocap" hidden></section>
     <section class="view" id="v-supervision" hidden></section>
+    <section class="view" id="v-gerst" hidden></section>
+    <section class="view" id="v-gerop" hidden></section>
     <section class="view" id="v-hoy" hidden></section>
     <section class="view" id="v-directorio" hidden></section>
     <section class="view" id="v-directoriocap" hidden></section>
@@ -486,9 +488,9 @@ const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
 const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
   marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["salidas","Salidas"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["horario","Horario"],["equipo","Equipo","ger"]]},
-  starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"],["horario","Horario"]]},
-  staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["puestos","Puestos","cap"],["funciones","Funciones"],["horario","Horario"],["directorio","Directorio"]]},
-  mecanico: {nombre:"Mecánico", tabs:[["mipuesto","Mi checklist","mec"],["puestos","Supervisión","cap"],["mecfun","Funciones y cargo"],["horario","Horario"],["directorio","Directorio"]]},
+  starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"],["gerst","Gerencia","ger"],["horario","Horario"]]},
+  staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["puestos","Puestos","cap"],["gerop","Gerencia","ger"],["funciones","Funciones"],["horario","Horario"],["directorio","Directorio"]]},
+  mecanico: {nombre:"Mecánico", tabs:[["mipuesto","Mi checklist","mec"],["puestos","Supervisión","cap"],["gerop","Gerencia","ger"],["mecfun","Funciones y cargo"],["horario","Horario"],["directorio","Directorio"]]},
   capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["directoriocap","Directorio"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
@@ -727,8 +729,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","directoriocap","mipuesto","puestos","funciones","mecfun"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, directoriocap:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones, mecfun:renderMecFun})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","directoriocap","mipuesto","puestos","funciones","mecfun","gerst","gerop"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, directoriocap:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones, mecfun:renderMecFun, gerst:cargarGerSt, gerop:cargarGerOp})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -1119,11 +1121,12 @@ const cls = (v, good = 100, warn = 85) => v == null ? "" : v >= good ? "ok" : v 
 function kpi(k, v, u, t, c){ return `<div class="kpi"><div class="k">${esc(k)}</div><div class="v ${c}">${v == null ? "—" : v + u}</div><div class="t">${esc(t)}</div></div>`; }
 /* ---------- Reportes por correo: cada checklist firmado llega a Gerencia con su Excel ---------- */
 const MOD_CORREO = {marshals:"Marshals", starter:"Starter", capitanes:"Capitanes", staff:"Staff"};
-async function pintarCorreosRep(el, desde, hasta){
+async function pintarCorreosRep(el, desde, hasta, filtro){
   if (!el) return;
   el.innerHTML = `<h2>Reportes por correo</h2><p class="hint" style="margin:0">Cargando…</p>`;
   const { data, error } = await sb.from("correos_reportes").select("*").gte("fecha", desde).lte("fecha", hasta).order("creado_en", {ascending:false}).limit(200);
   if (error) { el.innerHTML = `<h2>Reportes por correo</h2><p class="hint warn" style="margin:0">${esc(errMsg(error))}</p>`; return; }
+  if (filtro) { const f = data.filter(filtro); data.length = 0; data.push(...f); }
   const dest = (data.find(x => x.destinatario) || {}).destinatario, env = data.filter(x => x.estado === "enviado").length, pend = data.filter(x => x.estado !== "enviado");
   el.innerHTML = `<div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;justify-content:space-between">
       <div><h2 style="margin-bottom:4px">Reportes por correo</h2>
@@ -1138,7 +1141,7 @@ async function pintarCorreosRep(el, desde, hasta){
     try { const { data: r, error: e } = await sb.functions.invoke("reportes", {body}); if (e) throw e;
       if (r && r.configurado === false) toast(r.mensaje); else { const malos = ((r && r.resultados) || []).filter(x => x.estado !== "enviado"); toast(malos.length ? "No se pudo enviar: " + malos[0].error : `Reporte enviado a ${r.destino}.`); }
     } catch(x){ toast("No se pudo enviar. " + errMsg(x)); }
-    pintarCorreosRep(el, desde, hasta); };
+    pintarCorreosRep(el, desde, hasta, filtro); };
   el.querySelectorAll("[data-crre]").forEach(b => b.onclick = () => { const x = data.find(y => y.id === b.dataset.crre);
     llamar(x.estado === "enviado" ? {accion:"reenviar", id:x.id} : {accion:"procesar", reporte_id:x.reporte_id}, b); });
   const pb = el.querySelector("[data-crproc]"); if (pb) pb.onclick = () => llamar({accion:"procesar"}, pb);
@@ -3117,8 +3120,8 @@ async function abrirReporteSt(id){
     ${puedeValidar ? `<div class="stack" style="gap:8px"><label class="f">Observaciones del Capitán<textarea id="svObs">${esc(val ? val.observaciones || "" : "")}</textarea></label>
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">${val ? `<button class="btn danger" id="svUndo" type="button">Retirar validación</button>` : ""}<button class="btn primary" id="svOk" type="button">${val ? "Actualizar validación" : "Validar turno"}</button></div></div>`
       : d.estado !== "firmado" ? `<div class="callout">El Starter aún no ha firmado este turno.</div>` : ""}`);
-  const ok = $("#svOk"); if (ok) ok.onclick = async () => { ok.disabled = true; const { error } = await sb.from("st_validaciones").upsert({reporte_id:id, validado_por:S.me.id, validado_en:new Date().toISOString(), observaciones:$("#svObs").value.trim() || null}); if (error) { toast(errMsg(error)); ok.disabled = false; return; } closeSheet(); toast("Turno del Starter validado"); cargarStarters(); };
-  const un = $("#svUndo"); if (un) un.onclick = async () => { const { error } = await sb.from("st_validaciones").delete().eq("reporte_id", id); if (error) { toast(errMsg(error)); return; } closeSheet(); toast("Validación retirada"); cargarStarters(); };
+  const ok = $("#svOk"); if (ok) ok.onclick = async () => { ok.disabled = true; const { error } = await sb.from("st_validaciones").upsert({reporte_id:id, validado_por:S.me.id, validado_en:new Date().toISOString(), observaciones:$("#svObs").value.trim() || null}); if (error) { toast(errMsg(error)); ok.disabled = false; return; } closeSheet(); toast("Turno del Starter validado"); (S.view === "gerst" ? cargarGerSt : cargarStarters)(); };
+  const un = $("#svUndo"); if (un) un.onclick = async () => { const { error } = await sb.from("st_validaciones").delete().eq("reporte_id", id); if (error) { toast(errMsg(error)); return; } closeSheet(); toast("Validación retirada"); (S.view === "gerst" ? cargarGerSt : cargarStarters)(); };
 }
 
 /* ===================== Capitán: Mi turno ===================== */
@@ -3907,8 +3910,8 @@ function renderPuestos(){
     const { error } = await sb.from("op_danos").update({estado:"cerrado", accion: accion.trim() || null, cerrado_por: S.me.id, cerrado_en: new Date().toISOString()}).eq("id", b.dataset.cerrar);
     if (error) toast(errMsg(error)); else { toast("Daño marcado como atendido"); cargarPuestos(); } });
 }
-function verReporteOp(id){
-  const u = S.pu, r = u.reps.find(x => x.id === id), p = u.per[r.personal_id], resp = u.resp[id] || {}, val = u.val[id], st = statsOp(r.posicion, r.fecha, resp), d = r.datos || {};
+function verReporteOp(id, ctx, listo){
+  const u = ctx || S.pu, recargar = listo || cargarPuestos, r = u.reps.find(x => x.id === id), p = u.per[r.personal_id], resp = u.resp[id] || {}, val = u.val[id], st = statsOp(r.posicion, r.fecha, resp), d = r.datos || {};
   openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(POS[r.posicion])} · ${esc(fechaLarga(r.fecha))}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(p.nombre)}</h2></div><button class="btn ghost x" data-x type="button">Cerrar</button></div>
     <div class="chips"><span class="pill ${r.estado === "firmado" ? "p-ok" : "p-draft"}">${r.estado === "firmado" ? "Firmado " + hora(r.firmado_en) : "En curso"}</span><span class="pill p-ord">${st.n}/${st.total} respondidas · ${st.cumpl}% cumplimiento</span>
       ${r.posicion === "L" ? `<span class="pill ${d.carritos_listos != null && +d.carritos_listos >= META_CARRITOS ? "p-ok" : "p-alta"}">${d.carritos_listos ?? "—"} carritos listos${d.carritos_fuera ? ` · ${d.carritos_fuera} fuera` : ""}</span>` : ""}
@@ -3923,10 +3926,180 @@ function verReporteOp(id){
       : `<label class="f">Observaciones de la validación (opcional)<input type="text" id="opVObs" placeholder="Ej. Recordar reponer arena en carritos"></label><button class="btn primary" id="opVal" type="button">Validar checklist</button>`}
     <p class="hint warn" id="opErr" style="margin:0"></p>`);
   if ($("#opVal")) $("#opVal").onclick = async () => { const { error } = await sb.from("op_validaciones").insert({reporte_id: id, validado_por: S.me.id, observaciones: $("#opVObs").value.trim() || null});
-    if (error) { $("#opErr").textContent = errMsg(error); return; } closeSheet(); toast("Checklist validado"); cargarPuestos(); };
+    if (error) { $("#opErr").textContent = errMsg(error); return; } closeSheet(); toast("Checklist validado"); recargar(); };
   if ($("#opDesv")) $("#opDesv").onclick = async () => { const { error } = await sb.from("op_validaciones").delete().eq("reporte_id", id);
-    if (error) { $("#opErr").textContent = errMsg(error); return; } closeSheet(); toast("Validación retirada"); cargarPuestos(); };
+    if (error) { $("#opErr").textContent = errMsg(error); return; } closeSheet(); toast("Validación retirada"); recargar(); };
 }
+/* ===================== Gerencia de Starter, Staff y Mecánico =====================
+   Mismas facultades que Gerencia en Capitanes y Marshals: filtros por periodo y colaborador,
+   indicadores, reportes con validación, exportar a Excel y reportes por correo. */
+const filaRegistro = (fecha, modulo, turno, colab, area, it, x) => ({"Fecha":fecha, "Módulo":modulo, "Turno o posición":turno, "Colaborador":colab, "Área":area, "Código":it.id,
+  "Actividad":it.texto, "Respuesta":x ? VAL[x.valor] : "Sin responder", "Cumple":x && (x.valor === "si" || (x.valor === "na" && (x.nota || "").trim())) ? 1 : 0, "Observación":(x && x.nota) || "", "Hora de respuesta":x ? hora(x.respondido_en) : ""});
+const pillEstado = (firmado, validado) => !firmado ? `<span class="pill p-draft">En curso</span>` : validado ? `<span class="pill p-ok">Validado</span>` : `<span class="pill p-gold">Por validar</span>`;
+
+/* ---------- Starter ---------- */
+S.gst = {desde: diasAtras(6), hasta: hoyISO(), starter:"todos", turno:"todos", data:null};
+async function cargarGerSt(){
+  const v = $("#v-gerst"), g = S.gst; if (!S.esGer) return;
+  if (!g.data) v.innerHTML = `<div class="loading">Cargando Gerencia de Starters…</div>`;
+  if (!S.st.items.length) { const [a, it] = await Promise.all([sb.from("st_areas").select("*").order("orden"), sb.from("st_items").select("*").eq("activo", true).order("orden")]);
+    if (!a.error && !it.error) { S.st.areas = a.data.map(x => ({...x, items: it.data.filter(i => i.area === x.codigo)})); S.st.items = S.st.areas.flatMap(x => x.items); } }
+  let q = sb.from("v_st_resumen").select("*").gte("fecha", g.desde).lte("fecha", g.hasta).order("fecha", {ascending:false}).order("turno");
+  if (g.starter !== "todos") q = q.eq("starter_id", g.starter);
+  if (g.turno !== "todos") q = q.eq("turno", g.turno);
+  const [r, sl, nv] = await Promise.all([q, sb.from("tee_salidas").select("fecha,hora,hoyo,estado,salida_real,cruce_real").gte("fecha", g.desde).lte("fecha", g.hasta),
+    sb.from("st_novedades").select("*").gte("fecha", g.desde).lte("fecha", g.hasta)]);
+  if (r.error) { v.innerHTML = `<div class="empty"><strong>No se pudo cargar</strong>${esc(errMsg(r.error))}</div>`; return; }
+  g.data = {reps: r.data, sal: sl.data || [], nov: nv.data || []};
+  if (S.view === "gerst" && !$("#ov")) renderGerSt();
+}
+function renderGerSt(){
+  const v = $("#v-gerst"), g = S.gst, {reps, sal, nov} = g.data;
+  const firm = reps.filter(x => x.estado === "firmado"), val = firm.filter(x => x.validado_en).length;
+  let resp = 0, ok = 0; firm.forEach(x => { resp += x.respondidas; ok += Math.round((x.cumplimiento_pct || 0) * x.respondidas / 100); });
+  const cumpl = resp ? Math.round(100 * ok / resp) : null, noTot = reps.reduce((a, x) => a + (x.no || 0), 0);
+  const salidas = sal.filter(x => x.estado === "salio"), ns = sal.filter(x => x.estado === "no_show").length;
+  const starters = Object.values(S.perfiles).filter(p => p.activo && p.rol === "starter");
+  const totalDia = f => S.st.items.filter(i => !i.solo_fin_semana || esFinde(f)).length || "—";
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia de Operaciones · Starter</div><h1>Panel de control</h1>
+      <p class="sub">${esc(fechaCorta(g.desde))} – ${esc(fechaCorta(g.hasta))} · ${plural(reps.length, "reporte")} · ${firm.length - val} por validar</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="gsRef" type="button">Actualizar</button><button class="btn" id="gsXlsx" type="button">Exportar a Excel</button></div></div>
+    <div class="filters panel" style="padding:12px"><label class="f">Desde<input type="date" id="gsDesde" value="${g.desde}"></label><label class="f">Hasta<input type="date" id="gsHasta" value="${g.hasta}"></label>
+      <label class="f">Starter<select id="gsSt"><option value="todos">Todos</option>${starters.map(p => `<option value="${p.id}" ${g.starter===p.id?"selected":""}>${esc(p.nombre)}</option>`).join("")}</select></label>
+      <label class="f">Turno<select id="gsTu"><option value="todos">Ambos</option>${Object.entries(TURNO_CORTO).map(([k, l]) => `<option value="${k}" ${g.turno===k?"selected":""}>${l}</option>`).join("")}</select></label></div>
+    <div class="kpis">
+      ${kpi("Cumplimiento del checklist", cumpl, "%", "Sí + N/A justificadas, sobre lo respondido", cls(cumpl, 95, 85))}
+      ${kpi("Turnos validados", firm.length ? Math.round(100 * val / firm.length) : null, "%", `${val} de ${firm.length} firmados · meta 100%`, cls(firm.length ? Math.round(100 * val / firm.length) : null))}
+      ${kpi("Turnos firmados", reps.length ? Math.round(100 * firm.length / reps.length) : null, "%", `${firm.length} de ${plural(reps.length, "turno iniciado", "turnos iniciados")}`, cls(reps.length ? Math.round(100 * firm.length / reps.length) : null))}
+      ${kpi("Actividades con No", noTot, "", "En el periodo, con su justificación", noTot ? "warn" : "ok")}
+      ${kpi("Salidas registradas", salidas.length, "", `${ns} no show · de ${plural(sal.length, "salida programada", "salidas programadas")}`, "")}
+      ${kpi("Novedades", nov.length, "", `${nov.filter(x => x.escalado).length} escaladas`, "")}
+    </div>
+    <div class="panel" id="gsCorreos"></div>
+    ${reps.length ? `<div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Turno</th><th>Tee</th><th>Starter</th><th>Capitán</th><th>Cumpl.</th><th>No</th><th>Estado</th></tr></thead><tbody>
+      ${reps.map(x => `<tr class="click" data-gs="${x.id}"><td class="num">${esc(fechaCorta(x.fecha))}</td><td>${TURNO_CORTO[x.turno]}</td><td class="num">${x.tee ?? "—"}</td><td>${esc(x.starter)}</td><td>${esc(x.capitan_id ? nm(x.capitan_id) : "—")}</td>
+        <td class="num">${x.estado === "firmado" ? (x.cumplimiento_pct ?? 0) + "%" : `${x.respondidas}/${totalDia(x.fecha)}`}</td><td class="num">${x.no}</td><td>${pillEstado(x.estado === "firmado", x.validado_en)}</td></tr>`).join("")}
+      </tbody></table></div>` : `<div class="empty"><strong>Sin reportes en este periodo</strong>Los checklists de los Starters aparecen aquí para su revisión y validación.</div>`}`;
+  $("#gsDesde").onchange = e => { g.desde = e.target.value || g.desde; cargarGerSt(); };
+  $("#gsHasta").onchange = e => { g.hasta = e.target.value || g.hasta; cargarGerSt(); };
+  $("#gsSt").onchange = e => { g.starter = e.target.value; cargarGerSt(); };
+  $("#gsTu").onchange = e => { g.turno = e.target.value; cargarGerSt(); };
+  $("#gsRef").onclick = cargarGerSt; $("#gsXlsx").onclick = exportarGerSt;
+  v.querySelectorAll("tr[data-gs]").forEach(tr => tr.onclick = () => abrirReporteSt(tr.dataset.gs));
+  pintarCorreosRep($("#gsCorreos"), g.desde, g.hasta, x => x.modulo === "starter");
+}
+async function exportarGerSt(){
+  const b = $("#gsXlsx"), g = S.gst; b.disabled = true; b.textContent = "Preparando…";
+  try {
+    await cargarScript(XLSX_URL);
+    const reps = g.data.reps, ids = reps.map(x => x.id);
+    const rs = ids.length ? await sb.from("st_respuestas").select("*").in("reporte_id", ids) : {data:[]}; if (rs.error) throw rs.error;
+    const resumen = reps.map(x => ({"Fecha":x.fecha, "Turno":TURNO_CORTO[x.turno], "Tee":x.tee, "Starter":x.starter, "Capitán":x.capitan_id ? nm(x.capitan_id) : "", "Sí":x.si, "No":x.no, "N/A":x.na,
+      "Cumplimiento %":x.cumplimiento_pct, "Estado":x.estado === "firmado" ? "Firmado" : "En curso", "Firmado":x.firmado_en ? hora(x.firmado_en) : "", "Validado":x.validado_en ? new Date(x.validado_en).toLocaleString("es-PA") : "", "Pendientes":x.pendientes || ""}));
+    const registro = reps.flatMap(x => { const r = Object.fromEntries(rs.data.filter(a => a.reporte_id === x.id).map(a => [a.item_id, a]));
+      return S.st.areas.flatMap(a => a.items.filter(i => !i.solo_fin_semana || esFinde(x.fecha)).map(i => filaRegistro(x.fecha, "Starter", TURNO_CORTO[x.turno], x.starter, `${a.codigo} · ${a.nombre}`, i, r[i.id]))); });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen.length ? resumen : [{"Sin datos":""}]), "Starter");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(registro.length ? registro : [{"Sin datos":""}]), "Registro");
+    XLSX.writeFile(wb, `SMGC_Starter_${g.desde}_a_${g.hasta}.xlsx`);
+  } catch(e){ toast("No se pudo generar el Excel. " + errMsg(e)); }
+  b.disabled = false; b.textContent = "Exportar a Excel";
+}
+
+/* ---------- Staff (Frente, Carritos, Driving Range) y Mecánico ---------- */
+S.gop = {desde: diasAtras(6), hasta: hoyISO(), persona:"todos", pos:"todas", data:null, modulo:null};
+async function cargarGerOp(){
+  const v = $("#v-gerop"), g = S.gop; if (!S.esGer) return;
+  if (g.modulo !== S.modulo) { g.modulo = S.modulo; g.data = null; g.persona = "todos"; g.pos = "todas"; }
+  if (!g.data) v.innerHTML = `<div class="loading">Cargando Gerencia…</div>`;
+  try {
+    if (!S.op.loaded) await cargarCatalogoOp();
+    const esM = S.modulo === "mecanico", posiciones = esM ? ["M"] : (g.pos === "todas" ? ["F","L","R"] : [g.pos]);
+    const q = sb.from("op_reportes").select("*").gte("fecha", g.desde).lte("fecha", g.hasta).in("posicion", posiciones).order("fecha", {ascending:false});
+    const [re, pe, da] = await Promise.all([q, sb.from("hor_personal").select("id,nombre,perfil_id,activo,orden,grupo").order("orden"),
+      sb.from("op_danos").select("*").or(`estado.eq.abierto,and(fecha.gte.${g.desde},fecha.lte.${g.hasta})`).order("creado_en", {ascending:false})]);
+    const bad = [re, pe, da].find(x => x.error); if (bad) throw bad.error;
+    const ids = re.data.map(r => r.id);
+    const [rs, va] = await Promise.all([ids.length ? sb.from("op_respuestas").select("*").in("reporte_id", ids) : {data:[]}, ids.length ? sb.from("op_validaciones").select("*").in("reporte_id", ids) : {data:[]}]);
+    if (rs.error || va.error) throw (rs.error || va.error);
+    g.data = {todos: re.data, reps: g.persona === "todos" ? re.data : re.data.filter(r => r.personal_id === g.persona), per: Object.fromEntries(pe.data.map(p => [p.id, p])), danos: da.data,
+      resp: rs.data.reduce((o, x) => ((o[x.reporte_id] = o[x.reporte_id] || {})[x.item_id] = x, o), {}), val: Object.fromEntries(va.data.map(x => [x.reporte_id, x]))};
+  } catch(x){ v.innerHTML = `<div class="empty"><strong>No se pudo cargar</strong>${esc(errMsg(x))}</div>`; return; }
+  if (S.view === "gerop" && !$("#ov")) renderGerOp();
+}
+function renderGerOp(){
+  const v = $("#v-gerop"), g = S.gop, u = g.data, esM = S.modulo === "mecanico", reps = u.reps;
+  const st = r => statsOp(r.posicion, r.fecha, u.resp[r.id] || {});
+  const firm = reps.filter(r => r.estado === "firmado"), val = firm.filter(r => u.val[r.id]).length;
+  let n = 0, okN = 0; firm.forEach(r => { const s = st(r); n += s.n; okN += Math.round(s.cumpl * s.n / 100); });
+  const cumpl = n ? Math.round(100 * okN / n) : null;
+  const danosP = u.danos.filter(d => d.fecha >= g.desde && d.fecha <= g.hasta), abiertos = u.danos.filter(d => d.estado === "abierto");
+  const ids = new Set(u.todos.map(r => r.personal_id)), personas = Object.values(u.per).filter(p => ids.has(p.id) || (esM && p.activo && p.grupo === "Mecánico")).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  let extra = "";
+  if (esM) {
+    const disp = firm.map(r => dispFlota(r.datos || {})).filter(x => x != null), prom = disp.length ? Math.round(disp.reduce((a, b) => a + b, 0) / disp.length) : null;
+    extra = kpi("Disponibilidad de flota", prom, "%", `Promedio de los firmados · meta ${META_FLOTA}% · ${disp.filter(x => x < META_FLOTA).length} días bajo la meta`, cls(prom, META_FLOTA, 85))
+      + kpi("Daños atendidos", danosP.filter(d => d.estado === "cerrado").length, "", `de ${plural(danosP.length, "daño reportado", "daños reportados")} en el periodo`, "")
+      + kpi("Daños abiertos", abiertos.length, "", "Pendientes de reparación hoy", abiertos.length ? "crit" : "ok");
+  } else {
+    const L = firm.filter(r => r.posicion === "L" && (r.datos || {}).carritos_listos != null).map(r => +r.datos.carritos_listos), promL = L.length ? Math.round(L.reduce((a, b) => a + b, 0) / L.length) : null;
+    const R = firm.filter(r => r.posicion === "R" && (r.datos || {}).nivel_bolas), alertaR = R.filter(r => r.datos.nivel_bolas !== "suficientes").length;
+    extra = kpi("Carritos listos", promL, "", `Promedio por turno · meta ${META_CARRITOS} · ${L.filter(x => x < META_CARRITOS).length} turnos bajo la meta`, promL == null ? "" : promL >= META_CARRITOS ? "ok" : "warn")
+      + kpi("Bolas de práctica", alertaR, "", `turnos con bolas bajas o agotadas, de ${R.length}`, alertaR ? "warn" : "ok")
+      + kpi("Daños de carritos", danosP.length, "", `reportados en el periodo · ${abiertos.length} abiertos`, abiertos.length ? "crit" : "ok");
+  }
+  const nomMod = esM ? "Mecánico" : "Staff";
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Gerencia de Operaciones · ${nomMod}</div><h1>Panel de control</h1>
+      <p class="sub">${esc(fechaCorta(g.desde))} – ${esc(fechaCorta(g.hasta))} · ${plural(reps.length, "checklist")} · ${firm.length - val} por validar</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="goRef" type="button">Actualizar</button><button class="btn" id="goXlsx" type="button">Exportar a Excel</button></div></div>
+    <div class="filters panel" style="padding:12px"><label class="f">Desde<input type="date" id="goDesde" value="${g.desde}"></label><label class="f">Hasta<input type="date" id="goHasta" value="${g.hasta}"></label>
+      <label class="f">Colaborador<select id="goPer"><option value="todos">Todos</option>${personas.map(p => `<option value="${p.id}" ${g.persona===p.id?"selected":""}>${esc(p.nombre)}</option>`).join("")}</select></label>
+      ${esM ? "" : `<label class="f">Posición<select id="goPos"><option value="todas">Frente, Carritos y Range</option>${["F","L","R"].map(k => `<option value="${k}" ${g.pos===k?"selected":""}>${POS[k]}</option>`).join("")}</select></label>`}</div>
+    <div class="kpis">
+      ${kpi("Cumplimiento del checklist", cumpl, "%", "Sí + N/A justificadas, sobre lo respondido", cls(cumpl, 95, 85))}
+      ${kpi("Checklists validados", firm.length ? Math.round(100 * val / firm.length) : null, "%", `${val} de ${firm.length} firmados · meta 100%`, cls(firm.length ? Math.round(100 * val / firm.length) : null))}
+      ${kpi("Checklists firmados", reps.length ? Math.round(100 * firm.length / reps.length) : null, "%", `${firm.length} de ${plural(reps.length, "iniciado", "iniciados")}`, cls(reps.length ? Math.round(100 * firm.length / reps.length) : null))}
+      ${extra}
+    </div>
+    <div class="panel" id="goCorreos"></div>
+    ${reps.length ? `<div class="tablewrap"><table><thead><tr><th>Fecha</th>${esM ? "" : "<th>Posición</th>"}<th>Colaborador</th><th>Cumpl.</th><th>No</th><th>${esM ? "Flota" : "Dato del puesto"}</th><th>Estado</th></tr></thead><tbody>
+      ${reps.map(r => { const s = st(r), d = r.datos || {}, dato = r.posicion === "M" ? (dispFlota(d) != null ? `${dispFlota(d)}% · ${d.flota_fuera} fuera` : "—") : r.posicion === "L" ? (d.carritos_listos != null ? `${d.carritos_listos} carritos listos` : "—") : r.posicion === "R" ? (d.nivel_bolas ? "Bolas " + NIVEL_BOLAS[d.nivel_bolas].toLowerCase() : "—") : "—";
+        const noN = Object.values(u.resp[r.id] || {}).filter(x => x.valor === "no").length;
+        return `<tr class="click" data-go="${r.id}"><td class="num">${esc(fechaCorta(r.fecha))}</td>${esM ? "" : `<td>${esc(POS[r.posicion])}</td>`}<td>${esc((u.per[r.personal_id] || {}).nombre || "—")}</td>
+        <td class="num">${r.estado === "firmado" ? s.cumpl + "%" : `${s.n}/${s.total}`}</td><td class="num">${noN}</td><td>${esc(dato)}</td><td>${pillEstado(r.estado === "firmado", u.val[r.id])}</td></tr>`; }).join("")}
+      </tbody></table></div>` : `<div class="empty"><strong>Sin checklists en este periodo</strong>${esM ? "El checklist diario del Mecánico" : "Los checklists de Frente, Carritos y Driving Range"} aparecen aquí para su revisión y validación.</div>`}`;
+  $("#goDesde").onchange = e => { g.desde = e.target.value || g.desde; cargarGerOp(); };
+  $("#goHasta").onchange = e => { g.hasta = e.target.value || g.hasta; cargarGerOp(); };
+  $("#goPer").onchange = e => { g.persona = e.target.value; u.reps = g.persona === "todos" ? u.todos : u.todos.filter(r => r.personal_id === g.persona); renderGerOp(); };
+  if ($("#goPos")) $("#goPos").onchange = e => { g.pos = e.target.value; cargarGerOp(); };
+  $("#goRef").onclick = cargarGerOp; $("#goXlsx").onclick = exportarGerOp;
+  v.querySelectorAll("tr[data-go]").forEach(tr => tr.onclick = () => verReporteOp(tr.dataset.go, u, cargarGerOp));
+  pintarCorreosRep($("#goCorreos"), g.desde, g.hasta, x => x.modulo === "staff" && (esM ? x.detalle === "Mecánico" : x.detalle !== "Mecánico"));
+}
+async function exportarGerOp(){
+  const b = $("#goXlsx"), g = S.gop, u = g.data, esM = S.modulo === "mecanico", nomMod = esM ? "Mecanico" : "Staff"; b.disabled = true; b.textContent = "Preparando…";
+  try {
+    await cargarScript(XLSX_URL);
+    const nom = r => (u.per[r.personal_id] || {}).nombre || "";
+    const resumen = u.reps.map(r => { const s = statsOp(r.posicion, r.fecha, u.resp[r.id] || {}), d = r.datos || {}, vl = u.val[r.id], vals = Object.values(u.resp[r.id] || {});
+      const o = {"Fecha":r.fecha, "Posición":POS[r.posicion], "Colaborador":nom(r), "Respondidas":s.n, "Total":s.total, "Sí":vals.filter(x => x.valor === "si").length, "No":vals.filter(x => x.valor === "no").length, "N/A":vals.filter(x => x.valor === "na").length,
+        "Cumplimiento %":s.cumpl, "Estado":r.estado === "firmado" ? "Firmado" : "En curso", "Firmado":r.firmado_en ? hora(r.firmado_en) : "", "Validado":vl ? `${nm(vl.validado_por)} · ${new Date(vl.validado_en).toLocaleString("es-PA")}` : ""};
+      if (r.posicion === "L") Object.assign(o, {"Carritos listos":d.carritos_listos ?? "", "Carritos fuera de servicio":d.carritos_fuera ?? ""});
+      if (r.posicion === "R") o["Nivel de bolas"] = d.nivel_bolas ? NIVEL_BOLAS[d.nivel_bolas] : "";
+      if (r.posicion === "M") Object.assign(o, {"Carritos operativos":d.flota_operativos ?? "", "Fuera de servicio":d.flota_fuera ?? "", "Disponibilidad %":dispFlota(d) ?? ""});
+      return Object.assign(o, {"Observaciones":r.observaciones || "", "Entrega de pendientes":r.entrega || ""}); });
+    const registro = u.reps.flatMap(r => itemsOp(r.posicion, r.fecha).flatMap(a => a.items.map(i => filaRegistro(r.fecha, esM ? "Mecánico" : "Staff", POS[r.posicion], nom(r), a.nombre, i, (u.resp[r.id] || {})[i.id]))));
+    const danos = u.danos.filter(d => d.fecha >= g.desde && d.fecha <= g.hasta || d.estado === "abierto").map(d => ({"Fecha":d.fecha, "Hora":hora(d.creado_en), "Carrito":d.carrito, "Descripción":d.descripcion,
+      "Fuera de servicio":d.fuera_servicio ? "Sí" : "No", "Reportado por":nm(d.reportado_por), "Estado":d.estado === "cerrado" ? "Atendido" : "Abierto", "Acción":d.accion || ""}));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen.length ? resumen : [{"Sin datos":""}]), esM ? "Mecánico" : "Staff");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(registro.length ? registro : [{"Sin datos":""}]), "Registro");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(danos.length ? danos : [{"Sin daños":""}]), "Daños a carritos");
+    XLSX.writeFile(wb, `SMGC_${nomMod}_${g.desde}_a_${g.hasta}.xlsx`);
+  } catch(e){ toast("No se pudo generar el Excel. " + errMsg(e)); }
+  b.disabled = false; b.textContent = "Exportar a Excel";
+}
+
 function editarTareasOp(){
   const dias = [["", "Todos los días"], ...[1,2,3,4,5,6,7].map(n => [String(n), "Solo los " + DIAS_CORTOS[n]])];
   openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Tareas de los puestos</h2><button class="btn ghost x" data-x type="button">Cerrar</button></div>
