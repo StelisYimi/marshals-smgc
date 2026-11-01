@@ -139,6 +139,19 @@ input:disabled,select:disabled,textarea:disabled{opacity:.7}
 .seg button[aria-pressed="true"][data-v="na"]{background:var(--muted);color:var(--paper)}
 .seg button:disabled{cursor:default}
 .item input.note.req{border-color:var(--warn)}
+/* Checklist libre: cualquier orden, con filtro y avance a la siguiente pendiente */
+.chk-bar{position:sticky;top:var(--chk-top,64px);z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.06)}
+.chk-bar .chips{flex:1 1 auto}
+.chk-bar .chip .n{font-family:var(--f-mono);opacity:.75;margin-left:4px}
+.item.hecha .item-text::before{content:"✓ ";color:var(--ok);font-weight:700}
+.item.flash{animation:chkFlash 1.4s ease}
+@keyframes chkFlash{0%,100%{background:transparent}25%{background:var(--gold-soft)}}
+.item.saliendo{animation:chkOut .45s ease forwards}
+@keyframes chkOut{to{opacity:0;transform:translateX(16px)}}
+.f-pend .item.hecha,.f-pend .area.completa,.f-hechas .item:not(.hecha),.f-hechas .area.vacia{display:none}
+.chk-vacio{padding:18px;text-align:center;border:1px dashed var(--line-strong);border-radius:10px;color:var(--muted)}
+.item.editando{display:grid!important}
+.chk-vacio b{display:block;color:var(--ok);font-size:16px;margin-bottom:4px}
 .hint{font-size:12px;color:var(--muted)}
 .hint.warn{color:var(--warn);font-weight:600}
 
@@ -496,6 +509,60 @@ const plural = (n, s, p) => `${n} ${n === 1 ? s : (p || s + "s")}`;
 function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 3200); }
 function lsGet(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
 function lsSet(k, v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+
+/* ===== Checklist libre (todos los módulos): cualquier tarea en cualquier orden.
+   Cada actividad confirmada se marca ✓, sale de "Pendientes" y la app lleva a la siguiente pendiente. ===== */
+let chkF = lsGet("smgc_chk_filtro") || "pend";
+function chkBar(ro){ return ro ? "" : `<div class="chk-bar" data-chkbar>
+  <div class="chips" role="group" aria-label="Mostrar actividades">${[["pend","Pendientes"],["hechas","Confirmadas"],["todas","Todas"]].map(([k, l]) => `<button type="button" class="chip" data-chkf="${k}" aria-pressed="${chkF === k}">${l}<span class="n" data-chkn="${k}"></span></button>`).join("")}</div>
+  <button type="button" class="btn small gold" data-chksig>Siguiente pendiente ↓</button></div>`; }
+function chkOk(it){ // confirmada = respondida y, si hace falta, justificada
+  const b = it.querySelector('.seg button[aria-pressed="true"]'); if (!b) return false;
+  if (b.dataset.v === "si") return true;
+  const n = it.querySelector("input.note"), t = !!(n && n.value.trim());
+  return (it.dataset.req === "nona" || b.dataset.v === "na") ? t : true; }
+function chkBarDe(cont){ const p = cont && cont.previousElementSibling; return p && p.matches("[data-chkbar]") ? p : null; }
+function chkSync(cont, saltar){
+  if (!cont) return; const bar = chkBarDe(cont), f = bar ? chkF : "todas";
+  const hd = document.querySelector("header"); if (hd) document.documentElement.style.setProperty("--chk-top", (hd.getBoundingClientRect().height + 8) + "px");
+  const its = [...cont.querySelectorAll(".item")];
+  its.forEach(i => { if (i === saltar) return; const ok = chkOk(i); i.classList.toggle("hecha", ok); if (ok) i.classList.remove("editando"); });
+  cont.querySelectorAll("details.area").forEach(d => { const a = d.querySelectorAll(".item"), h = d.querySelectorAll(".item.hecha"); d.classList.toggle("completa", !!a.length && h.length === a.length); d.classList.toggle("vacia", !h.length); });
+  cont.classList.toggle("f-pend", f === "pend"); cont.classList.toggle("f-hechas", f === "hechas");
+  const h = its.filter(i => i.classList.contains("hecha")).length;
+  if (bar) { const set = (k, n) => { const e = bar.querySelector(`[data-chkn="${k}"]`); if (e) e.textContent = n; }; set("pend", its.length - h); set("hechas", h); set("todas", its.length); bar.querySelector("[data-chksig]").hidden = h === its.length; }
+  let v = cont.querySelector(":scope > .chk-vacio"); const vac = its.length && ((f === "pend" && h === its.length) || (f === "hechas" && !h));
+  if (vac && !v) { v = document.createElement("div"); v.className = "chk-vacio"; cont.appendChild(v); }
+  if (v) { v.hidden = !vac; v.innerHTML = f === "pend" ? "<b>Todas las actividades están confirmadas</b>Complete el cierre del turno y firme." : "Aún no hay actividades confirmadas."; }
+}
+function chkSiguiente(cont, desde){
+  if (!cont) return; const pend = [...cont.querySelectorAll(".item:not(.hecha)")];
+  if (!pend.length) { toast("Checklist completo. Ya puede firmar."); return; }
+  let nx = desde ? pend.find(i => i !== desde && (desde.compareDocumentPosition(i) & Node.DOCUMENT_POSITION_FOLLOWING)) : null; nx = nx || pend.find(i => i !== desde) || pend[0];
+  const d = nx.closest("details"); if (d && !d.open) d.open = true;
+  const hd = document.querySelector("header"), bar = chkBarDe(cont), off = (hd ? hd.getBoundingClientRect().height : 0) + (bar ? bar.getBoundingClientRect().height : 0) + 24, r = nx.getBoundingClientRect();
+  if (!desde || r.top < off || r.bottom > innerHeight - 20) window.scrollTo({top: r.top + scrollY - off, behavior:"smooth"});
+  nx.classList.remove("flash"); void nx.offsetWidth; nx.classList.add("flash");
+}
+function chkTras(cont, id){ // después de responder o justificar una actividad
+  if (!cont) return; const it = cont.querySelector(`.item[data-i="${CSS.escape(id)}"]`); if (!it) return;
+  const escribiendo = document.activeElement && document.activeElement.matches("input.note") && it.contains(document.activeElement);
+  if (!chkOk(it) || escribiendo) { it.classList.add("editando"); chkSync(cont, it); return; } // espera la observación
+  const fin = () => { it.classList.remove("saliendo"); chkSync(cont); chkSiguiente(cont, it); };
+  if (chkBarDe(cont) && chkF === "pend") { it.classList.add("saliendo"); chkSync(cont, it); clearTimeout(it._t); it._t = setTimeout(fin, 450); } else fin();
+}
+document.addEventListener("click", e => {
+  const f = e.target.closest("[data-chkf]");
+  if (f) { chkF = f.dataset.chkf; lsSet("smgc_chk_filtro", chkF);
+    document.querySelectorAll("[data-chkbar]").forEach(b => { b.querySelectorAll("[data-chkf]").forEach(x => x.setAttribute("aria-pressed", x.dataset.chkf === chkF)); const c = b.nextElementSibling; chkSync(c);
+      if (c) c.querySelectorAll("details.area").forEach(d => { if (chkF === "hechas" ? !d.classList.contains("vacia") : !d.classList.contains("completa")) d.open = true; }); });
+    return; }
+  const s = e.target.closest("[data-chksig]"); if (s) chkSiguiente(s.closest("[data-chkbar]").nextElementSibling);
+});
+document.addEventListener("focusout", e => { // al terminar de escribir la observación o justificación, la actividad queda confirmada
+  if (!e.target.matches(".item input.note")) return; const it = e.target.closest(".item"), c = it && it.parentElement.closest("[data-chkcont]");
+  setTimeout(() => { if (c && it.isConnected && chkOk(it) && !it.classList.contains("hecha")) chkTras(c, it.dataset.i); }, 0); });
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.matches(".item input.note")) e.target.blur(); });
 function tempPass(){ const w = ["Fairway","Green","Birdie","Eagle","Bunker","Tee","Par","Hoyo"]; return w[Math.floor(Math.random()*w.length)] + "-" + String(Math.floor(1000 + Math.random()*9000)) + "-" + "SMGC"; }
 function errMsg(e){
   const m = (e && (e.message || e.error_description || e.error)) || String(e || "");
@@ -726,7 +793,7 @@ function renderTurno(){
   v.innerHTML = `
   <div class="head">
     <div><div class="eyebrow">${esc(TURNOS[S.turno])}</div><h1>${esc(fechaLarga(S.fecha))}</h1>
-    <p class="sub">${firmado ? (S.valid ? "Turno firmado y validado por Gerencia." : "Turno firmado. Pendiente de validación del Gerente de Operaciones.") : "Responda cada actividad con Sí, No o N/A. Las respuestas N/A necesitan justificación."}</p></div>
+    <p class="sub">${firmado ? (S.valid ? "Turno firmado y validado por Gerencia." : "Turno firmado. Pendiente de validación del Gerente de Operaciones.") : "Confirme las actividades en el orden que quiera, con Sí, No o N/A. Las respuestas N/A necesitan justificación."}</p></div>
     <div class="statusbar">${firmado ? `<span class="pill ${S.valid ? "p-ok" : "p-gold"}">${S.valid ? "Validado" : "Firmado"}</span>` : `<span class="pill p-draft">Borrador</span><span class="saved" id="saveStatus"></span>`}</div>
   </div>
   ${h ? `<div class="handoff"><div class="eyebrow">Entrega del turno anterior</div>
@@ -744,7 +811,7 @@ function renderTurno(){
     </div>
     <div class="stack g-check">
       <div class="progress panel" style="padding:12px 16px"><span class="mono" id="progTxt">${st.answered}/${st.total}</span><div class="bar"><i id="progBar" style="width:${st.total ? Math.round(100*st.answered/st.total) : 0}%"></i></div><span class="mono" id="cumplTxt" title="Cumplimiento">${st.cumpl}%</span></div>
-      <div id="areas" class="stack" style="gap:10px"></div>
+      ${chkBar(firmado)}<div id="areas" data-chkcont class="stack" style="gap:10px"></div>
     </div>
     <div class="stack g-side" style="gap:16px">
       <div class="panel"><h2>Incidencias de este turno <span class="pill p-ord">${misInc.length}</span></h2>
@@ -787,18 +854,19 @@ function renderAreas(ro){
   const el = $("#areas");
   el.innerHTML = S.areas.map((a, ai) => {
     const n = a.items.filter(it => S.resp[it.id]).length;
-    const open = S.openAreas ? S.openAreas.includes(a.codigo) : (!ro && n < a.items.length && S.areas.slice(0, ai).every(p => p.items.every(it => S.resp[it.id])));
+    const open = S.openAreas ? S.openAreas.includes(a.codigo) : (!ro && n < a.items.length);
     return `<details class="area" data-a="${a.codigo}" ${open?"open":""}>
       <summary><span class="letter">${a.codigo}</span><span class="aname">${esc(a.nombre)}</span><span class="acount ${n===a.items.length?"done":""}" data-cnt="${a.codigo}">${n}/${a.items.length}</span><span class="chev">›</span></summary>
       ${a.nota ? `<div class="note-area">${esc(a.nota)}</div>` : ""}
       ${a.items.map(it => itemHTML(it, S.resp[it.id], ro)).join("")}</details>`;
   }).join("");
+  chkSync(el);
   if (ro) return;
   el.onclick = e => {
     const b = e.target.closest(".seg button"); if (!b) return;
     const id = b.closest(".item").dataset.i, prev = S.resp[id] || {};
     setResp(id, {valor:b.dataset.v, nota:prev.nota || null, respondido_en:new Date().toISOString()});
-    refreshItem(id);
+    refreshItem(id); chkTras(el, id);
   };
   el.oninput = e => {
     if (!e.target.classList.contains("note")) return;
@@ -2853,7 +2921,7 @@ function renderTurnoSt(){
   const caps = Object.values(S.perfiles).filter(x => x.activo && x.rol === "capitan");
   v.innerHTML = `
   <div class="head"><div><div class="eyebrow">${esc(TURNOS[st.turno])} · Starter</div><h1>${esc(fechaLarga(st.fecha))}</h1>
-    <p class="sub">${ro ? (st.val ? `Turno firmado y validado por ${esc(nm(st.val.validado_por))}.` : "Turno firmado. Pendiente de validación del Capitán.") : "Responda cada actividad con Sí, No o N/A. Las respuestas N/A necesitan justificación."}</p></div>
+    <p class="sub">${ro ? (st.val ? `Turno firmado y validado por ${esc(nm(st.val.validado_por))}.` : "Turno firmado. Pendiente de validación del Capitán.") : "Confirme las actividades en el orden que quiera, con Sí, No o N/A. Las respuestas N/A necesitan justificación."}</p></div>
     <div class="statusbar">${ro ? `<span class="pill ${st.val ? "p-ok" : "p-gold"}">${st.val ? "Validado" : "Firmado"}</span>` : `<span class="pill p-draft">Borrador</span><span class="saved" id="stSave"></span>`}</div></div>
   <div class="panel"><div class="fields">
     <label class="f">Turno<select id="stTurno">${Object.entries(TURNO_CORTO).map(([k, l]) => `<option value="${k}" ${k===st.turno?"selected":""}>${l} · ${k==="apertura"?"5–13 h":"11–19 h"}</option>`).join("")}</select></label>
@@ -2866,7 +2934,7 @@ function renderTurnoSt(){
   ${esFinde(st.fecha) ? `<div class="callout gold">Hoy es fin de semana: de 3:00 a 7:00 p. m. cumple funciones de Marshal. Registre las incidencias en el módulo Marshals.</div>` : ""}
   <div class="panel" id="stMetas"></div>
   <div class="progress panel" style="padding:12px 16px"><span class="mono" id="stProg">${s2.answered}/${s2.total}</span><div class="bar"><i id="stBar" style="width:${s2.total ? Math.round(100*s2.answered/s2.total) : 0}%"></i></div><span class="mono" id="stCum">${s2.cumpl}%</span></div>
-  <div id="stAreas" class="stack" style="gap:10px"></div>
+  ${chkBar(ro)}<div id="stAreas" data-chkcont class="stack" style="gap:10px"></div>
   <div class="panel"><h2>Cierre del turno</h2><div class="stack" style="gap:10px">
     <label class="f">Observaciones<textarea id="stObs" ${dis} placeholder="Demoras, cruces lentos, reclamos, relevos…">${esc(d.observaciones || "")}</textarea></label>
     <label class="f">Pendientes para el siguiente turno<textarea id="stPend" ${dis} placeholder="Salidas por coordinar, materiales por reponer…">${esc(d.pendientes || "")}</textarea></label>
@@ -2874,7 +2942,7 @@ function renderTurnoSt(){
          : `<div id="stHint" class="hint"></div><button class="btn gold" id="stSign" type="button">Firmar reporte del turno</button>`}
   </div></div>`;
   renderAreasSt(ro); updSaveSt(); updHintSt(); renderMetasSt();
-  $("#stIr").onclick = () => { const el = $("#stAreas"); const first = itemsStDia().find(i => !st.resp[i.id]); const dd = first && el.querySelector(`details[data-a="${first.area}"]`); if (dd) dd.open = true; const t = dd || el, hd = document.querySelector("header"); window.scrollTo({top: t.getBoundingClientRect().top + scrollY - (hd ? hd.getBoundingClientRect().height : 0) - 12, behavior:"smooth"}); };
+  $("#stIr").onclick = () => chkSiguiente($("#stAreas"));
   $("#stSal").onclick = () => { S.tee.fecha = hoyISO(); S.tee.loaded = false; S.tee.hoyo = String(+draftSt().tee || 1); try { localStorage.setItem("smgc_tee_hoyo", S.tee.hoyo); } catch(e){} go("salidas"); };
   $("#stTurno").onchange = async e => { await flushSt(); st.turno = e.target.value; st.loaded = false; st.openAreas = null; renderTurnoSt(); };
   if (ro) return;
@@ -2889,15 +2957,16 @@ function renderAreasSt(ro){
   const areas = st.areas.map(a => ({...a, items: a.items.filter(i => dia.has(i.id))})).filter(a => a.items.length);
   el.innerHTML = areas.map((a, ai) => {
     const n = a.items.filter(it => st.resp[it.id]).length;
-    const open = st.openAreas ? st.openAreas.includes(a.codigo) : (!ro && n < a.items.length && areas.slice(0, ai).every(q => q.items.every(it => st.resp[it.id])));
+    const open = st.openAreas ? st.openAreas.includes(a.codigo) : (!ro && n < a.items.length);
     return `<details class="area" data-a="${a.codigo}" ${open ? "open" : ""}><summary><span class="letter">${a.codigo}</span><span class="aname">${esc(a.nombre)}</span><span class="acount ${n===a.items.length?"done":""}" data-scnt="${a.codigo}">${n}/${a.items.length}</span><span class="chev">›</span></summary>
       ${a.nota ? `<div class="note-area">${esc(a.nota)}</div>` : ""}${a.items.map(it => itemCapHTML(it, st.resp[it.id], ro).replace(`id="cn-${it.id}"`, `id="sn-${it.id}"`)).join("")}</details>`;
   }).join("");
+  chkSync(el);
   if (ro) return;
   el.onclick = e => { const b = e.target.closest(".seg button"); if (!b) return; const id = b.closest(".item").dataset.i, prev = st.resp[id] || {};
     setRespSt(id, {valor:b.dataset.v, nota:prev.nota || null, respondido_en:new Date().toISOString()});
     const old = b.closest(".item"), w = document.createElement("div"); w.innerHTML = itemCapHTML(st.items.find(x => x.id === id), st.resp[id], false).replace(`id="cn-${id}"`, `id="sn-${id}"`); old.replaceWith(w.firstElementChild);
-    if (b.dataset.v !== "si") { const n = $("#sn-" + id); if (n && !n.value) n.focus(); } updProgSt(); };
+    if (b.dataset.v !== "si") { const n = $("#sn-" + id); if (n && !n.value) n.focus(); } updProgSt(); chkTras(el, id); };
   el.oninput = e => { if (!e.target.classList.contains("note")) return; const id = e.target.closest(".item").dataset.i, r = st.resp[id]; if (!r) return;
     setRespSt(id, {...r, nota:e.target.value}); e.target.classList.toggle("req", r.valor === "na" && !e.target.value.trim()); updProgSt(); };
 }
@@ -3080,7 +3149,7 @@ function renderTurnoCap(){
   const bajos = p ? INSUMOS.filter(([k]) => ["bajo","agotado"].includes(((p.inventario || {})[k] || {}).nivel)) : [];
   v.innerHTML = `
   <div class="head"><div><div class="eyebrow">${esc(TURNOS[ct.turno])} · Capitán de equipos</div><h1>${esc(fechaLarga(ct.fecha))}</h1>
-    <p class="sub">${ro ? (ct.val ? "Turno firmado y validado por el Gerente de Operaciones." : "Turno firmado. Pendiente de validación del Gerente de Operaciones.") : "Responda cada actividad con Sí, No o N/A. Las respuestas N/A necesitan justificación."}</p></div>
+    <p class="sub">${ro ? (ct.val ? "Turno firmado y validado por el Gerente de Operaciones." : "Turno firmado. Pendiente de validación del Gerente de Operaciones.") : "Confirme las actividades en el orden que quiera, con Sí, No o N/A. Las respuestas N/A necesitan justificación."}</p></div>
     <div class="statusbar">${ro ? `<span class="pill ${ct.val ? "p-ok" : "p-gold"}">${ct.val ? "Validado" : "Firmado"}</span>` : `<span class="pill p-draft">Borrador</span><span class="saved" id="ctSave"></span>`}</div></div>
   <button class="btn gold block" id="ctIr" type="button" style="padding:14px 16px">Ir al checklist · <span id="ctIrN">${st.answered}/${st.total}</span> ↓</button>
   ${p ? `<div class="handoff"><div class="eyebrow">Entrega del turno anterior</div><div><b>${esc(nm(p.capitan_id))}</b> · ${esc(fechaCorta(p.fecha))} · ${esc(TURNO_CORTO[p.turno])} · firmado ${hora(p.firmado_en)}</div>
@@ -3112,7 +3181,7 @@ function renderTurnoCap(){
     </div>
     <div class="stack g-check">
       <div class="progress panel" style="padding:12px 16px"><span class="mono" id="ctProg">${st.answered}/${st.total}</span><div class="bar"><i id="ctBar" style="width:${st.total ? Math.round(100*st.answered/st.total) : 0}%"></i></div><span class="mono" id="ctCum">${st.cumpl}%</span></div>
-      <div id="ctAreas" class="stack" style="gap:10px"></div>
+      ${chkBar(ro)}<div id="ctAreas" data-chkcont class="stack" style="gap:10px"></div>
     </div>
     <div class="stack g-side" style="gap:16px">
       <div class="panel"><h2>Cierre del turno</h2><div class="stack" style="gap:10px">
@@ -3124,7 +3193,7 @@ function renderTurnoCap(){
     </div>
   </div>`;
   renderAreasCap(ro); updSaveCap(); updHintCap();
-  $("#ctIr").onclick = () => { const el = $("#ctAreas"); const first = ct.items.find(i => !ct.resp[i.id]); const d = first && el.querySelector(`details[data-a="${first.area}"]`); if (d) d.open = true; const t = d || el, hd = document.querySelector("header"); window.scrollTo({top: t.getBoundingClientRect().top + scrollY - (hd ? hd.getBoundingClientRect().height : 0) - 12, behavior:"smooth"}); };
+  $("#ctIr").onclick = () => chkSiguiente($("#ctAreas"));
   $("#ctTurno").onchange = async e => { await flushCap(); ct.turno = e.target.value; ct.loaded = false; ct.openAreas = null; renderTurnoCap(); };
   if (ro) return;
   v.querySelectorAll("[data-c]").forEach(el => el.oninput = el.onchange = () => {
@@ -3148,15 +3217,16 @@ function renderAreasCap(ro){
   const ct = S.ct, el = $("#ctAreas");
   el.innerHTML = ct.areas.map((a, ai) => {
     const n = a.items.filter(it => ct.resp[it.id]).length;
-    const open = ct.openAreas ? ct.openAreas.includes(a.codigo) : (!ro && n < a.items.length && ct.areas.slice(0, ai).every(p => p.items.every(it => ct.resp[it.id])));
+    const open = ct.openAreas ? ct.openAreas.includes(a.codigo) : (!ro && n < a.items.length);
     return `<details class="area" data-a="${a.codigo}" ${open ? "open" : ""}><summary><span class="letter">${a.codigo}</span><span class="aname">${esc(a.nombre)}</span><span class="acount ${n===a.items.length?"done":""}" data-ccnt="${a.codigo}">${n}/${a.items.length}</span><span class="chev">›</span></summary>
       ${a.nota ? `<div class="note-area">${esc(a.nota)}</div>` : ""}${a.items.map(it => itemCapHTML(it, ct.resp[it.id], ro)).join("")}</details>`;
   }).join("");
+  chkSync(el);
   if (ro) return;
   el.onclick = e => { const b = e.target.closest(".seg button"); if (!b) return; const id = b.closest(".item").dataset.i, prev = ct.resp[id] || {};
     setRespCap(id, {valor:b.dataset.v, nota:prev.nota || null, respondido_en:new Date().toISOString()});
     const old = b.closest(".item"), w = document.createElement("div"); w.innerHTML = itemCapHTML(ct.items.find(x => x.id === id), ct.resp[id], false); old.replaceWith(w.firstElementChild);
-    if (b.dataset.v !== "si") { const n = $("#cn-" + id); if (n && !n.value) n.focus(); } updProgCap(); };
+    if (b.dataset.v !== "si") { const n = $("#cn-" + id); if (n && !n.value) n.focus(); } updProgCap(); chkTras(el, id); };
   el.oninput = e => { if (!e.target.classList.contains("note")) return; const id = e.target.closest(".item").dataset.i, r = ct.resp[id]; if (!r) return;
     setRespCap(id, {...r, nota:e.target.value}); e.target.classList.toggle("req", r.valor === "na" && !e.target.value.trim()); updProgCap(); };
 }
@@ -3569,7 +3639,7 @@ function statsOp(pos, fecha, resp){
 }
 function itemOpHTML(it, r, ro){
   const v = r && r.valor, show = v === "na" || v === "no" || (r && r.nota), falta = (v === "no" || v === "na") && !(r.nota || "").trim();
-  return `<div class="item" data-i="${it.id}"><div class="item-row"><div class="item-text">${esc(it.texto)}<span class="item-time">${it.id}${it.dia_semana ? ` · tarea de los ${DIAS_CORTOS[it.dia_semana]}` : ""}${r ? " · " + hora(r.respondido_en) : ""}</span></div>
+  return `<div class="item" data-i="${it.id}" data-req="nona"><div class="item-row"><div class="item-text">${esc(it.texto)}<span class="item-time">${it.id}${it.dia_semana ? ` · tarea de los ${DIAS_CORTOS[it.dia_semana]}` : ""}${r ? " · " + hora(r.respondido_en) : ""}</span></div>
     <div class="seg" role="group" aria-label="Respuesta">${Object.entries(VAL).map(([k, l]) => `<button type="button" data-v="${k}" aria-pressed="${v===k}" ${ro?"disabled":""}>${l}</button>`).join("")}</div></div>
     ${show ? `<input type="text" class="note ${falta ? "req" : ""}" id="on-${it.id}" value="${esc(r.nota||"")}" placeholder="${v === "na" ? "Por qué no aplica (obligatorio)" : "Por qué no se hizo y a quién se avisó (obligatorio)"}" ${ro?"disabled":""}>` : ""}</div>`;
 }
@@ -3628,8 +3698,8 @@ function renderMiPuesto(){
       <p class="hint ${dp != null && dp < META_FLOTA ? "warn" : ""}" style="margin:8px 0 0" id="mpDisp">${dp == null ? `Disponibilidad de la flota: meta ${META_FLOTA} %.` : `Disponibilidad ${dp} % · meta ${META_FLOTA} %${dp < META_FLOTA ? ". Informe al Gerente de Operaciones y al Capitán." : "."}`}</p></div>`; })() : ""}
     ${pos === "R" ? `<div class="panel"><h2>Bolas de práctica</h2><div class="chips" id="mpBolas">${Object.entries(NIVEL_BOLAS).map(([k, l]) => `<button type="button" class="chip" data-b="${k}" aria-pressed="${datos.nivel_bolas === k}" ${dis}>${l}</button>`).join("")}</div></div>` : ""}
     <div class="progress panel" style="padding:12px 16px"><span class="mono" id="mpProg">${st.n}/${st.total}</span><div class="bar"><i id="mpBar" style="width:${st.total ? Math.round(100 * st.n / st.total) : 0}%"></i></div><span class="mono" id="mpCum">${st.cumpl}%</span></div>
-    <div id="mpAreas" class="stack" style="gap:10px">${itemsOp(pos, m.fecha).map((a, ai, arr) => { const n = a.items.filter(i => resp[i.id]).length;
-      const open = abiertas ? abiertas.includes(a.codigo) : (!ro && n < a.items.length && arr.slice(0, ai).every(q => q.items.every(i => resp[i.id])));
+    ${chkBar(ro)}<div id="mpAreas" data-chkcont class="stack" style="gap:10px">${itemsOp(pos, m.fecha).map((a, ai, arr) => { const n = a.items.filter(i => resp[i.id]).length;
+      const open = abiertas ? abiertas.includes(a.codigo) : (!ro && n < a.items.length);
       return `<details class="area" data-a="${a.codigo}" ${open ? "open" : ""}><summary><span class="letter">${a.codigo}</span><span class="aname">${esc(a.nombre)}</span><span class="acount ${n === a.items.length ? "done" : ""}" data-ocnt="${a.codigo}">${n}/${a.items.length}</span><span class="chev">›</span></summary>
         ${a.nota ? `<div class="note-area">${esc(a.nota)}</div>` : ""}${a.items.map(i => itemOpHTML(i, resp[i.id], ro)).join("")}</details>`; }).join("")}</div>
     <div class="panel"><h2>Daños a carritos</h2>
@@ -3644,6 +3714,7 @@ function renderMiPuesto(){
     </div></div>`}`;
   v.querySelectorAll("#mpPos [data-p]").forEach(b => b.onclick = () => { m.pos = b.dataset.p; renderMiPuesto(); });
   if (!pos) return;
+  chkSync($("#mpAreas"));
   $("#mpDano").onclick = () => reportarDano(pos);
   v.querySelectorAll("[data-mcerrar]").forEach(b => b.onclick = async () => {
     const accion = prompt("¿Qué se hizo? (diagnóstico, reparación y repuestos usados)"); if (accion == null) return;
@@ -3657,7 +3728,7 @@ function renderMiPuesto(){
     resp[id] = row; m.resp[pos] = resp;
     const old = b.closest(".item"), w = document.createElement("div"); w.innerHTML = itemOpHTML(S.op.items.find(x => x.id === id), row, false); old.replaceWith(w.firstElementChild);
     if (b.dataset.v !== "si") { const n = $("#on-" + id); if (n && !n.value) n.focus(); }
-    updProgMp(); guardarRespOp(pos, id); };
+    updProgMp(); guardarRespOp(pos, id); chkTras(areas, id); };
   areas.oninput = e => { if (!e.target.classList.contains("note")) return; const id = e.target.closest(".item").dataset.i, r = resp[id]; if (!r) return;
     r.nota = e.target.value; e.target.classList.toggle("req", !e.target.value.trim()); updProgMp();
     clearTimeout(guardarRespOp["_" + id]); guardarRespOp["_" + id] = setTimeout(() => guardarRespOp(pos, id), 600); };
