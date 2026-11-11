@@ -2198,9 +2198,88 @@ async function ocrHor(cv, worker){
   if (!r || !r.filas.length) r = horarioDeLineas(String(data.text || "").split(/\r?\n/));
   return r;
 }
+// Tabla con líneas (captura del Excel del horario): ubica las líneas de la cuadrícula y lee cada casilla por separado.
+// Así se leen bien los nombres en blanco sobre rojo/azul/verde y las letras de función sueltas.
+function rejillaHor(cv){
+  const W = cv.width, H = cv.height, px = cv.getContext("2d", {willReadFrequently:true}).getImageData(0, 0, W, H).data;
+  const osc = new Uint8Array(W * H);   // 1 = línea o texto negro (los rellenos de color no cuentan)
+  for (let i = 0; i < W * H; i++) osc[i] = Math.max(px[4*i], px[4*i+1], px[4*i+2]) < 110 ? 1 : 0;
+  const tramos = (f, th, n) => { const out = []; for (let i = 0; i < n; i++) if (f(i) > th) { const u = out[out.length - 1]; if (u && i - u[1] <= 2) u[1] = i; else out.push([i, i]); } return out; };
+  const filaF = y => { let s = 0; for (let x = 0; x < W; x++) s += osc[y*W + x]; return s / W; };
+  const hr = tramos(filaF, 0.3, H), hs = hr.map(([a, b]) => (a + b) / 2), finH = y => hr[hs.indexOf(y)][1], iniH = y => hr[hs.indexOf(y)][0];
+  if (hs.length < 6) return null;
+  const sep = hs.slice(1).map((y, i) => y - hs[i]).sort((a, b) => a - b), med = sep[Math.floor(sep.length / 2)];
+  if (!(med > 8)) return null;
+  // Cuerpo: líneas seguidas con separación de una fila (o dos, si hay una fila en blanco)
+  let mej = [], cur = [hs[0]];
+  for (const y of hs.slice(1)) { const g = y - cur[cur.length - 1]; if (g >= 0.7 * med && g <= 2.7 * med) cur.push(y); else { if (cur.length > mej.length) mej = cur; cur = [y]; } }
+  if (cur.length > mej.length) mej = cur;
+  if (mej.length < 5) return null;
+  const top = mej[0], bot = mej[mej.length - 1], hi = hs.indexOf(top);
+  if (hi > 0 && top - hs[hi - 1] <= 4.5 * med) mej = [hs[hi - 1], ...mej];   // fila de encabezado (más alta)
+  const colF = x => { let s = 0; for (let y = Math.round(top); y < bot; y++) s += osc[y*W + x]; return s / (bot - top); };
+  const vr = tramos(colF, 0.4, W).filter(([a, b]) => b - a <= Math.max(4, med / 4)), vs = vr.map(([a, b]) => (a + b) / 2);
+  const finV = x => vr[vs.indexOf(x)][1], iniV = x => vr[vs.indexOf(x)][0];
+  if (vs.length < 8) return null;
+  const hay = (x, y0, y1) => { let n = 0; for (let y = y0; y < y1; y++) { const r = y*W; if (osc[r + Math.round(x) - 1] || osc[r + Math.round(x)] || osc[r + Math.round(x) + 1]) n++; } return n / Math.max(1, y1 - y0); };
+  const bandas = [];
+  for (let k = 0; k + 1 < mej.length; k++) {
+    const y0 = finH(mej[k]) + 1 + Math.round(med * 0.1), y1 = iniH(mej[k + 1]) - 1 - Math.round(med * 0.1); if (y1 - y0 < 0.4 * med) continue;
+    bandas.push({y0, y1, alta: mej[k + 1] - mej[k] > 1.6 * med, bs: [vs[0], ...vs.slice(1, -1).filter(x => hay(x, y0, y1) > 0.7), vs[vs.length - 1]]});
+  }
+  // Las columnas del encabezado (una por día) mandan: así la hora y la letra de cada día se leen juntas
+  const enc = bandas.find(b => b.alta && b.bs.length >= 9);
+  if (enc) bandas.forEach(b => { if (b !== enc) b.bs = enc.bs; });
+  return {med, bandas, finV, iniV};
+}
+// Casilla → lienzo listo para el lector: texto oscuro sobre claro, contraste estirado y a un tamaño parejo
+function casillaHor(cv, x0, y0, x1, y1, esc){
+  const w = Math.round(x1 - x0), h = Math.round(y1 - y0); if (w < 4 || h < 4) return null;
+  const d = cv.getContext("2d", {willReadFrequently:true}).getImageData(Math.round(x0), Math.round(y0), w, h).data, g = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) g[i] = (d[4*i] * 299 + d[4*i+1] * 587 + d[4*i+2] * 114) / 1000;
+  const ord = Float32Array.from(g).sort(), q = p => ord[Math.min(ord.length - 1, Math.floor(p * ord.length))];
+  const inv = q(0.5) < 128;   // texto claro sobre relleno oscuro (nombres en rojo): se invierte
+  if (inv) for (let i = 0; i < g.length; i++) g[i] = 255 - g[i];
+  const lo = inv ? 255 - q(0.98) : q(0.02), hi = inv ? 255 - q(0.02) : q(0.98);
+  if (hi - lo < 40) return null;   // casilla vacía
+  const src = document.createElement("canvas"); src.width = w; src.height = h;
+  const sk = src.getContext("2d"), od = sk.createImageData(w, h);
+  for (let i = 0; i < g.length; i++) { const v = Math.max(0, Math.min(255, (g[i] - lo) / (hi - lo) * 255)); od.data[4*i] = od.data[4*i+1] = od.data[4*i+2] = v; od.data[4*i+3] = 255; }
+  sk.putImageData(od, 0, 0);
+  const out = document.createElement("canvas"), m = 15; out.width = Math.round(w * esc) + 2 * m; out.height = Math.round(h * esc) + 2 * m;
+  const ok = out.getContext("2d"); ok.fillStyle = "#fff"; ok.fillRect(0, 0, out.width, out.height); ok.imageSmoothingQuality = "high";
+  ok.drawImage(src, m, m, out.width - 2 * m, out.height - 2 * m);
+  return out;
+}
+async function leerHorRejilla(cv, worker, paso){
+  const rj = rejillaHor(cv); if (!rj) return null;
+  const esc = 48 / rj.med, tabla = rj.bandas.map(b => b.bs.slice(1).map(() => "")), tareas = [];
+  rj.bandas.forEach((b, i) => b.bs.slice(1).forEach((x1, j) => { const x0 = b.bs[j]; if (x1 - x0 >= 0.6 * rj.med) { const m = 1 + Math.round(rj.med * 0.1); tareas.push({i, j, alta:b.alta, x0:rj.finV(x0) + m, x1:rj.iniV(x1) - m, y0:b.y0, y1:b.y1}); } }));
+  let hechas = 0;
+  for (const alta of [false, true]) {
+    const ts = tareas.filter(t => t.alta === alta); if (!ts.length) continue;
+    await worker.setParameters({tessedit_pageseg_mode: alta ? "6" : "7", tessedit_char_whitelist:"", preserve_interword_spaces:"1"});
+    for (const t of ts) {
+      const c = casillaHor(cv, t.x0, t.y0, t.x1, t.y1, esc);
+      if (c) { const { data } = await worker.recognize(c); tabla[t.i][t.j] = String(data.text || "").replace(/[|\[\]{}“”"_]/g, " ").replace(/\s+/g, " ").trim(); }
+      hechas++; if (hechas % 6 === 0) paso(`leyendo casilla ${hechas} de ${tareas.length}…`, 0.05 + 0.85 * hechas / tareas.length);
+    }
+  }
+  // Encabezado "09-11 LUNES" → "LUNES 09-11" para que se reconozca el día
+  tabla.forEach((f, i) => { if (rj.bandas[i].alta) tabla[i] = f.map(c => { const ws = c.split(" "), k = ws.findIndex(w => diaDeTexto(w) >= 0); return k > 0 ? [ws[k], ...ws.slice(0, k), ...ws.slice(k + 1)].join(" ") : c; }); });
+  // Arreglos de lectura frecuentes: "930am" → "9:30am", "SI7" → "S/7", "Pp" → "P"
+  const arreglar = c => c.replace(/\b(\d{1,2})(\d{2})\s*([ap]\.?\s?m)/gi, "$1:$2$3").replace(/\b(\d{1,2}):\s+(\d{2})/g, "$1:$2")
+    .replace(/\bS\s*[Il1i|\\]\s*7\b/g, "S/7").replace(/\bS\s*[Il1i|\\]\s*R\b/g, "S/R").replace(/\bF\s*[Il1i|\\]\s*R\b/g, "F/R").replace(/\b([A-Z])\1?[a-z.,]?$/, "$1");
+  tabla.forEach((f, i) => { if (!rj.bandas[i].alta) tabla[i] = f.map(arreglar); });
+  const r = horarioDeTabla(tabla); if (!r) return null;
+  // Fuera de la tabla de turnos (leyenda, notas): filas sin ningún día que se entienda
+  r.filas = r.filas.filter(f => f.celdas.some(c => c && !parsearCelda(c, S.hor.puestos).error));
+  return r.filas.length >= 3 ? r : null;
+}
 async function leerHorImagen(file, worker, prog, n, total){
-  await worker.setParameters({tessedit_pageseg_mode:"6", tessedit_char_whitelist:"", preserve_interword_spaces:"1"});
   const paso = (t, f) => prog(`Imagen ${n} de ${total}: ${t}`, (n - 1 + f) / total * 0.9 + 0.05);
+  try { const r = await leerHorRejilla(await lienzoHor(file, 0), worker, paso); if (r) return r; } catch(e) { console.warn("rejilla", e); }
+  await worker.setParameters({tessedit_pageseg_mode:"6", tessedit_char_whitelist:"", preserve_interword_spaces:"1"});
   let mejor = null;
   for (const giro of [0, 90, 270, 180]) {
     if (giro) paso(`probando la imagen girada ${giro}°…`, 0.6);
