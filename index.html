@@ -3205,14 +3205,17 @@ async function abrirReporteSt(id){
 
 /* ===================== Capitán: Mi turno ===================== */
 const PUESTOS = [["starter","Starter","S"],["range","Driving Range","R"],["carritos","Carritos","L"],["frente","Frente","F"],["divots","Divots","D"],["comodin","Comodín","C"],
-  ["hoyo7","Hoyo 7","7"],["range_noche","Range nocturno","ER",["cierre"]],["player","Player Assistant","P"],["mecanico","Mecánico","M"]];
+  ["hoyo7","Hoyo 7","7"],["range_noche","Range nocturno","ER",["cierre"]],["player","Marshals","P"],["mecanico","Mecánico","M"]];
 // Puestos del Equipo del turno que aplican a cada turno (Range nocturno solo en cierre)
 const puestosTurno = t => PUESTOS.filter(x => !x[3] || x[3].includes(t));
 const EST_PUESTO = {presente:"Presente", ausente:"Ausente", cubierto:"Cubierto"};
 const INSUMOS = [["tarjetas","Tarjetas de score"],["tees","Tees"],["lapices","Lápices"],["toallas","Toallas"],["bolas","Bolas de práctica"],["agua","Agua"]];
 const NIVEL = {suficiente:"Suficiente", bajo:"Bajo", agotado:"Agotado"};
-const CARRITOS = {libre:"Libre", "90":"Regla de 90°", cart_path:"Cart path only", sin_carritos:"Sin carritos"};
-const BANDERA = {frente:"Frente", centro:"Centro", atras:"Atrás", mixta:"Mixta"};
+// Opciones que ve el Capitán. Las claves antiguas quedan solo para mostrar reportes anteriores.
+const CARRITOS_OPC = {"90":"Regla 90º", cart_path:"Cart Path Only", cart_path_hoyos:"Cart Path Only Hoyos 4-9-11-15 y 16"};
+const BANDERA_OPC = {"1":"1", "2":"2", "3":"3", centro:"Centro", torneo:"Torneo"};
+const CARRITOS = {...CARRITOS_OPC, libre:"Libre", sin_carritos:"Sin carritos"};
+const BANDERA = {...BANDERA_OPC, frente:"Frente", atras:"Atrás", mixta:"Mixta"};
 S.ct = {areas:[], items:[], turno: turnoPorHora(), fecha: hoyISO(), rep:null, resp:{}, val:null, prev:null, pend:{resp:{}, rep:{}}, saving:false, last:null, openAreas:null, loaded:false};
 const ctKey = () => `smgc_ctpend_${S.me.id}`;
 
@@ -3271,8 +3274,8 @@ function renderTurnoCap(){
         <div class="fields">
           <label class="f">Turno<select id="ctTurno">${Object.entries(TURNO_CORTO).map(([k, l]) => `<option value="${k}" ${k===ct.turno?"selected":""}>${l} · ${k==="apertura"?"5–13 h":"11–19 h"}</option>`).join("")}</select></label>
           <label class="f">Velocidad de greens<input type="text" data-c="velocidad_greens" value="${esc(c.velocidad_greens || "")}" placeholder="Ej. 10.5 stimp" ${dis}></label>
-          <label class="f">Posición de bandera<select data-c="bandera" ${dis}><option value="">Seleccione…</option>${Object.entries(BANDERA).map(([k, l]) => `<option value="${k}" ${c.bandera===k?"selected":""}>${l}</option>`).join("")}</select></label>
-          <label class="f">Regla de carritos<select data-c="regla_carritos" ${dis}><option value="">Seleccione…</option>${Object.entries(CARRITOS).map(([k, l]) => `<option value="${k}" ${c.regla_carritos===k?"selected":""}>${l}</option>`).join("")}</select></label>
+          <label class="f">Posición de bandera<select data-c="bandera" ${dis}><option value="">Seleccione…</option>${Object.entries(BANDERA_OPC).map(([k, l]) => `<option value="${k}" ${c.bandera===k?"selected":""}>${l}</option>`).join("")}${c.bandera && !BANDERA_OPC[c.bandera] ? `<option value="${esc(c.bandera)}" selected>${esc(BANDERA[c.bandera] || c.bandera)}</option>` : ""}</select></label>
+          <label class="f">Regla de carritos<select data-c="regla_carritos" ${dis}><option value="">Seleccione…</option>${Object.entries(CARRITOS_OPC).map(([k, l]) => `<option value="${k}" ${c.regla_carritos===k?"selected":""}>${l}</option>`).join("")}${c.regla_carritos && !CARRITOS_OPC[c.regla_carritos] ? `<option value="${esc(c.regla_carritos)}" selected>${esc(CARRITOS[c.regla_carritos] || c.regla_carritos)}</option>` : ""}</select></label>
           <label class="f">Apertura del campo<input type="text" data-c="apertura" value="${esc(c.apertura || "")}" placeholder="Ej. 6:00 a. m." ${dis}></label>
         </div>
         <label class="f" style="margin-top:12px">Obras o accidentes en la cancha<input type="text" data-c="obras" value="${esc(c.obras || "")}" placeholder="Ej. Reparación de bunker en el hoyo 7; ninguno" ${dis}></label>

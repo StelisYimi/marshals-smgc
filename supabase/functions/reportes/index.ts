@@ -34,8 +34,9 @@ const PRIO: Record<string, string> = { critica: "Crítica", alta: "Alta", ordina
 const NIVEL: Record<string, string> = { suficiente: "Suficiente", bajo: "Bajo", agotado: "Agotado" };
 const INSUMOS: Record<string, string> = { tarjetas: "Tarjetas de score", tees: "Tees", lapices: "Lápices", toallas: "Toallas", bolas: "Bolas de práctica", agua: "Agua" };
 const EST_PUESTO: Record<string, string> = { presente: "Presente", ausente: "Ausente", cubierto: "Cubierto" };
-const BANDERA: Record<string, string> = { frente: "Frente", centro: "Centro", atras: "Atrás", mixta: "Mixta" };
-const CARRITOS: Record<string, string> = { libre: "Libre", "90": "Regla de 90°", cart_path: "Cart path only", sin_carritos: "Sin carritos" };
+const BANDERA: Record<string, string> = { "1": "1", "2": "2", "3": "3", centro: "Centro", torneo: "Torneo", frente: "Frente", atras: "Atrás", mixta: "Mixta" };
+const CARRITOS: Record<string, string> = { "90": "Regla 90º", cart_path: "Cart Path Only", cart_path_hoyos: "Cart Path Only Hoyos 4-9-11-15 y 16", libre: "Libre", sin_carritos: "Sin carritos" };
+const PUESTO_NOMBRE: Record<string, string> = { starter: "Starter", range: "Driving Range", carritos: "Carritos", frente: "Frente", divots: "Divots", comodin: "Comodín", hoyo7: "Hoyo 7", range_noche: "Range nocturno", player: "Marshals", mecanico: "Mecánico" };
 const NIVEL_BOLAS: Record<string, string> = { suficientes: "Suficientes", bajas: "Bajas", agotadas: "Agotadas" };
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -125,7 +126,7 @@ async function cargar(modulo: string, id: string): Promise<Datos> {
       extra: [["Velocidad de greens", c.velocidad_greens ?? ""], ["Posición de bandera", BANDERA[c.bandera] ?? c.bandera ?? ""], ["Regla de carritos", CARRITOS[c.regla_carritos] ?? c.regla_carritos ?? ""], ["Apertura del campo", c.apertura ?? ""], ["Obras o accidentes", c.obras ?? ""]],
       observaciones: r.observaciones ?? "", pendientes: r.pendientes ?? "",
       hojas: [
-        { nombre: "Equipo del turno", filas: Object.entries(eq).map(([k, e]: any) => ({ Puesto: k, Estado: EST_PUESTO[e?.estado] ?? e?.estado ?? "", Nombre: e?.nombre ?? "" })) },
+        { nombre: "Equipo del turno", filas: Object.entries(eq).map(([k, e]: any) => ({ Puesto: PUESTO_NOMBRE[k] ?? k, Estado: EST_PUESTO[e?.estado] ?? e?.estado ?? "", Nombre: e?.nombre ?? "" })) },
         { nombre: "Insumos", filas: Object.entries(inv).map(([k, e]: any) => ({ Insumo: INSUMOS[k] ?? k, Nivel: NIVEL[e?.nivel] ?? e?.nivel ?? "", Nota: e?.nota ?? "" })) },
       ],
     };
