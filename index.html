@@ -501,6 +501,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-funciones" hidden></section>
     <section class="view" id="v-mecfun" hidden></section>
     <section class="view" id="v-carnets" hidden></section>
+    <section class="view" id="v-micarnet" hidden></section>
   </main>
 </div>
 
@@ -524,10 +525,10 @@ const ROLES = {colaborador:"Personal de campo", marshal:"Marshal", starter:"Star
 const GERENCIA = ["gerente_operaciones","gerente_golf","admin"];
 const CAPITANIA = ["capitan", ...GERENCIA];
 const MODULOS = {
-  marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["salidas","Salidas"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["horario","Horario"],["equipo","Equipo","ger"]]},
-  starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"],["gerst","Gerencia","ger"],["horario","Horario"]]},
-  staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["puestos","Puestos","cap"],["gerop","Gerencia","ger"],["funciones","Funciones"],["horario","Horario"],["directorio","Directorio"]]},
-  mecanico: {nombre:"Mecánico", tabs:[["mipuesto","Mi checklist","mec"],["puestos","Supervisión","cap"],["gerop","Gerencia","ger"],["mecfun","Funciones y cargo"],["horario","Horario"],["directorio","Directorio"]]},
+  marshals: {nombre:"Marshals", tabs:[["turno","Mi turno"],["salidas","Salidas"],["incidencias","Incidencias","inc"],["gerencia","Gerencia","ger"],["protocolo","Protocolo"],["horario","Horario"],["equipo","Equipo","ger"],["micarnet","Mi carnet"]]},
+  starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"],["gerst","Gerencia","ger"],["horario","Horario"],["micarnet","Mi carnet"]]},
+  staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["puestos","Puestos","cap"],["gerop","Gerencia","ger"],["funciones","Funciones"],["horario","Horario"],["directorio","Directorio"],["micarnet","Mi carnet"]]},
+  mecanico: {nombre:"Mecánico", tabs:[["mipuesto","Mi checklist","mec"],["puestos","Supervisión","cap"],["gerop","Gerencia","ger"],["mecfun","Funciones y cargo"],["horario","Horario"],["directorio","Directorio"],["micarnet","Mi carnet"]]},
   capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["directoriocap","Directorio"],["carnets","Carnets"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
@@ -768,8 +769,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","directoriocap","mipuesto","puestos","funciones","mecfun","gerst","gerop","carnets"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, directoriocap:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones, mecfun:renderMecFun, gerst:cargarGerSt, gerop:cargarGerOp, carnets:renderCarnets})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","directoriocap","mipuesto","puestos","funciones","mecfun","gerst","gerop","carnets","micarnet"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, directoriocap:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones, mecfun:renderMecFun, gerst:cargarGerSt, gerop:cargarGerOp, carnets:renderCarnets, micarnet:renderMiCarnet})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -4372,12 +4373,23 @@ function carnetHTML(c){
 async function abrirMiCarnet(){
   openSheet(`<div class="loading">Cargando su carnet…</div>`);
   try { if (!S.car.loaded) await cargarCarnets(); } catch(e){ closeSheet(); toast("No se pudo cargar el carnet. " + errMsg(e)); return; }
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Mi carnet</h2><button class="btn ghost x" data-x type="button">Cerrar</button></div>${miCarnetHTML()}`);
+}
+function miCarnetHTML(){
   const c = S.car.list.find(x => x.perfil_id === S.me.id);
-  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Mi carnet</h2><button class="btn ghost x" data-x type="button">Cerrar</button></div>
-    ${c ? `<div class="carwrap">${carnetHTML(c).replace('class="carnet"', 'class="carnet" style="--cw:min(300px,78vw)"')}</div>
+  return c ? `<div class="carwrap">${carnetHTML(c).replace('class="carnet"', 'class="carnet" style="--cw:min(300px,78vw)"')}</div>
       <p class="hint" style="text-align:center;margin:0">Muéstrelo cuando se lo pidan. Al escanear el código QR se comprueba que su carnet está vigente.</p>
       ${c.foto_path ? "" : `<div class="callout">Su carnet aún no tiene foto. Pídale a su Capitán que la cargue.</div>`}`
-    : `<div class="empty"><strong>Aún no tiene carnet</strong>Pídale a su Capitán o al Gerente de Operaciones que lo cree.</div>`}`);
+    : `<div class="empty"><strong>Aún no tiene carnet</strong>Pídale a su Capitán o al Gerente de Operaciones que lo cree.</div>`;
+}
+async function renderMiCarnet(){
+  const v = $("#v-micarnet");
+  if (!S.car.loaded) {
+    v.innerHTML = `<div class="loading">Cargando su carnet…</div>`;
+    try { await cargarCarnets(); } catch(e){ v.innerHTML = `<div class="empty"><strong>No se pudo cargar su carnet</strong>${esc(errMsg(e))}</div>`; return; }
+    if (S.view !== "micarnet") return;
+  }
+  v.innerHTML = `<div><div class="eyebrow">${esc(MODULOS[S.modulo].nombre)} · Carnet</div><h1>Mi carnet</h1></div>${miCarnetHTML()}`;
 }
 const ordenCargo = c => { const i = ORDEN_CARGO.indexOf(c); return i < 0 ? 99 : i; };
 async function renderCarnets(){
@@ -4391,15 +4403,17 @@ async function renderCarnets(){
   const norm = x => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const activos = Object.values(S.perfiles).filter(p => p.activo);
   const sin = activos.filter(p => !S.car.list.some(c => c.perfil_id === p.id)).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const mio = S.car.list.find(c => c.perfil_id === S.me.id);
   const todos = S.car.list.filter(c => S.perfiles[c.perfil_id] && S.perfiles[c.perfil_id].activo)
     .sort((a, b) => ordenCargo(a.cargo) - ordenCargo(b.cargo) || a.cargo.localeCompare(b.cargo) || nm(a.perfil_id).localeCompare(nm(b.perfil_id)));
-  const q = norm(S.car.q), L = todos.filter(c => !q || norm(nm(c.perfil_id) + " " + (S.perfiles[c.perfil_id].usuario || "") + " " + c.cargo + " " + (c.codigo || "")).includes(q));
+  const q = norm(S.car.q), L = todos.filter(c => c.perfil_id !== S.me.id).filter(c => !q || norm(nm(c.perfil_id) + " " + (S.perfiles[c.perfil_id].usuario || "") + " " + c.cargo + " " + (c.codigo || "")).includes(q));
   const cargos = [...new Set(L.map(c => c.cargo))], conFoto = todos.filter(c => c.foto_path).length;
   v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Carnets</div><h1>Carnets del staff</h1>
       <p class="sub">${plural(todos.length, "carnet")} · ${conFoto} con foto · toque un carnet para cambiar la foto o los datos</p></div>
       <button class="btn primary" id="cPrintAll" type="button" ${conFoto ? "" : "disabled"}>Imprimir carnets</button></div>
     ${S.car.clave ? `<div class="callout gold" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1 1 240px"><b>Fotos listas para cargar.</b> Las 19 fotos del equipo están preparadas. Cárguelas una sola vez y quedan guardadas en cada carnet.</span><button class="btn gold" id="cImp" type="button">Cargar las fotos</button></div>` : ""}
     <div class="filters"><label class="f">Buscar<input type="search" id="cQ" value="${esc(S.car.q)}" placeholder="Nombre, usuario, cargo o código"></label></div>
+    ${mio && !q ? `<div class="stack" style="gap:12px"><div class="eyebrow">Su carnet</div><div class="cargrid">${carnetHTML(mio).replace('class="carnet"', 'class="carnet" role="button" tabindex="0"')}</div></div>` : ""}
     ${sin.length ? `<div class="panel stack" style="gap:8px"><h2>Cuentas sin carnet <span class="pill p-ord">${sin.length}</span></h2><div class="chips">${sin.map(p => `<button type="button" class="chip" data-nuevo="${p.id}">Crear carnet de ${esc(p.nombre)}</button>`).join("")}</div></div>` : ""}
     ${L.length ? cargos.map(g => `<div class="stack" style="gap:12px"><div class="eyebrow">${esc(g || "Sin cargo")} · ${L.filter(c => c.cargo === g).length}</div><div class="cargrid">${L.filter(c => c.cargo === g).map(carnetHTML).join("").replaceAll('class="carnet"', 'class="carnet" role="button" tabindex="0"')}</div></div>`).join("")
       : `<div class="empty"><strong>Nadie coincide</strong>Pruebe con otro nombre o cargo.</div>`}`;
