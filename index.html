@@ -229,6 +229,34 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .lightbox img{max-height:90vh;border-radius:8px}
 .loading{padding:60px 16px;text-align:center;color:var(--muted)}
 #printArea{display:none}
+/* Carnets: tarjeta CR80 vertical (54 × 85,6 mm). Todo se mide en em para que la misma tarjeta sirva en pantalla y en impresión. */
+.carnet{--cw:250px;width:var(--cw);aspect-ratio:54/85.6;font-size:calc(var(--cw) / 15.625);background:#fff;color:#17221c;border-radius:.875em;overflow:hidden;display:grid;grid-template-rows:auto auto 1fr auto;box-shadow:0 1px 2px rgba(18,61,42,.1),0 10px 28px rgba(18,61,42,.16);text-align:left;font-family:var(--f-body);line-height:1.3;position:relative}
+.carnet>header{background:#123d2a;color:#fff;padding:.7em .875em 1.9em;display:flex;align-items:center;justify-content:space-between;gap:.5em;border-bottom:.19em solid #a8873a}
+.ccrest{background:#fff;border-radius:.45em;padding:.2em .35em;box-shadow:0 0 0 1px rgba(168,135,58,.55)}
+.ccrest img{display:block;height:2.3em;width:auto;max-width:none}
+.cdept{font-size:.53em;letter-spacing:.16em;text-transform:uppercase;border:1px solid rgba(233,217,173,.6);color:#e9d9ad;border-radius:99em;padding:.35em .95em;white-space:nowrap}
+.cph{justify-self:center;margin-top:-1.5em;width:7.25em;aspect-ratio:3/4;border-radius:.625em;overflow:hidden;background:#dbe3dd;box-shadow:0 0 0 .19em #fff,0 0 0 .28em #a8873a,0 .375em .875em rgba(0,0,0,.18);display:grid;place-items:center}
+.cph img{width:100%;height:100%;object-fit:cover;display:block;max-width:none}
+.cph span{font-size:.7em;color:#5b6a61;letter-spacing:.1em;text-transform:uppercase}
+.cbody{padding:.75em .875em 0;text-align:center;display:grid;align-content:start;gap:.19em}
+.cbody h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:1.19em;line-height:1.15;text-wrap:balance;color:#123d2a}
+.crole{font-size:.6em;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#8a6d27}
+.cmeta{display:grid;grid-template-columns:repeat(3,1fr);gap:.25em;margin-top:.8em;border-top:1px solid #dbe3dd;padding-top:.7em;font-family:var(--f-mono);font-size:.69em;font-variant-numeric:tabular-nums}
+.cmeta b{display:block;font-family:var(--f-body);font-size:.68em;letter-spacing:.14em;text-transform:uppercase;color:#5b6a61;font-weight:700}
+.cmeta div{min-width:0;overflow-wrap:anywhere}
+.carnet>footer{display:flex;align-items:center;gap:.625em;padding:.5em .75em .75em;border-top:1px solid #eef2ef;background:#f6f8f6}
+.cqr{width:3.25em;height:3.25em;flex:none;background:#fff;border-radius:.25em;image-rendering:pixelated;display:block}
+.cft{font-size:.53em;color:#5b6a61;line-height:1.35}
+.cft span{display:block;font-family:var(--f-display);font-size:1.4em;color:#123d2a;margin-top:.15em}
+.carwrap{display:grid;justify-items:center}
+.cargrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px;justify-items:center}
+.cargrid .carnet{cursor:pointer}
+.cargrid .carnet:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.careditor{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.verstate{border-radius:10px;padding:12px;text-align:center;font-weight:700;font-size:18px}
+.verstate.ok{background:var(--ok-soft);color:var(--ok)} .verstate.no{background:var(--crit-soft);color:var(--crit)}
+.verfoto{width:160px;aspect-ratio:3/4;object-fit:cover;border-radius:12px;justify-self:center;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--gold)}
+
 /* Módulos */
 .modsw{display:inline-flex;max-width:100%;background:rgba(255,255,255,.1);border-radius:99px;padding:3px;margin-top:10px;gap:2px}
 .modsw button{border:0;background:none;color:rgba(255,255,255,.8);padding:6px 14px;border-radius:99px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
@@ -378,6 +406,9 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
   #printArea td,#printArea th{padding:4px 6px}
   #printArea .sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}
   #printArea .sig div{border-top:1px solid #000;padding-top:4px}
+  #printArea.pcar .pcargrid{display:grid;grid-template-columns:repeat(3,54mm);gap:6mm;justify-content:center}
+  #printArea.pcar .carnet{--cw:54mm;box-shadow:none;outline:.2mm solid #c3cec6;break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printArea.pcar .carnet *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style>
 </head>
@@ -417,6 +448,10 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
   </div>
 </section>
 
+<section id="screenCarnet" class="login wrap" hidden>
+  <div class="login-card" id="verCard"></div>
+</section>
+
 <div id="screenApp" hidden>
   <header class="top">
     <div class="wrap">
@@ -428,6 +463,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
           <button class="menubtn" id="menuBtn" type="button" aria-label="Menú de la cuenta" aria-expanded="false">☰</button>
           <div class="menu" id="menu" hidden>
             <div class="who-line" id="menuWho"></div>
+            <button type="button" id="mCarnet">Mi carnet</button>
             <button type="button" id="mPass">Cambiar mi contraseña</button>
             <button type="button" data-logout>Cerrar sesión</button>
           </div>
@@ -464,6 +500,7 @@ td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
     <section class="view" id="v-puestos" hidden></section>
     <section class="view" id="v-funciones" hidden></section>
     <section class="view" id="v-mecfun" hidden></section>
+    <section class="view" id="v-carnets" hidden></section>
   </main>
 </div>
 
@@ -491,7 +528,7 @@ const MODULOS = {
   starter:  {nombre:"Starter", tabs:[["turnost","Mi turno"],["salidas","Salidas"],["gerst","Gerencia","ger"],["horario","Horario"]]},
   staff:    {nombre:"Staff", tabs:[["mipuesto","Mi puesto","pos"],["hoy","Hoy","cap"],["puestos","Puestos","cap"],["gerop","Gerencia","ger"],["funciones","Funciones"],["horario","Horario"],["directorio","Directorio"]]},
   mecanico: {nombre:"Mecánico", tabs:[["mipuesto","Mi checklist","mec"],["puestos","Supervisión","cap"],["gerop","Gerencia","ger"],["mecfun","Funciones y cargo"],["horario","Horario"],["directorio","Directorio"]]},
-  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["directoriocap","Directorio"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
+  capitanes:{nombre:"Capitanes", tabs:[["turnocap","Mi turno"],["salidas","Salidas"],["starters","Starters"],["puestos","Puestos"],["horariocap","Horario"],["directoriocap","Directorio"],["carnets","Carnets"],["palos","Palos de alquiler"],["bolsas","Bolsas"],["historial","Historial"],["supervision","Gerencia","ger"],["equipo","Equipo","ger"]]},
 };
 const VAL = {si:"Sí", no:"No", na:"N/A"};
 
@@ -589,6 +626,8 @@ const S = {
 
 /* ===================== Arranque y acceso ===================== */
 async function boot(){
+  const tkCarnet = new URLSearchParams(location.search).get("carnet");
+  if (tkCarnet) { verificarCarnet(tkCarnet); return; }   // QR del carnet: verificación pública, sin iniciar sesión
   fnStaff({accion:"estado"}).then(r => { S.dominio = r.dominio; $("#lgSetup").hidden = !!r.hayGerente; }).catch(()=>{});
   sb.auth.onAuthStateChange((ev) => {
     if (ev === "SIGNED_OUT") { mostrar("login"); }
@@ -602,7 +641,7 @@ async function boot(){
   if (location.hash && (URL_AUTH.has("access_token") || URL_AUTH.has("error"))) history.replaceState(null, "", location.pathname + location.search);
   if (data.session && S.me && RECUPERANDO) { RECUPERANDO = false; abrirCambioPass(true); }
 }
-function mostrar(p){ ["Loading","Login","Blocked","App"].forEach(x => $("#screen"+x).hidden = x.toLowerCase() !== p); }
+function mostrar(p){ ["Loading","Login","Blocked","App","Carnet"].forEach(x => $("#screen"+x).hidden = x.toLowerCase() !== p); }
 async function fnStaff(body){
   const { data, error } = await sb.functions.invoke("staff", {body});
   if (error) {
@@ -729,8 +768,8 @@ $("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); 
 function go(v){
   S.view = v;
   document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === v));
-  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","directoriocap","mipuesto","puestos","funciones","mecfun","gerst","gerop"].forEach(x => $("#v-"+x).hidden = x !== v);
-  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, directoriocap:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones, mecfun:renderMecFun, gerst:cargarGerSt, gerop:cargarGerOp})[v]();
+  ["turno","incidencias","gerencia","equipo","protocolo","palos","bolsas","historial","turnocap","salidas","turnost","starters","horario","horariocap","supervision","hoy","directorio","directoriocap","mipuesto","puestos","funciones","mecfun","gerst","gerop","carnets"].forEach(x => $("#v-"+x).hidden = x !== v);
+  ({turno:renderTurno, incidencias:renderIncidencias, gerencia:cargarGerencia, equipo:renderEquipo, protocolo:renderProtocolo, palos:renderPalos, bolsas:renderBolsas, historial:cargarHistorial, turnocap:renderTurnoCap, salidas:renderSalidas, turnost:renderTurnoSt, starters:cargarStarters, horario:renderHorario, horariocap:renderHorario, supervision:cargarSupervision, hoy:renderHoy, directorio:renderDirectorio, directoriocap:renderDirectorio, mipuesto:renderMiPuesto, puestos:renderPuestos, funciones:renderFunciones, mecfun:renderMecFun, gerst:cargarGerSt, gerop:cargarGerOp, carnets:renderCarnets})[v]();
   try { localStorage.setItem("smgc_view_" + S.modulo, v); } catch(e){}
   window.scrollTo({top:0});
 }
@@ -738,6 +777,7 @@ $("#alertBtn").onclick = () => { S.incFiltro = {estado:"abierta", prio:"critica"
 $("#menuBtn").onclick = e => { e.stopPropagation(); const m = $("#menu"); m.hidden = !m.hidden; $("#menuBtn").setAttribute("aria-expanded", !m.hidden); };
 document.addEventListener("click", e => { if (!e.target.closest(".who")) { $("#menu").hidden = true; $("#menuBtn").setAttribute("aria-expanded", "false"); } });
 $("#mPass").onclick = () => { $("#menu").hidden = true; abrirCambioPass(); };
+$("#mCarnet").onclick = () => { $("#menu").hidden = true; abrirMiCarnet(); };
 function abrirCambioPass(recuperando){
   openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${recuperando ? "Escriba su nueva contraseña" : "Cambiar mi contraseña"}</h2><button class="btn ghost x" data-x type="button">${recuperando ? "Ahora no" : "Cancelar"}</button></div>
     ${recuperando ? `<p class="hint" style="margin:0">Entró con el enlace de recuperación. Elija una contraseña nueva para su cuenta.</p>` : ""}
@@ -4300,6 +4340,167 @@ function renderMecFun(){
     }</div>
     ${S.esGer ? `<p class="hint" style="margin:0">Las tareas del checklist se editan en Supervisión → Editar tareas.</p>` : ""}`;
   v.querySelectorAll("#mfTabs [data-mf]").forEach(b => b.onclick = () => { f.tab = b.dataset.mf; renderMecFun(); });
+}
+
+
+/* ===================== Carnets del staff ===================== */
+const QR_URL = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js";
+const ORDEN_CARGO = ["Gerente de Operaciones","Capitán de Caddie","Marshal","Starter","Mecánico","Agente de Servicio / Caddie"];
+S.car = {list:[], fotos:{}, loaded:false, q:"", clave:undefined};
+function cargarJS(src, listo){ return new Promise((res, rej) => { if (listo()) return res(); const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("sin conexión")); document.head.append(s); }); }
+const carnetURL = t => `${location.origin}${location.pathname}?carnet=${t}`;
+function qrData(t){ try { if (!window.qrcode || !t) return null; const q = qrcode(0, "M"); q.addData(carnetURL(t)); q.make(); return q.createDataURL(4, 0); } catch(e){ return null; } }
+async function cargarCarnets(){
+  const { data, error } = await sb.from("carnets").select("*");
+  if (error) throw error;
+  S.car.list = data;
+  const paths = data.map(c => c.foto_path).filter(p => p && !S.car.fotos[p]);
+  if (paths.length) { const r = await sb.storage.from("carnets").createSignedUrls(paths, 6*3600); (r.data || []).forEach(x => { if (x.signedUrl) S.car.fotos[x.path] = x.signedUrl; }); }
+  try { await cargarJS(QR_URL, () => !!window.qrcode); } catch(e){}
+  S.car.loaded = true;
+}
+function carnetHTML(c){
+  const p = S.perfiles[c.perfil_id] || {nombre:"—"}, foto = c.foto_path && S.car.fotos[c.foto_path], qr = qrData(c.token);
+  return `<article class="carnet" data-car="${c.perfil_id}">
+    <header><div class="ccrest"><img src="logo.png" alt="Santa Maria Golf Club"></div><div class="cdept">Golf Operations</div></header>
+    <div class="cph">${foto ? `<img src="${esc(foto)}" alt="Foto de ${esc(p.nombre)}">` : `<span>Sin foto</span>`}</div>
+    <div class="cbody"><h2>${esc(p.nombre)}</h2><div class="crole">${esc(c.cargo || ROLES[p.rol] || "")}</div>
+      <div class="cmeta"><div><b>Código</b>${esc(c.codigo || "—")}</div><div><b>Usuario</b>${esc(p.usuario || "—")}</div><div><b>Desde</b>${c.desde || "—"}</div></div></div>
+    <footer>${qr ? `<img class="cqr" src="${qr}" alt="Código QR de verificación">` : `<span class="cqr"></span>`}<div class="cft">Carnet personal e intransferible<span>SMGC · Staff</span></div></footer>
+  </article>`;
+}
+async function abrirMiCarnet(){
+  openSheet(`<div class="loading">Cargando su carnet…</div>`);
+  try { if (!S.car.loaded) await cargarCarnets(); } catch(e){ closeSheet(); toast("No se pudo cargar el carnet. " + errMsg(e)); return; }
+  const c = S.car.list.find(x => x.perfil_id === S.me.id);
+  openSheet(`<div class="sheet-head"><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Mi carnet</h2><button class="btn ghost x" data-x type="button">Cerrar</button></div>
+    ${c ? `<div class="carwrap">${carnetHTML(c).replace('class="carnet"', 'class="carnet" style="--cw:min(300px,78vw)"')}</div>
+      <p class="hint" style="text-align:center;margin:0">Muéstrelo cuando se lo pidan. Al escanear el código QR se comprueba que su carnet está vigente.</p>
+      ${c.foto_path ? "" : `<div class="callout">Su carnet aún no tiene foto. Pídale a su Capitán que la cargue.</div>`}`
+    : `<div class="empty"><strong>Aún no tiene carnet</strong>Pídale a su Capitán o al Gerente de Operaciones que lo cree.</div>`}`);
+}
+const ordenCargo = c => { const i = ORDEN_CARGO.indexOf(c); return i < 0 ? 99 : i; };
+async function renderCarnets(){
+  const v = $("#v-carnets"); if (!S.esCap) return;
+  if (!S.car.loaded) {
+    v.innerHTML = `<div class="loading">Cargando carnets…</div>`;
+    try { await cargarCarnets(); } catch(e){ v.innerHTML = `<div class="empty"><strong>No se pudieron cargar los carnets</strong>${esc(errMsg(e))}</div>`; return; }
+    if (S.view !== "carnets") return;
+  }
+  if (S.car.clave === undefined) { const r = await sb.rpc("clave_fotos_carnets"); S.car.clave = (!r.error && r.data) || null; }
+  const norm = x => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const activos = Object.values(S.perfiles).filter(p => p.activo);
+  const sin = activos.filter(p => !S.car.list.some(c => c.perfil_id === p.id)).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const todos = S.car.list.filter(c => S.perfiles[c.perfil_id] && S.perfiles[c.perfil_id].activo)
+    .sort((a, b) => ordenCargo(a.cargo) - ordenCargo(b.cargo) || a.cargo.localeCompare(b.cargo) || nm(a.perfil_id).localeCompare(nm(b.perfil_id)));
+  const q = norm(S.car.q), L = todos.filter(c => !q || norm(nm(c.perfil_id) + " " + (S.perfiles[c.perfil_id].usuario || "") + " " + c.cargo + " " + (c.codigo || "")).includes(q));
+  const cargos = [...new Set(L.map(c => c.cargo))], conFoto = todos.filter(c => c.foto_path).length;
+  v.innerHTML = `<div class="head"><div><div class="eyebrow">Capitanes · Carnets</div><h1>Carnets del staff</h1>
+      <p class="sub">${plural(todos.length, "carnet")} · ${conFoto} con foto · toque un carnet para cambiar la foto o los datos</p></div>
+      <button class="btn primary" id="cPrintAll" type="button" ${conFoto ? "" : "disabled"}>Imprimir carnets</button></div>
+    ${S.car.clave ? `<div class="callout gold" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1 1 240px"><b>Fotos listas para cargar.</b> Las 19 fotos del equipo están preparadas. Cárguelas una sola vez y quedan guardadas en cada carnet.</span><button class="btn gold" id="cImp" type="button">Cargar las fotos</button></div>` : ""}
+    <div class="filters"><label class="f">Buscar<input type="search" id="cQ" value="${esc(S.car.q)}" placeholder="Nombre, usuario, cargo o código"></label></div>
+    ${sin.length ? `<div class="panel stack" style="gap:8px"><h2>Cuentas sin carnet <span class="pill p-ord">${sin.length}</span></h2><div class="chips">${sin.map(p => `<button type="button" class="chip" data-nuevo="${p.id}">Crear carnet de ${esc(p.nombre)}</button>`).join("")}</div></div>` : ""}
+    ${L.length ? cargos.map(g => `<div class="stack" style="gap:12px"><div class="eyebrow">${esc(g || "Sin cargo")} · ${L.filter(c => c.cargo === g).length}</div><div class="cargrid">${L.filter(c => c.cargo === g).map(carnetHTML).join("").replaceAll('class="carnet"', 'class="carnet" role="button" tabindex="0"')}</div></div>`).join("")
+      : `<div class="empty"><strong>Nadie coincide</strong>Pruebe con otro nombre o cargo.</div>`}`;
+  const qi = $("#cQ"); qi.oninput = () => { S.car.q = qi.value; clearTimeout(renderCarnets._t); renderCarnets._t = setTimeout(() => { const pos = qi.selectionStart; renderCarnets().then(() => { const n = $("#cQ"); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }); }, 250); };
+  $("#cPrintAll").onclick = () => imprimirCarnets(L.filter(c => c.foto_path));
+  if ($("#cImp")) $("#cImp").onclick = e => importarFotosCarnets(e.currentTarget);
+  v.querySelectorAll("[data-nuevo]").forEach(b => b.onclick = () => editarCarnet(b.dataset.nuevo));
+  v.querySelectorAll(".cargrid .carnet").forEach(el => { el.onclick = () => editarCarnet(el.dataset.car); el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); editarCarnet(el.dataset.car); } }; });
+}
+function recortar34(file){ return new Promise((res, rej) => { const img = new Image(), u = URL.createObjectURL(file); img.onload = () => {
+  const W = 600, H = 800, r = 3/4; let sw = img.width, sh = img.height;
+  if (sw / sh > r) sw = sh * r; else sh = sw / r;
+  const sx = (img.width - sw) / 2, sy = (img.height - sh) * 0.3;   // retrato: se conserva más la parte de arriba (la cara)
+  const c = document.createElement("canvas"); c.width = W; c.height = H; c.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
+  URL.revokeObjectURL(u); c.toBlob(b => b ? res(b) : rej(new Error("foto")), "image/jpeg", .85); }; img.onerror = () => rej(new Error("foto")); img.src = u; }); }
+async function guardarFotoCarnet(perfilId, blob){
+  const path = `${perfilId}/${Date.now()}.jpg`;
+  const up = await sb.storage.from("carnets").upload(path, blob, {contentType:"image/jpeg"});
+  if (up.error) throw up.error;
+  const c = S.car.list.find(x => x.perfil_id === perfilId), viejo = c && c.foto_path;
+  const r = c ? await sb.from("carnets").update({foto_path:path, actualizado_en:new Date().toISOString()}).eq("perfil_id", perfilId)
+              : await sb.from("carnets").insert({perfil_id:perfilId, foto_path:path});
+  if (r.error) throw r.error;
+  if (viejo) sb.storage.from("carnets").remove([viejo]);
+  if (c) c.foto_path = path;
+}
+async function importarFotosCarnets(btn){
+  btn.disabled = true; btn.textContent = "Cargando fotos…";
+  try {
+    const res = await fetch("carnets/fotos-iniciales.bin", {cache:"no-store"}); if (!res.ok) throw new Error("No se encontró el archivo de fotos.");
+    const raw = new Uint8Array(await res.arrayBuffer()), bin = s => Uint8Array.from(atob(s), ch => ch.charCodeAt(0));
+    const key = await crypto.subtle.importKey("raw", bin(S.car.clave), "AES-GCM", false, ["decrypt"]);
+    const fotos = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM", iv:raw.slice(0, 12)}, key, raw.slice(12))));
+    const porUsuario = Object.fromEntries(Object.values(S.perfiles).filter(p => p.usuario).map(p => [p.usuario, p]));
+    const items = Object.entries(fotos).filter(([u]) => porUsuario[u]); let ok = 0;
+    for (const [u, b64] of items) { btn.textContent = `Cargando fotos… ${ok + 1} de ${items.length}`; await guardarFotoCarnet(porUsuario[u].id, new Blob([bin(b64)], {type:"image/jpeg"})); ok++; }
+    if (ok === Object.keys(fotos).length) await sb.rpc("fotos_carnets_importadas");
+    S.car.clave = null; S.car.loaded = false; toast(`${plural(ok, "foto cargada", "fotos cargadas")}`); renderCarnets();
+  } catch(e){ toast("No se pudieron cargar todas las fotos. " + errMsg(e)); btn.disabled = false; btn.textContent = "Reintentar"; S.car.loaded = false; }
+}
+function editarCarnet(pid){
+  const p = S.perfiles[pid]; if (!p) return;
+  const prev0 = S.car.list.find(x => x.perfil_id === pid), nuevo = !prev0;
+  const c = prev0 ? {...prev0} : {perfil_id:pid, codigo:"", cargo:ROLES[p.rol] || "", desde:new Date().getFullYear(), token:null, foto_path:null};
+  const cargos = [...new Set(ORDEN_CARGO.concat(S.car.list.map(x => x.cargo).filter(Boolean)))];
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${nuevo ? "Nuevo carnet" : "Carnet"} · ${esc(p.usuario || "correo")}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">${esc(p.nombre)}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <div class="careditor"><div class="carwrap" id="cePrev" style="flex:0 0 auto">${carnetHTML(c).replace('class="carnet"', 'class="carnet" style="--cw:220px"')}</div>
+      <div class="stack" style="gap:10px;flex:1 1 240px">
+        <label class="f">${c.foto_path ? "Cambiar foto" : "Foto"}<input type="file" id="ceFoto" accept="image/*"></label>
+        <p class="hint" style="margin:-4px 0 0">De frente y con buena luz. Se recorta sola al formato del carnet.</p>
+        <div class="fields"><label class="f">Código de empleado<input type="text" id="ceCod" value="${esc(c.codigo || "")}" placeholder="Ej. 00214"></label>
+          <label class="f">Año de ingreso<input type="text" id="ceDes" inputmode="numeric" value="${c.desde || ""}" placeholder="Ej. 2018"></label></div>
+        <label class="f">Cargo<input type="text" id="ceCar" list="ceCarL" value="${esc(c.cargo || "")}"></label>
+        <datalist id="ceCarL">${cargos.map(x => `<option value="${esc(x)}">`).join("")}</datalist>
+        <div class="err" id="ceErr"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="ceOk" type="button">Guardar carnet</button>${!nuevo && c.foto_path ? `<button class="btn" id="cePrint" type="button">Imprimir este carnet</button>` : ""}</div>
+      </div></div>`);
+  let blob = null;
+  const pintar = () => { const t = {...c, codigo:$("#ceCod").value.trim(), cargo:$("#ceCar").value.trim(), desde:parseInt($("#ceDes").value, 10) || null};
+    if (blob) { if (S.car.fotos.__nueva) URL.revokeObjectURL(S.car.fotos.__nueva); S.car.fotos.__nueva = URL.createObjectURL(blob); t.foto_path = "__nueva"; }
+    $("#cePrev").innerHTML = carnetHTML(t).replace('class="carnet"', 'class="carnet" style="--cw:220px"'); };
+  ["#ceCod", "#ceCar", "#ceDes"].forEach(id => $(id).oninput = pintar);
+  $("#ceFoto").onchange = async e => { const f = e.target.files[0]; if (!f) return; try { blob = await recortar34(f); $("#ceErr").textContent = ""; pintar(); } catch(x){ $("#ceErr").textContent = "No se pudo leer la foto. Pruebe con otra."; } };
+  if ($("#cePrint")) $("#cePrint").onclick = () => { closeSheet(); imprimirCarnets([prev0]); };
+  $("#ceOk").onclick = async () => {
+    const cargo = $("#ceCar").value.trim(), dTxt = $("#ceDes").value.trim(), desde = dTxt ? parseInt(dTxt, 10) : null;
+    if (!cargo) { $("#ceErr").textContent = "Escriba el cargo."; return; }
+    if (dTxt && !(desde >= 1990 && desde <= 2100)) { $("#ceErr").textContent = "El año de ingreso debe tener cuatro cifras, por ejemplo 2018."; return; }
+    const b = $("#ceOk"); b.disabled = true; b.textContent = "Guardando…";
+    try {
+      const r = await sb.from("carnets").upsert({perfil_id:pid, codigo:$("#ceCod").value.trim() || null, cargo, desde, actualizado_en:new Date().toISOString()}).select().single();
+      if (r.error) throw r.error;
+      if (nuevo) S.car.list.push(r.data); else Object.assign(prev0, r.data);
+      if (blob) await guardarFotoCarnet(pid, blob);
+      closeSheet(); toast("Carnet guardado"); S.car.loaded = false; renderCarnets();
+    } catch(x){ $("#ceErr").textContent = errMsg(x); b.disabled = false; b.textContent = "Guardar carnet"; }
+  };
+}
+function imprimirCarnets(list){
+  if (!list.length) { toast("No hay carnets con foto para imprimir."); return; }
+  const pa = $("#printArea"); pa.className = "pcar";
+  pa.innerHTML = `<div class="pcargrid">${list.map(carnetHTML).join("")}</div>`;
+  const imgs = [...pa.querySelectorAll("img")];
+  Promise.all(imgs.map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; }))).then(() => window.print());
+}
+window.addEventListener("afterprint", () => { const pa = $("#printArea"); if (pa.classList.contains("pcar")) { pa.className = ""; pa.innerHTML = ""; } });
+async function verificarCarnet(tk){
+  mostrar("carnet");
+  const el = $("#verCard"), logo = `<div class="login-logo"><img src="logo.png" alt="Santa Maria Golf Club"></div>`;
+  el.innerHTML = logo + `<div class="loading" style="padding:20px">Verificando carnet…</div>`;
+  let r;
+  try { const { data, error } = await sb.functions.invoke("carnet", {body:{token:tk}}); if (error) throw error; r = data || {}; }
+  catch(e){ el.innerHTML = logo + `<h1>No se pudo verificar</h1><p class="sub" style="text-align:center">Revise la conexión e intente de nuevo.</p><button class="btn primary block" type="button" onclick="location.reload()">Reintentar</button>`; return; }
+  const ok = r.valido && r.vigente;
+  el.innerHTML = logo + `<div class="verstate ${ok ? "ok" : "no"}">${ok ? "✓ Carnet vigente" : r.valido ? "Carnet no vigente" : "Carnet no válido"}</div>
+    ${r.valido ? `${r.foto ? `<img class="verfoto" src="${esc(r.foto)}" alt="Foto de ${esc(r.nombre)}">` : ""}<h1>${esc(r.nombre)}</h1>
+      <p class="sub" style="text-align:center">${esc(r.cargo || "")}${r.codigo ? " · Código " + esc(r.codigo) : ""}${r.desde ? " · desde " + r.desde : ""}</p>
+      ${r.vigente ? `<p class="sub" style="text-align:center">Staff de Golf Operations · Santa María Golf Club</p>` : `<p class="sub" style="text-align:center">Esta persona ya no forma parte del staff. Avise al Gerente de Operaciones.</p>`}`
+    : `<p class="sub" style="text-align:center">Este código no corresponde a ningún carnet de Santa María Golf Club.</p>`}
+    <p class="hint" style="text-align:center;margin:0">Verificado el ${esc(new Date().toLocaleString("es-PA"))}</p>
+    <a class="btn block" href="${esc(location.pathname)}">Ir a la app SMGC</a>`;
 }
 
 /* ===================== Hoja modal ===================== */
