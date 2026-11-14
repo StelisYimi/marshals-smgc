@@ -51,8 +51,8 @@ select p.id, d.codigo, d.cargo, d.desde
 from (values
   ('gurrunaga','004','Capitán de Caddie',2013), ('acordoba','00214','Capitán de Caddie',2018),
   ('drodriguez','001','Marshal',2013), ('evargas','00222','Marshal',2018), ('ndominguez','00345','Marshal',2025),
-  ('jcarlos','00226','Starter',2018), ('ltaylor','00353','Starter',2025), ('rrojas','00215','Mecánico',2018),
-  ('gmclean','069','Agente de Servicio / Caddie',2015), ('jenrique','00223','Agente de Servicio / Caddie',2018),
+  ('jcarlos','00226','Starter',2018), ('ltaylor','00353','Starter',2025), ('rrojas','00215','Técnico',2018),
+  ('gmclean','069','Starter',2015), ('jenrique','00223','Agente de Servicio / Caddie',2018),
   ('curena','00263','Agente de Servicio / Caddie',2021), ('aotero','00323','Agente de Servicio / Caddie',2026),
   ('icalvo','00335','Agente de Servicio / Caddie',2024), ('rcorrea','00337','Agente de Servicio / Caddie',2024),
   ('jrodriguez','00341','Agente de Servicio / Caddie',2025), ('echanis','00342','Agente de Servicio / Caddie',2025),

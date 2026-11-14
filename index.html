@@ -4345,7 +4345,7 @@ function renderMecFun(){
 
 /* ===================== Carnets del staff ===================== */
 const QR_URL = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js";
-const ORDEN_CARGO = ["Gerente de Operaciones","Capitán de Caddie","Marshal","Starter","Mecánico","Agente de Servicio / Caddie"];
+const ORDEN_CARGO = ["Gerente de Operaciones","Capitán de Caddie","Marshal","Starter","Técnico","Agente de Servicio / Caddie"];
 S.car = {list:[], fotos:{}, loaded:false, q:"", clave:undefined};
 function cargarJS(src, listo){ return new Promise((res, rej) => { if (listo()) return res(); const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("sin conexión")); document.head.append(s); }); }
 const carnetURL = t => `${location.origin}${location.pathname}?carnet=${t}`;
