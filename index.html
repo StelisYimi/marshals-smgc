@@ -2638,7 +2638,8 @@ const PDFJS_URL = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.mi
 const PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
 const OCR_LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÁÉÍÓÚÑÜáéíóúñü.'-/() ";
 const MESES_EN = {jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12};
-function cargarJS(src, glob){ return window[glob] ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = () => res(); s.onerror = () => rej(new Error("No se pudo descargar el lector. Revise la conexión e intente de nuevo.")); document.head.append(s); }); }
+// Acepta el nombre global ("pdfjsLib") o una función que dice si ya está cargado
+function cargarJS(src, glob){ const listo = typeof glob === "function" ? glob : () => !!window[glob]; return listo() ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = () => res(); s.onerror = () => rej(new Error("No se pudo descargar el lector. Revise la conexión e intente de nuevo.")); document.head.append(s); }); }
 const clave = s => norm(s).replace(/[^a-z0-9]/g, "");
 function fechaTexto(t){ const m = String(t).match(/(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s+([a-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/i);
   return m && MESES_EN[m[1].toLowerCase()] ? `${m[3]}-${pad(MESES_EN[m[1].toLowerCase()])}-${pad(+m[2])}` : null; }
@@ -2924,7 +2925,7 @@ async function revisarCarga(r, fuente, urls, corregidos){
 }
 
 /* ===================== Versión: avisa y recarga cuando se publica una nueva ===================== */
-const APP_VER = "202610261230";
+const APP_VER = "202611141930";
 async function revisarVersion(){
   try {
     const h = await fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(r => r.ok ? r.text() : "");
@@ -4348,7 +4349,6 @@ function renderMecFun(){
 const QR_URL = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js";
 const ORDEN_CARGO = ["Gerente de Operaciones","Capitán de Caddie","Marshal","Starter","Técnico","Agente de Servicio / Caddie"];
 S.car = {list:[], fotos:{}, loaded:false, q:"", clave:undefined};
-function cargarJS(src, listo){ return new Promise((res, rej) => { if (listo()) return res(); const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("sin conexión")); document.head.append(s); }); }
 const carnetURL = t => `${location.origin}${location.pathname}?carnet=${t}`;
 function qrData(t){ try { if (!window.qrcode || !t) return null; const q = qrcode(0, "M"); q.addData(carnetURL(t)); q.make(); return q.createDataURL(4, 0); } catch(e){ return null; } }
 async function cargarCarnets(){
