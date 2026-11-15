@@ -947,8 +947,8 @@ function missingForSign(){
 function updateSignHint(){
   const h = $("#signHint"), b = $("#btnSign"); if (!h || !b) return;
   const m = missingForSign();
-  h.textContent = m.length ? "Para firmar falta: " + m.join(", ") + "." : "Todo listo. Al firmar, el reporte pasa a validación del Gerente de Operaciones y ya no se puede editar.";
-  h.classList.toggle("warn", !!m.length); b.disabled = !!m.length;
+  h.textContent = m.length ? "Aún falta: " + m.join(", ") + ". Puede firmar igual; Gerencia verá lo que quedó pendiente." : "Todo listo. Al firmar, el reporte pasa a validación del Gerente de Operaciones y ya no se puede editar.";
+  h.classList.toggle("warn", !!m.length); b.disabled = false;
 }
 
 /* --- Guardado con cola: funciona aunque se pierda la señal en el campo --- */
@@ -1011,11 +1011,19 @@ function updateSaveStatus(){
   el.classList.toggle("off", !S.online && hay);
   el.textContent = S.flushing ? "Guardando…" : (!S.online && hay) ? "Guardado en el teléfono" : hay ? "Cambios por guardar" : S.lastSaved ? "Guardado " + hora(S.lastSaved) : "Se guarda automáticamente";
 }
+/* Firma: siempre permitida; si falta algo se avisa y se pide confirmación */
+function confirmarFirma(falta){
+  const msg = falta && falta.length
+    ? "Su checklist está incompleto. Aún falta: " + falta.join(", ") + ".\n\n¿Firmar de todos modos? Gerencia verá lo que quedó pendiente y después ya no podrá modificarlo."
+    : "¿Firmar su reporte? Después ya no podrá modificarlo.";
+  return confirm(msg);
+}
 async function firmar(){
-  if (missingForSign().length) return;
+  if (!confirmarFirma(missingForSign())) return;
   $("#btnSign").disabled = true;
   await guardarAhora();
   if (Object.keys(S.pend.resp).length || Object.keys(S.pend.rep).length) { toast("Sin conexión. Firme cuando recupere señal."); updateSignHint(); return; }
+  try { await asegurarReporte(); } catch(x){ toast(errMsg(x)); updateSignHint(); return; }
   const { error } = await sb.rpc("firmar_reporte", {p_reporte:S.report.id});
   if (error) { toast(errMsg(error)); updateSignHint(); return; }
   await cargarTurno(); renderTurno(); toast("Reporte firmado y enviado a Gerencia. Gracias por su turno.");
@@ -3126,8 +3134,8 @@ function updProgSt(){ const s2 = statsSt(); $("#stProg").textContent = `${s2.ans
   const dia = new Set(itemsStDia().map(i => i.id));
   S.st.areas.forEach(a => { const its = a.items.filter(i => dia.has(i.id)), n = its.filter(it => S.st.resp[it.id]).length, c = document.querySelector(`[data-scnt="${a.codigo}"]`); if (c) { c.textContent = `${n}/${its.length}`; c.classList.toggle("done", n === its.length); } }); updHintSt(); }
 function updHintSt(){ const h = $("#stHint"), b = $("#stSign"); if (!h || !b) return; const m = faltaSt();
-  h.textContent = m.length ? "Para firmar falta: " + m.join(", ") + "." : "Todo listo. Al firmar, el reporte pasa a validación del Capitán y ya no se puede editar.";
-  h.classList.toggle("warn", !!m.length); b.disabled = !!m.length; }
+  h.textContent = m.length ? "Aún falta: " + m.join(", ") + ". Puede firmar igual; Gerencia verá lo que quedó pendiente." : "Todo listo. Al firmar, el reporte pasa a validación del Capitán y ya no se puede editar.";
+  h.classList.toggle("warn", !!m.length); b.disabled = false; }
 function marcarSt(){ const st = S.st; st.pend.fecha = st.fecha; st.pend.turno = st.turno; lsSet(stKey(), st.pend); }
 function setRespSt(id, row){ S.st.resp[id] = row; S.st.pend.resp[id] = row; marcarSt(); progSt(); }
 function setRepSt(patch){ if (S.st.rep) Object.assign(S.st.rep, patch); Object.assign(S.st.pend.rep, patch); marcarSt(); progSt(); updHintSt(); }
@@ -3160,9 +3168,10 @@ function updSaveSt(){ const el = $("#stSave"); if (!el) return; const st = S.st,
   el.classList.toggle("off", !S.online && hay);
   el.textContent = st.saving ? "Guardando…" : (!S.online && hay) ? "Guardado en el teléfono" : hay ? "Cambios por guardar" : st.last ? "Guardado " + hora(st.last) : "Se guarda automáticamente"; }
 async function firmarSt(){
-  if (faltaSt().length) return;
-  $("#stSign").disabled = true; await flushSt();
+  if (!confirmarFirma(faltaSt())) return;
+  $("#stSign").disabled = true; if (!S.st.rep) setRepSt({observaciones: draftSt().observaciones || ""}); await flushSt();
   if (Object.keys(S.st.pend.resp).length || Object.keys(S.st.pend.rep).length) { toast("Sin conexión. Firme cuando recupere señal."); updHintSt(); return; }
+  if (!S.st.rep) { toast("No se pudo crear el reporte. Intente de nuevo."); updHintSt(); return; }
   const { error } = await sb.rpc("firmar_reporte_starter", {p_reporte:S.st.rep.id});
   if (error) { toast(errMsg(error)); updHintSt(); return; }
   S.st.loaded = false; renderTurnoSt(); toast("Reporte firmado y enviado a Gerencia. Gracias por su turno.");
@@ -3394,8 +3403,8 @@ function itemCapHTML(it, r, ro){
 function updProgCap(){ const st = statsCap(); $("#ctProg").textContent = `${st.answered}/${st.total}`; if ($("#ctIrN")) $("#ctIrN").textContent = `${st.answered}/${st.total}`; $("#ctBar").style.width = Math.round(100*st.answered/st.total) + "%"; $("#ctCum").textContent = st.cumpl + "%";
   S.ct.areas.forEach(a => { const n = a.items.filter(it => S.ct.resp[it.id]).length, c = document.querySelector(`[data-ccnt="${a.codigo}"]`); if (c) { c.textContent = `${n}/${a.items.length}`; c.classList.toggle("done", n === a.items.length); } }); updHintCap(); }
 function updHintCap(){ const h = $("#ctHint"), b = $("#ctSign"); if (!h || !b) return; const m = faltaCap();
-  h.textContent = m.length ? "Para firmar falta: " + m.join(", ") + "." : "Todo listo. Al firmar, el reporte pasa a validación del Gerente de Operaciones y ya no se puede editar.";
-  h.classList.toggle("warn", !!m.length); b.disabled = !!m.length; }
+  h.textContent = m.length ? "Aún falta: " + m.join(", ") + ". Puede firmar igual; Gerencia verá lo que quedó pendiente." : "Todo listo. Al firmar, el reporte pasa a validación del Gerente de Operaciones y ya no se puede editar.";
+  h.classList.toggle("warn", !!m.length); b.disabled = false; }
 function marcarCap(){ const ct = S.ct; ct.pend.fecha = ct.fecha; ct.pend.turno = ct.turno; lsSet(ctKey(), ct.pend); }
 function setRespCap(id, row){ S.ct.resp[id] = row; S.ct.pend.resp[id] = row; marcarCap(); progCap(); }
 function setRepCap(patch){ if (S.ct.rep) Object.assign(S.ct.rep, patch); Object.assign(S.ct.pend.rep, patch); marcarCap(); progCap(); updHintCap(); }
@@ -3428,9 +3437,10 @@ function updSaveCap(){ const el = $("#ctSave"); if (!el) return; const ct = S.ct
   el.classList.toggle("off", !S.online && hay);
   el.textContent = ct.saving ? "Guardando…" : (!S.online && hay) ? "Guardado en el teléfono" : hay ? "Cambios por guardar" : ct.last ? "Guardado " + hora(ct.last) : "Se guarda automáticamente"; }
 async function firmarCap(){
-  if (faltaCap().length) return;
-  $("#ctSign").disabled = true; await flushCap();
+  if (!confirmarFirma(faltaCap())) return;
+  $("#ctSign").disabled = true; if (!S.ct.rep) setRepCap({observaciones: draftCap().observaciones || ""}); await flushCap();
   if (Object.keys(S.ct.pend.resp).length || Object.keys(S.ct.pend.rep).length) { toast("Sin conexión. Firme cuando recupere señal."); updHintCap(); return; }
+  if (!S.ct.rep) { toast("No se pudo crear el reporte. Intente de nuevo."); updHintCap(); return; }
   const { error } = await sb.rpc("firmar_reporte_capitan", {p_reporte:S.ct.rep.id});
   if (error) { toast(errMsg(error)); updHintCap(); return; }
   S.ct.loaded = false; renderTurnoCap(); toast("Reporte firmado y enviado a Gerencia. Gracias por su turno.");
@@ -3911,7 +3921,7 @@ function faltaMp(){ const m = S.mp, st = statsOp(m.pos, m.fecha, m.resp[m.pos] |
   if (m.pos === "R" && !d.nivel_bolas) f.push("el nivel de bolas");
   if (m.pos === "M" && (d.flota_operativos == null || d.flota_fuera == null)) f.push("los carritos operativos y fuera de servicio");
   return f; }
-function updHintMp(){ const h = $("#mpHint"); if (!h) return; const f = faltaMp(); h.textContent = f.length ? "Para firmar falta: " + f.join(", ") + "." : "Todo listo. Al firmar pasa a validación del Capitán y ya no se puede editar."; $("#mpFirmar").disabled = !!f.length; }
+function updHintMp(){ const h = $("#mpHint"); if (!h) return; const f = faltaMp(); h.textContent = f.length ? "Aún falta: " + f.join(", ") + ". Puede firmar igual; Gerencia verá lo que quedó pendiente." : "Todo listo. Al firmar pasa a validación del Capitán y ya no se puede editar."; h.classList.toggle("warn", !!f.length); $("#mpFirmar").disabled = false; }
 function marcaGuardado(txt){ const el = $("#mpSave"); if (el) el.textContent = txt; }
 async function asegurarRepOp(pos){
   const m = S.mp; if (m.reps[pos]) return m.reps[pos];
@@ -3940,8 +3950,7 @@ async function guardarDatosOp(pos, patch){
   catch(x){ toast(errMsg(x)); }
 }
 async function firmarOp(pos){
-  if (faltaMp().length) { updHintMp(); return; }
-  if (!confirm("¿Firmar su checklist? Después ya no podrá modificarlo.")) return;
+  if (!confirmarFirma(faltaMp())) return;
   const b = $("#mpFirmar"); b.disabled = true;
   try { const rep = await asegurarRepOp(pos); const { error } = await sb.rpc("firmar_reporte_op", {p_reporte: rep.id}); if (error) throw error;
     toast("Checklist firmado y enviado a Gerencia."); S.mp.loaded = false; renderMiPuesto(); }
