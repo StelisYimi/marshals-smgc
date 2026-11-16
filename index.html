@@ -2251,10 +2251,19 @@ async function ocrHor(cv, worker){
 // Así se leen bien los nombres en blanco sobre rojo/azul/verde y las letras de función sueltas.
 function rejillaHor(cv){
   const W = cv.width, H = cv.height, px = cv.getContext("2d", {willReadFrequently:true}).getImageData(0, 0, W, H).data;
-  const osc = new Uint8Array(W * H);   // 1 = línea o texto negro (los rellenos de color no cuentan)
-  for (let i = 0; i < W * H; i++) osc[i] = Math.max(px[4*i], px[4*i+1], px[4*i+2]) < 110 ? 1 : 0;
+  // Línea = negro, o una franja más oscura que lo que tiene a ambos lados (en capturas reducidas
+  // las líneas finas quedan mezcladas con el relleno de color). oscV sirve para líneas verticales, oscH para horizontales.
+  const L = new Uint8Array(W * H), oscV = new Uint8Array(W * H), oscH = new Uint8Array(W * H), o = Math.max(2, Math.round(W / 1100 * 3.4));
+  for (let i = 0; i < W * H; i++) L[i] = (px[4*i] * 299 + px[4*i+1] * 587 + px[4*i+2] * 114) / 1000;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y*W + x, v = L[i], negro = Math.max(px[4*i], px[4*i+1], px[4*i+2]) < 110;
+    oscV[i] = negro || v < Math.min(L[y*W + Math.max(0, x - o)], L[y*W + Math.min(W - 1, x + o)]) - 22 ? 1 : 0;
+    oscH[i] = negro || v < Math.min(L[Math.max(0, y - o)*W + x], L[Math.min(H - 1, y + o)*W + x]) - 22 ? 1 : 0;
+  }
   const tramos = (f, th, n) => { const out = []; for (let i = 0; i < n; i++) if (f(i) > th) { const u = out[out.length - 1]; if (u && i - u[1] <= 2) u[1] = i; else out.push([i, i]); } return out; };
-  const filaF = y => { let s = 0; for (let x = 0; x < W; x++) s += osc[y*W + x]; return s / W; };
+  // Solo cuentan tramos largos y seguidos: una línea cruza la casilla entera, el texto se corta entre letras
+  const largoH = Math.round(W / 40);
+  const filaF = y => { let s = 0, run = 0; for (let x = 0; x <= W; x++) { if (x < W && oscH[y*W + x]) run++; else { if (run >= largoH) s += run; run = 0; } } return s / W; };
   const hr = tramos(filaF, 0.3, H), hs = hr.map(([a, b]) => (a + b) / 2), finH = y => hr[hs.indexOf(y)][1], iniH = y => hr[hs.indexOf(y)][0];
   if (hs.length < 6) return null;
   const sep = hs.slice(1).map((y, i) => y - hs[i]).sort((a, b) => a - b), med = sep[Math.floor(sep.length / 2)];
@@ -2266,11 +2275,12 @@ function rejillaHor(cv){
   if (mej.length < 5) return null;
   const top = mej[0], bot = mej[mej.length - 1], hi = hs.indexOf(top);
   if (hi > 0 && top - hs[hi - 1] <= 4.5 * med) mej = [hs[hi - 1], ...mej];   // fila de encabezado (más alta)
-  const colF = x => { let s = 0; for (let y = Math.round(top); y < bot; y++) s += osc[y*W + x]; return s / (bot - top); };
+  const largoV = Math.round(med * 0.7);
+  const colF = x => { let s = 0, run = 0; for (let y = Math.round(top); y <= bot; y++) { if (y < bot && oscV[y*W + x]) run++; else { if (run >= largoV) s += run; run = 0; } } return s / (bot - top); };
   const vr = tramos(colF, 0.4, W).filter(([a, b]) => b - a <= Math.max(4, med / 4)), vs = vr.map(([a, b]) => (a + b) / 2);
   const finV = x => vr[vs.indexOf(x)][1], iniV = x => vr[vs.indexOf(x)][0];
   if (vs.length < 8) return null;
-  const hay = (x, y0, y1) => { let n = 0; for (let y = y0; y < y1; y++) { const r = y*W; if (osc[r + Math.round(x) - 1] || osc[r + Math.round(x)] || osc[r + Math.round(x) + 1]) n++; } return n / Math.max(1, y1 - y0); };
+  const hay = (x, y0, y1) => { let n = 0; for (let y = y0; y < y1; y++) { const r = y*W; if (oscV[r + Math.round(x) - 1] || oscV[r + Math.round(x)] || oscV[r + Math.round(x) + 1]) n++; } return n / Math.max(1, y1 - y0); };
   const bandas = [];
   for (let k = 0; k + 1 < mej.length; k++) {
     const y0 = finH(mej[k]) + 1 + Math.round(med * 0.1), y1 = iniH(mej[k + 1]) - 1 - Math.round(med * 0.1); if (y1 - y0 < 0.4 * med) continue;
@@ -2300,29 +2310,63 @@ function casillaHor(cv, x0, y0, x1, y1, esc){
   ok.drawImage(src, m, m, out.width - 2 * m, out.height - 2 * m);
   return out;
 }
+// Capturas pequeñas: la hora sale borrosa ("5:00am-1:000m", "5-10"). Se acerca al turno habitual más parecido
+// (los de la hoja y los ya guardados) y la letra que sigue se limpia contra las letras de función.
+const TURNOS_TIPICOS = ["5:00am-1:00pm", "11:00am-7:00pm", "1:00pm-9:00pm", "9:30am-6:00pm", "6:30am-3:00pm"];
+function ajustarTurno(c){
+  if (!c) return c;
+  const ps = S.hor.puestos, p0 = parsearCelda(c, ps);
+  if (!p0.error && p0.tipo !== "trabajo") return c;
+  const h12 = t => { const [h, m] = t.split(":").map(Number); return `${(h % 12) || 12}:${String(m).padStart(2, "0")}${h < 12 ? "am" : "pm"}`; };
+  const tipicos = [...new Set([...TURNOS_TIPICOS, ...(S.hor.turnos || []).filter(t => t.tipo === "trabajo" && t.inicio && t.fin).map(t => `${h12(t.inicio.slice(0, 5))}-${h12(t.fin.slice(0, 5))}`)])];
+  const t = c.toLowerCase().replace(/\s+/g, "");
+  let mej = null;
+  for (const k of tipicos) for (let d = -3; d <= 3; d++) { const n = k.length + d; if (n < 4 || n > t.length) continue; const e = lev(t.slice(0, n), k); if (!mej || e < mej.e) mej = {k, n, e}; }
+  if (!mej) return c;
+  const esTipico = !p0.error && tipicos.some(k => { const q = parsearCelda(k + " " + p0.puesto, ps); return q.inicio === p0.inicio && q.fin === p0.fin; });
+  if (esTipico || mej.e > (p0.error ? Math.max(3, Math.round(mej.k.length * 0.4)) : 2)) return c;
+  // (una hora poco común pero bien escrita se respeta: solo se ajusta si está a 2 cambios o menos de una habitual)
+  // Letra de función: lo que queda después de la hora
+  const cods = ps.map(p => p.codigo.toUpperCase()).sort((a, b) => b.length - a.length);
+  const resto = c.replace(/\s+/g, "").slice(mej.n).toUpperCase().replace(/\$/g, "S").replace(/[^A-Z0-9\/]/g, "");
+  const letra = (!p0.error && p0.puesto) || cods.find(k => resto === k) || cods.find(k => resto.startsWith(k)) || cods.find(k => resto.includes(k)) || resto;
+  return `${mej.k} ${letra}`.trim();
+}
 async function leerHorRejilla(cv, worker, paso){
   const rj = rejillaHor(cv); if (!rj) return null;
   const esc = 48 / rj.med, tabla = rj.bandas.map(b => b.bs.slice(1).map(() => "")), tareas = [];
   rj.bandas.forEach((b, i) => b.bs.slice(1).forEach((x1, j) => { const x0 = b.bs[j]; if (x1 - x0 >= 0.6 * rj.med) { const m = 1 + Math.round(rj.med * 0.1); tareas.push({i, j, alta:b.alta, x0:rj.finV(x0) + m, x1:rj.iniV(x1) - m, y0:b.y0, y1:b.y1}); } }));
+  // Arreglos de lectura frecuentes: "930am" → "9:30am", "SI7" → "S/7", "Pp" → "P"
+  const arreglar = c => c.replace(/(\d)\.(\d{2})/g, "$1:$2").replace(/[DOoQ]0(?=\s*[ap]m)/g, "00").replace(/(\d)\s+(\d{2})(?=\s*[ap0]m)/g, "$1:$2")
+    .replace(/:?000m/g, ":00pm").replace(/(\d)\s?\?\s?(\d{2})/g, "$1:$2").replace(/-\s*\?/g, "-7").replace(/\s€\s*$/, " C").replace(/\s\$\s*$/, " S").replace(/\s&\s*$/, " R").replace(/\bS7\b/g, "S/7").replace(/\b(\d{1,2})(\d{2})\s*([ap]\.?\s?m)/gi, "$1:$2$3").replace(/\b(\d{1,2}):\s+(\d{2})/g, "$1:$2")
+    .replace(/\bS\s*[Il1i|\\]\s*7\b/g, "S/7").replace(/\bS\s*[Il1i|\\]\s*R\b/g, "S/R").replace(/\bF\s*[Il1i|\\]\s*R\b/g, "F/R").replace(/\b([A-Z])\1?[a-z.,]?$/, "$1");
   let hechas = 0;
+  const limpio = d => String(d.text || "").replace(/[|\[\]{}“”"_]/g, " ").replace(/\s+/g, " ").trim();
   for (const alta of [false, true]) {
     const ts = tareas.filter(t => t.alta === alta); if (!ts.length) continue;
     await worker.setParameters({tessedit_pageseg_mode: alta ? "6" : "7", tessedit_char_whitelist:"", preserve_interword_spaces:"1"});
     for (const t of ts) {
-      const c = casillaHor(cv, t.x0, t.y0, t.x1, t.y1, esc);
-      if (c) { const { data } = await worker.recognize(c); tabla[t.i][t.j] = String(data.text || "").replace(/[|\[\]{}“”"_]/g, " ").replace(/\s+/g, " ").trim(); }
-      hechas++; if (hechas % 6 === 0) paso(`leyendo casilla ${hechas} de ${tareas.length}…`, 0.05 + 0.85 * hechas / tareas.length);
+      t.lienzo = casillaHor(cv, t.x0, t.y0, t.x1, t.y1, esc);
+      if (t.lienzo) { const { data } = await worker.recognize(t.lienzo); tabla[t.i][t.j] = limpio(data); }
+      hechas++; if (hechas % 6 === 0) paso(`leyendo casilla ${hechas} de ${tareas.length}…`, 0.05 + 0.8 * hechas / tareas.length);
     }
+  }
+  // Segunda lectura de las casillas de turno que no se entendieron: solo con los caracteres de una hora y una letra
+  const dudosas = tareas.filter(t => !t.alta && t.lienzo && t.j > 0 && tabla[t.i][t.j] && parsearCelda(ajustarTurno(arreglar(tabla[t.i][t.j])), S.hor.puestos).error && !/[a-z]{5}/i.test(tabla[t.i][t.j].replace(/am|pm/gi, "")));
+  if (dudosas.length) {
+    paso("revisando horas dudosas…", 0.88);
+    await worker.setParameters({tessedit_pageseg_mode:"7", tessedit_char_whitelist:"0123456789:apm-CSFRLEPM/ ", preserve_interword_spaces:"1"});
+    for (const t of dudosas) { const { data } = await worker.recognize(t.lienzo); const r = limpio(data); if (!parsearCelda(ajustarTurno(arreglar(r)), S.hor.puestos).error) tabla[t.i][t.j] = r; }
+    await worker.setParameters({tessedit_char_whitelist:""});
   }
   // Encabezado "09-11 LUNES" → "LUNES 09-11" para que se reconozca el día
   tabla.forEach((f, i) => { if (rj.bandas[i].alta) tabla[i] = f.map(c => { const ws = c.split(" "), k = ws.findIndex(w => diaDeTexto(w) >= 0); return k > 0 ? [ws[k], ...ws.slice(0, k), ...ws.slice(k + 1)].join(" ") : c; }); });
-  // Arreglos de lectura frecuentes: "930am" → "9:30am", "SI7" → "S/7", "Pp" → "P"
-  const arreglar = c => c.replace(/\b(\d{1,2})(\d{2})\s*([ap]\.?\s?m)/gi, "$1:$2$3").replace(/\b(\d{1,2}):\s+(\d{2})/g, "$1:$2")
-    .replace(/\bS\s*[Il1i|\\]\s*7\b/g, "S/7").replace(/\bS\s*[Il1i|\\]\s*R\b/g, "S/R").replace(/\bF\s*[Il1i|\\]\s*R\b/g, "F/R").replace(/\b([A-Z])\1?[a-z.,]?$/, "$1");
-  tabla.forEach((f, i) => { if (!rj.bandas[i].alta) tabla[i] = f.map(arreglar); });
+  // "Campensatorio", "Desconso"… → la palabra correcta
+  const palabra = c => { const n = norm(c).replace(/[^a-z]/g, ""); return n.length >= 6 && lev(n, "compensatorio") <= 3 ? "Compensatorio" : n.length >= 5 && lev(n, "descanso") <= 2 ? "Descanso" : n.length >= 6 && lev(n, "vacaciones") <= 3 ? "Vacaciones" : c; };
+  tabla.forEach((f, i) => { if (!rj.bandas[i].alta) tabla[i] = f.map((c, j) => j === 0 ? c : ajustarTurno(arreglar(palabra(c)))); });
   const r = horarioDeTabla(tabla); if (!r) return null;
   // Fuera de la tabla de turnos (leyenda, notas): filas sin ningún día que se entienda
-  r.filas = r.filas.filter(f => f.celdas.some(c => c && !parsearCelda(c, S.hor.puestos).error));
+  r.filas = r.filas.filter(f => f.celdas.filter(c => c && !parsearCelda(c, S.hor.puestos).error).length >= 3);
   return r.filas.length >= 3 ? r : null;
 }
 async function leerHorImagen(file, worker, prog, n, total){
@@ -2933,7 +2977,7 @@ async function revisarCarga(r, fuente, urls, corregidos){
 }
 
 /* ===================== Versión: avisa y recarga cuando se publica una nueva ===================== */
-const APP_VER = "202611141930";
+const APP_VER = "202611151930";
 async function revisarVersion(){
   try {
     const h = await fetch(location.pathname + "?v=" + Date.now(), {cache:"no-store"}).then(r => r.ok ? r.text() : "");
