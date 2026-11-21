@@ -2603,7 +2603,7 @@ function renderSalidas(){
   if (!t.loaded || t.fechaCargada !== t.fecha) { v.innerHTML = `<div class="loading">Cargando salidas…</div>`; cargarSalidas(); return; }
   const doble = t.list.some(x => hoyoDe(x) === 10) || esSabado(t.fecha), filtro = doble ? t.hoyo : "todos";
   const L = filtro === "todos" ? t.list : t.list.filter(x => String(hoyoDe(x)) === String(filtro)), st = statsSalidas(L), esHoy = t.fecha === hoyISO();
-  const agrega = S.esCap && S.modulo === "capitanes", vista = t.vista || "todos", ahora = new Date();
+  const agrega = nombres, vista = t.vista || "todos", ahora = new Date();
   const G = grillaTee(t.list, doble).filter(x => filtro === "todos" || String(hoyoDe(x)) === String(filtro));
   const libres = G.filter(x => x.libre).length, cuposLibres = G.reduce((n, x) => n + (x.libre ? TEE_CUPOS : (x.estado === "programada" ? Math.max(0, TEE_CUPOS - x.jugadores.length) : 0)), 0);
   const V = vista === "ocupados" ? G.filter(x => !x.libre) : G;
@@ -2627,7 +2627,7 @@ function renderSalidas(){
       ${(() => { const cr = L.filter(x => minCruce(x) != null), tar = cr.filter(x => minCruce(x) > CRUCE_META_MIN), prom = cr.length ? Math.round(cr.reduce((n, x) => n + minCruce(x), 0) / cr.length) : null;
         return `<div class="kpi"><div class="k">Cruce por el hoyo 9</div><div class="v ${prom == null ? "" : prom <= CRUCE_META_MIN ? "ok" : "warn"}">${prom == null ? "—" : durTxt(prom)}</div><div class="t">promedio de ${plural(cr.length, "grupo")}${tar.length ? ` · ${tar.length} sobre la meta` : ""} · meta ${durTxt(CRUCE_META_MIN)}</div></div>`; })()}
     </div>
-    ${!t.list.length ? `<div class="callout">${S.esCap ? (agrega ? "Aún no hay jugadores este día. Cargue el tee sheet o toque un tee time libre para agregar jugadores." : "Cárguelo en Capitanes → Salidas.") : "El Capitán aún no carga el tee sheet de este día."}</div>` : ""}
+    ${!t.list.length ? `<div class="callout">${agrega ? (S.esCap && S.modulo === "capitanes" ? "Aún no hay jugadores este día. Cargue el tee sheet o toque un tee time libre para agregar jugadores." : "Aún no hay jugadores este día. Toque un tee time libre para agregar jugadores.") : "El Capitán aún no carga el tee sheet de este día."}</div>` : ""}
     ${V.length ? `<div class="tee-list">${V.map(x => {
       if (x.libre) { const pas = esHoy && progDe({fecha:t.fecha, hora:x.hora}) < ahora, key = hm(x.hora) + "|" + hoyoDe(x);
         return `<div class="tee libre${pas ? " pasada" : ""}${doble && hoyoDe(x) === 10 ? " h10" : ""}"><div class="h">${hm(x.hora)}${doble ? `<br><span class="hoyo ${hoyoDe(x) === 10 ? "h10" : ""}">${etHoyo(x)}</span>` : ""}</div>
@@ -2642,12 +2642,12 @@ function renderSalidas(){
       const acc = x.estado === "programada" ? (!marca ? `<span class="pill p-draft">Programada</span>` : "") + (!marca ? "" : `<button class="btn small primary" data-salio="${x.id}" type="button">Salió</button><button class="btn small" data-ns="${x.id}" type="button">No se presentó</button>`) : estado;
       return `<div class="tee ${cls}"><div class="h">${hm(x.hora)}${doble ? `<br><span class="hoyo ${hoyoDe(x) === 10 ? "h10" : ""}">${etHoyo(x)}</span>` : ""}</div>
         <div class="j" ${marca ? `data-ed="${x.id}"` : nombres ? `data-nom="${x.id}"` : ""}>${x.jugadores.length ? x.jugadores.map(esc).join(" · ") : `<span class="hint">Sin jugadores</span>`}<small>${plural(x.jugadores.length, "jugador", "jugadores")}${x.estado === "programada" && x.jugadores.length < TEE_CUPOS ? `<span class="cupos">${plural(TEE_CUPOS - x.jugadores.length, "cupo libre", "cupos libres")}</span>` : ""}${esSig(x) ? ` · próxima salida${doble ? " por el " + etHoyo(x).toLowerCase() : ""}` : ""}${marca ? " · tocar para editar" : nombres ? " · tocar para editar nombres" : ""}${x.jugadores_editado_en ? ` · nombres editados por ${esc(nm(x.jugadores_editado_por))} ${hora(x.jugadores_editado_en)}` : ""}</small></div>
-        <div class="acc">${agrega && x.estado === "programada" && x.jugadores.length < TEE_CUPOS ? `<button class="btn small" data-ed="${x.id}" type="button">+ Jugador</button>` : ""}${acc}</div></div>`; }).join("")}</div>`
+        <div class="acc">${agrega && x.estado === "programada" && x.jugadores.length < TEE_CUPOS ? `<button class="btn small" ${marca ? `data-ed="${x.id}"` : `data-nom="${x.id}"`} type="button">+ Jugador</button>` : ""}${acc}</div></div>`; }).join("")}</div>`
       : `<div class="empty"><strong>Sin tee times con jugadores</strong>Cambie a “Todos los tee times” para ver los horarios libres.</div>`}`;
   $("#tFecha").onchange = e => { if (e.target.value) { t.fecha = e.target.value; renderSalidas(); } };
   v.querySelectorAll("#tHoyo [data-h]").forEach(b => b.onclick = () => { t.hoyo = b.dataset.h; try { localStorage.setItem("smgc_tee_hoyo", t.hoyo); } catch(e){} renderSalidas(); });
   v.querySelectorAll("#tVista [data-vista]").forEach(b => b.onclick = () => { t.vista = b.dataset.vista; try { localStorage.setItem("smgc_tee_vista", t.vista); } catch(e){} renderSalidas(); });
-  v.querySelectorAll("[data-add]").forEach(b => b.onclick = () => { const [hh, hy] = b.dataset.add.split("|"); editarSalida(null, {hora:hh, hoyo:+hy}); });
+  v.querySelectorAll("[data-add]").forEach(b => b.onclick = () => { const [hh, hy] = b.dataset.add.split("|"); const pre = {hora:hh, hoyo:+hy}; S.esCap ? editarSalida(null, pre) : agregarJugadores(pre); });
   if ($("#tNueva")) $("#tNueva").onclick = () => editarSalida(null);
   if ($("#tCargar")) $("#tCargar").onclick = abrirCargaTee;
   v.querySelectorAll("[data-cruce]").forEach(b => b.onclick = () => marcarCruce(b.dataset.cruce));
@@ -2655,6 +2655,22 @@ function renderSalidas(){
   v.querySelectorAll("[data-ns]").forEach(b => b.onclick = () => marcarSalida(b.dataset.ns, "no_show"));
   v.querySelectorAll("[data-ed]").forEach(b => b.onclick = () => editarSalida(t.list.find(x => x.id === b.dataset.ed)));
   v.querySelectorAll("[data-nom]").forEach(b => b.onclick = () => editarNombres(t.list.find(x => x.id === b.dataset.nom)));
+}
+function agregarJugadores(pre){
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(fechaLarga(S.tee.fecha))} · ${esc(MODULOS[S.modulo].nombre)}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Tee time ${hora12(pre.hora)} · Hoyo ${pre.hoyo}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <div class="stack" style="gap:8px"><div class="hint">Escriba los jugadores de este tee time (hasta ${TEE_CUPOS}).</div>
+      ${Array.from({length:TEE_CUPOS}, (_, i) => `<input type="text" class="aJugI" maxlength="60" autocomplete="off" aria-label="Jugador ${i + 1}" placeholder="Jugador ${i + 1}">`).join("")}</div>
+    <p class="hint warn" id="aErr" style="margin:0"></p>
+    <button class="btn primary" id="aOk" type="button">Agregar jugadores</button>`);
+  document.querySelector(".aJugI").focus();
+  $("#aOk").onclick = async () => {
+    const jug = [...document.querySelectorAll(".aJugI")].map(i => i.value.trim()).filter(Boolean);
+    if (!jug.length) { $("#aErr").textContent = "Escriba al menos un jugador."; return; }
+    $("#aOk").disabled = true;
+    const { error } = await sb.rpc("agregar_salida_tee", {p_fecha:S.tee.fecha, p_hora:pre.hora, p_hoyo:pre.hoyo, p_jugadores:jug});
+    if (error) { $("#aErr").textContent = errMsg(error); $("#aOk").disabled = false; return; }
+    closeSheet(); toast(`Jugadores agregados a las ${hora12(pre.hora)} · Hoyo ${pre.hoyo}`); cargarSalidas();
+  };
 }
 function editarNombres(x){
   if (!x) return;
