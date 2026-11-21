@@ -2596,8 +2596,10 @@ function statsSalidas(L){
     pun:pun.length, pct: sal.length ? Math.round(100 * pun.length / sal.length) : null};
 }
 const puedeMarcarSalidas = () => S.esStarter || S.esCap;
+// Gerencia, Capitanes, Starters y Marshals pueden corregir los nombres de los jugadores
+const puedeEditarNombres = () => !!S.me && (S.esCap || ["marshal", "starter"].includes(S.me.rol));
 function renderSalidas(){
-  const v = $("#v-salidas"), t = S.tee, marca = puedeMarcarSalidas();
+  const v = $("#v-salidas"), t = S.tee, marca = puedeMarcarSalidas(), nombres = puedeEditarNombres();
   if (!t.loaded || t.fechaCargada !== t.fecha) { v.innerHTML = `<div class="loading">Cargando salidas…</div>`; cargarSalidas(); return; }
   const doble = t.list.some(x => hoyoDe(x) === 10) || esSabado(t.fecha), filtro = doble ? t.hoyo : "todos";
   const L = filtro === "todos" ? t.list : t.list.filter(x => String(hoyoDe(x)) === String(filtro)), st = statsSalidas(L), esHoy = t.fecha === hoyISO();
@@ -2639,7 +2641,7 @@ function renderSalidas(){
         : x.estado === "no_show" ? `<span class="pill p-crit">No se presentó</span>` : "";
       const acc = x.estado === "programada" ? (!marca ? `<span class="pill p-draft">Programada</span>` : "") + (!marca ? "" : `<button class="btn small primary" data-salio="${x.id}" type="button">Salió</button><button class="btn small" data-ns="${x.id}" type="button">No se presentó</button>`) : estado;
       return `<div class="tee ${cls}"><div class="h">${hm(x.hora)}${doble ? `<br><span class="hoyo ${hoyoDe(x) === 10 ? "h10" : ""}">${etHoyo(x)}</span>` : ""}</div>
-        <div class="j" ${marca ? `data-ed="${x.id}"` : ""}>${x.jugadores.length ? x.jugadores.map(esc).join(" · ") : `<span class="hint">Sin jugadores</span>`}<small>${plural(x.jugadores.length, "jugador", "jugadores")}${x.estado === "programada" && x.jugadores.length < TEE_CUPOS ? `<span class="cupos">${plural(TEE_CUPOS - x.jugadores.length, "cupo libre", "cupos libres")}</span>` : ""}${esSig(x) ? ` · próxima salida${doble ? " por el " + etHoyo(x).toLowerCase() : ""}` : ""}${marca ? " · tocar para editar" : ""}</small></div>
+        <div class="j" ${marca ? `data-ed="${x.id}"` : nombres ? `data-nom="${x.id}"` : ""}>${x.jugadores.length ? x.jugadores.map(esc).join(" · ") : `<span class="hint">Sin jugadores</span>`}<small>${plural(x.jugadores.length, "jugador", "jugadores")}${x.estado === "programada" && x.jugadores.length < TEE_CUPOS ? `<span class="cupos">${plural(TEE_CUPOS - x.jugadores.length, "cupo libre", "cupos libres")}</span>` : ""}${esSig(x) ? ` · próxima salida${doble ? " por el " + etHoyo(x).toLowerCase() : ""}` : ""}${marca ? " · tocar para editar" : nombres ? " · tocar para editar nombres" : ""}${x.jugadores_editado_en ? ` · nombres editados por ${esc(nm(x.jugadores_editado_por))} ${hora(x.jugadores_editado_en)}` : ""}</small></div>
         <div class="acc">${agrega && x.estado === "programada" && x.jugadores.length < TEE_CUPOS ? `<button class="btn small" data-ed="${x.id}" type="button">+ Jugador</button>` : ""}${acc}</div></div>`; }).join("")}</div>`
       : `<div class="empty"><strong>Sin tee times con jugadores</strong>Cambie a “Todos los tee times” para ver los horarios libres.</div>`}`;
   $("#tFecha").onchange = e => { if (e.target.value) { t.fecha = e.target.value; renderSalidas(); } };
@@ -2652,6 +2654,25 @@ function renderSalidas(){
   v.querySelectorAll("[data-salio]").forEach(b => b.onclick = () => marcarSalida(b.dataset.salio, "salio"));
   v.querySelectorAll("[data-ns]").forEach(b => b.onclick = () => marcarSalida(b.dataset.ns, "no_show"));
   v.querySelectorAll("[data-ed]").forEach(b => b.onclick = () => editarSalida(t.list.find(x => x.id === b.dataset.ed)));
+  v.querySelectorAll("[data-nom]").forEach(b => b.onclick = () => editarNombres(t.list.find(x => x.id === b.dataset.nom)));
+}
+function editarNombres(x){
+  if (!x) return;
+  openSheet(`<div class="sheet-head"><div><div class="eyebrow">${esc(fechaLarga(S.tee.fecha))} · ${esc(MODULOS[S.modulo].nombre)}</div><h2 style="font-family:var(--f-display);font-weight:400;font-size:22px">Tee time ${hora12(x.hora)} · ${etHoyo(x)}</h2></div><button class="btn ghost x" data-x type="button">Cancelar</button></div>
+    <div class="stack" style="gap:8px"><div class="hint">Corrija los nombres de los jugadores (hasta ${TEE_CUPOS}). La hora, el hoyo y el estado de la salida no cambian.</div>
+      ${Array.from({length:TEE_CUPOS}, (_, i) => `<input type="text" class="nJugI" maxlength="60" autocomplete="off" aria-label="Jugador ${i + 1}" placeholder="Jugador ${i + 1}" value="${esc(x.jugadores[i] || "")}">`).join("")}</div>
+    <p class="hint warn" id="nErr" style="margin:0"></p>
+    <button class="btn primary" id="nOk" type="button">Guardar nombres</button>`);
+  const ins = document.querySelectorAll(".nJugI"); const vacio = [...ins].find(i => !i.value); (vacio || ins[0]).focus();
+  $("#nOk").onclick = async () => {
+    const jug = [...document.querySelectorAll(".nJugI")].map(i => i.value.trim()).filter(Boolean);
+    if (!jug.length) { $("#nErr").textContent = "Escriba al menos un jugador."; return; }
+    $("#nOk").disabled = true;
+    const { data, error } = await sb.rpc("editar_jugadores_tee", {p_salida:x.id, p_jugadores:jug});
+    if (error) { $("#nErr").textContent = errMsg(error); $("#nOk").disabled = false; return; }
+    if (data) Object.assign(x, data);
+    closeSheet(); renderSalidas(); toast(`Nombres actualizados · ${hm(x.hora)} ${etHoyo(x)}`);
+  };
 }
 async function marcarCruce(id){
   const x = S.tee.list.find(y => y.id === id); if (!x) return;
@@ -2700,6 +2721,7 @@ function editarSalida(x, preset){
     if (jug.length > TEE_CUPOS) { err.textContent = `Un tee time tiene como máximo ${TEE_CUPOS} jugadores.`; return; }
     if (nuevo && !jug.length) { err.textContent = "Escriba al menos un jugador."; return; }
     const row = {fecha:f, hora:h, hoyo, jugadores:jug};
+    if (!nuevo && JSON.stringify(jug) !== JSON.stringify(x.jugadores)) { row.jugadores_editado_por = S.me.id; row.jugadores_editado_en = new Date().toISOString(); }
     if (!nuevo) {
       row.estado = est; row.marcado_por = est === "programada" ? null : (x.estado === est && x.marcado_por) || S.me.id;
       if (est === "salio") { const r = $("#sReal").value; if (!r) { err.textContent = "Indique la hora real de salida."; return; } const d = fechaDe(f); const [a, b] = r.split(":").map(Number); d.setHours(a, b, 0, 0); row.salida_real = d.toISOString();
